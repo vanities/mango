@@ -24,6 +24,8 @@ struct LibrarySource: Identifiable, Codable, Hashable, Sendable {
     var lastScanAt: Date?
     var lastScanBookCount: Int?
     var lastScanFileCount: Int?
+    /// Archives the last scan found but can't open (RAR, 7z), by extension.
+    var lastScanUnreadable: [String: Int]?
     var lastError: String?
     /// For `.smb` sources: the server this folder lives on.
     var serverID: UUID?

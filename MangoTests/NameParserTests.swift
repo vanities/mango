@@ -267,4 +267,118 @@ final class SeriesSubtitleParsingTests: XCTestCase {
         XCTAssertEqual(result.volume, 1)
         XCTAssertEqual(result.chapter, 1)
     }
+
+    // MARK: A real NAS (2026-09-21)
+    //
+    // Every name below is from Adam's library. Before these, its 814 files made 104 shelves.
+
+    /// "Volume 01 - Enter Josuke Higashikata": nothing before the number, so the filename has
+    /// no series in it at all — the folder does. Taking the first words as the series gave every
+    /// JoJo volume its own shelf, named after its episode title.
+    func testANameThatStartsWithTheNumberTakesItsSeriesFromTheFolder() {
+        let folder = "JoJo's Bizarre Adventure Part 4 - Diamond is Unbreakable Full Color"
+        let result = parse("Volume 01 - Enter Josuke Higashikata.zip", folder: folder)
+        XCTAssertEqual(result.series, folder)
+        XCTAssertEqual(result.volume, 1)
+        XCTAssertEqual(result.subtitle, "Enter Josuke Higashikata")
+
+        let vento = parse("Volume 47 - The Golden Heart.zip", folder: "Part 5 - Vento Aureo (Black and White Scans)")
+        XCTAssertEqual(vento.series, "Part 5 - Vento Aureo")
+        XCTAssertEqual(vento.volume, 47)
+        XCTAssertEqual(vento.subtitle, "The Golden Heart")
+    }
+
+    /// A webtoon published as bare-numbered chapters, some with an episode title after the
+    /// number. "180 - Epilogue 01" used to become series "Solo Leveling 180 - Epilogue", Vol. 1.
+    func testAWebtoonsBareNumbersAreChaptersAndKeepTheirTitles() {
+        let folder = "Solo Leveling [Webtoon] (2020-2023) (Digital) (LuCaZ)"
+        let names = [
+            "Solo Leveling 000 - Prologue (2020) (Digital) (LuCaZ).cbz",
+            "Solo Leveling 001 (2020) (Digital) (LuCaZ).cbz",
+            "Solo Leveling 002 (2020) (Digital) (LuCaZ).cbz",
+            "Solo Leveling 179 - Finale (2023) (Digital) (LuCaZ).cbz",
+            "Solo Leveling 180 - Epilogue 01 (2023) (Digital) (LuCaZ).cbz",
+        ]
+        let results = NameParser.parseGroup(names.map { ($0, folder) })
+        XCTAssertTrue(results.allSatisfy { $0.series == "Solo Leveling" }, "\(results.map(\.series))")
+        XCTAssertEqual(results.map(\.chapter), [0, 1, 2, 179, 180])
+        XCTAssertTrue(results.allSatisfy { $0.volume == nil })
+        XCTAssertEqual(results.map(\.subtitle), ["Prologue", nil, nil, "Finale", "Epilogue 01"])
+        XCTAssertEqual(results[1].title, "Solo Leveling Ch. 1")
+    }
+
+    /// Volumes as "v01" beside the chapters since the last volume as bare numbers — how 1r0n
+    /// and LuCaZ ship ongoing series. A bare number far past the last volume is a chapter.
+    func testBareNumbersFarPastTheLastVolumeAreChapters() {
+        func group(_ names: [String], _ folder: String) -> [ParsedName] {
+            NameParser.parseGroup(names.map { ($0, folder) })
+        }
+        let chainsaw = group(["Chainsaw Man v01 (2020) (Digital) (1r0n).cbz",
+                              "Chainsaw Man v21 (2026) (Digital) (Rillant).cbz",
+                              "Chainsaw Man 199 (2025) (Digital) (1r0n).cbz",
+                              "Chainsaw Man 223 (2025) (Digital) (1r0n).cbz"], "Chainsaw Man (Digital)")
+        XCTAssertEqual(chainsaw.map(\.volume), [1, 21, nil, nil])
+        XCTAssertEqual(chainsaw.map(\.chapter), [nil, nil, 199, 223])
+
+        let onePiece = group(["One Piece v001 (2003) (Digital) (1r0n).cbz",
+                              "One Piece v111 (2026) (Digital) (1r0n).cbz",
+                              "One Piece 1134 (2024) (Digital) (1r0n).cbz"], "One Piece (Digital) (1r0n)")
+        XCTAssertEqual(onePiece.map(\.chapter), [nil, nil, 1134])
+
+        let witch = group(["Witch Hat Atelier v14 (2026) (Digital) (LuCaZ).cbz",
+                           "Witch Hat Atelier 082 (2024) (Digital) (LuCaZ).cbz"], "Witch Hat Atelier (Digital) (LuCaZ)")
+        XCTAssertEqual(witch.map(\.chapter), [nil, 82])
+    }
+
+    /// Just past the last volume is still ambiguous — "Series 011" after v01–v10 is more likely
+    /// a volume someone named inconsistently than chapter 11.
+    func testABareNumberJustPastTheLastVolumeStaysAVolume() {
+        let names = (1...10).map { (String(format: "Series v%02d.cbz", $0), "Series") } + [("Series 011.cbz", "Series")]
+        let results = NameParser.parseGroup(names)
+        XCTAssertEqual(results.last?.volume, 11)
+        XCTAssertNil(results.last?.chapter)
+    }
+
+    func testVolumeAndChapterRangesDoNotLeaveASubtitle() {
+        let homunculus = parse("Homunculus v01-02 (2023) (Digital) (LuCaZ).cbz", folder: "Homunculus (2023-2024) (Digital) (LuCaZ)")
+        XCTAssertEqual(homunculus.volume, 1)
+        XCTAssertNil(homunculus.subtitle)
+
+        let tasogare = parse("Tasogare Otome x Amnesia - c00-02 (v01) [DBR-Scans, Meow Scans, Maigo].cbz",
+                             folder: "Tasogare Otome x Amnesia")
+        XCTAssertEqual(tasogare.series, "Tasogare Otome x Amnesia")
+        XCTAssertEqual(tasogare.chapter, 0)
+        XCTAssertEqual(tasogare.volume, 1)
+        XCTAssertNil(tasogare.subtitle)
+    }
+
+    func testQualityTagsAreNotSubtitles() {
+        let result = parse("GTO Volume 01 HQ [E353B350].zip", folder: "GTO")
+        XCTAssertEqual(result.series, "GTO")
+        XCTAssertEqual(result.volume, 1)
+        XCTAssertNil(result.subtitle)
+    }
+
+    /// Folders are what people keep tidy — including their capitals.
+    func testTheFoldersSpellingWinsWhenTheNamesMatch() {
+        let result = parse("[thetsuuyaku.blogspot.com]_the_voynich_hotel_vol01_(complete).zip", folder: "The Voynich Hotel")
+        XCTAssertEqual(result.series, "The Voynich Hotel")
+        XCTAssertEqual(result.volume, 1)
+    }
+
+    /// A side story named "<Series> - <Title>" in the series' own folder belongs on that shelf.
+    func testASideStoryInTheSeriesFolderJoinsTheShelf() {
+        let folder = "Mushoku Tensei - Jobless Reincarnation [Seven Seas] [LuCaZ]"
+        let result = parse("Mushoku Tensei - Jobless Reincarnation - A Journey of Two Lifetimes [Seven Seas] [LuCaZ].epub",
+                           folder: folder)
+        XCTAssertEqual(result.series, "Mushoku Tensei - Jobless Reincarnation")
+        XCTAssertEqual(result.subtitle, "A Journey of Two Lifetimes")
+    }
+
+    /// "Part 4 - Diamond is Unbreakable" is a part of a series, not volume 4 with a title.
+    func testAPartNumberIsNotAVolume() {
+        let result = parse("JoJo's Bizarre Adventure Part 4 - Diamond is Unbreakable.cbz")
+        XCTAssertNil(result.volume)
+        XCTAssertEqual(result.series, "JoJo's Bizarre Adventure Part 4 - Diamond is Unbreakable")
+    }
 }

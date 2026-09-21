@@ -182,6 +182,7 @@ final class LibraryModel {
             state.sources[index].lastScanAt = Date()
             state.sources[index].lastScanBookCount = result.comics.count
             state.sources[index].lastScanFileCount = result.fileCount
+            state.sources[index].lastScanUnreadable = result.unreadable.isEmpty ? nil : result.unreadable
             state.sources[index].lastError = result.error
             found.append(contentsOf: result.comics)
         }
