@@ -55,6 +55,22 @@ final class ReaderEngine {
         }
     }
 
+    /// Crop margins applies to pages shown whole; a strip's margins are part of its flow.
+    var cropsMargins: Bool { settings.cropMargins && mode == .paged }
+
+    /// A small copy of a page for the page grid.
+    func thumbnail(at index: Int) async -> CGImage? {
+        guard let loader, index >= 0, index < pageCount else { return nil }
+        return await loader.thumbnail(at: index)
+    }
+
+    /// An arrow key: the page to that side, whichever way this book reads.
+    func turn(towardsLeft: Bool) {
+        let forward = towardsLeft == (direction == .rightToLeft)
+        if forward { advance() } else { retreat() }
+        Logger.reader.debug("[reader] key turn \(towardsLeft ? "left" : "right", privacy: .public) → page \(self.currentPage + 1)")
+    }
+
     /// The user picked a layout in settings. Saved for this book, and it beats detection.
     func chooseMode(_ newMode: ReaderMode) {
         mode = newMode
@@ -231,7 +247,7 @@ final class ReaderEngine {
     func image(at index: Int) async -> CGImage? {
         guard let loader, index >= 0, index < pageCount else { return nil }
         do {
-            let image = try await loader.page(at: index, sizing: sizing)
+            let image = try await loader.page(at: index, sizing: sizing, trim: cropsMargins)
             let aspect = Double(image.height) / Double(max(1, image.width))
             pageAspects[index] = aspect
             lastAspect = aspect
@@ -415,7 +431,8 @@ final class ReaderEngine {
         let page = currentPage
         let ahead = settings.prefetchCount
         let sizing = self.sizing
-        Task { await loader.prefetch(around: page, ahead: ahead, sizing: sizing) }
+        let trim = cropsMargins
+        Task { await loader.prefetch(around: page, ahead: ahead, sizing: sizing, trim: trim) }
     }
 
     /// Writing the library JSON on every page turn would hammer the disk during a fast read.

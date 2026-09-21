@@ -14,6 +14,13 @@ struct PageImageView: View {
     @State private var image: CGImage?
     @State private var tiles: [CGImage] = []
     @State private var failed = false
+    @Environment(AppSettings.self) private var settings
+
+    /// What the picture depends on: turning Crop margins on or off has to redraw the page.
+    private struct Load: Hashable {
+        let index: Int
+        let trim: Bool
+    }
 
     var body: some View {
         Group {
@@ -29,8 +36,9 @@ struct PageImageView: View {
                 loading
             }
         }
+        .pageFilter(settings.pageFilter)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: index) { await load() }
+        .task(id: Load(index: index, trim: engine.cropsMargins)) { await load() }
         // A strip page is tens of megabytes decoded. Once it's scrolled away, let it go — the
         // loader still has it if it's recent, and its known shape holds its place meanwhile.
         .onDisappear {

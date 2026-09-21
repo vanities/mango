@@ -108,6 +108,12 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   layout switch can never be handed a page decoded for the other layout, whatever order the
   requests arrive in.
 - Memory warnings purge everything but the visible page.
+- **Crop margins** (`MarginTrimmer`) only ever cuts a side whose edge is near-white or
+  near-black *and* flat, and only when that band ends inside `maxCutFraction` — a flat band that
+  runs further is more likely a quiet or night panel, so that side is left whole. The trim flag
+  is part of `PageLoader`'s cache key, like sizing. Paged reading only.
+- The page grid's thumbnails live in their own small cache in `PageLoader`, so browsing them
+  never evicts the pages being read. Page tints are display-only view modifiers.
 
 ## Covers and names from online
 

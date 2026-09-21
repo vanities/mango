@@ -65,6 +65,27 @@ enum PageFit: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// A tint over the page, for reading in the dark or on paper-white glare. Display only — the
+/// pages themselves are never changed.
+enum PageFilter: String, Codable, CaseIterable, Sendable {
+    case none
+    /// Warm, like newsprint — easier on the eyes than paper white.
+    case sepia
+    /// The whole page darker, below what the screen's own brightness goes down to.
+    case dim
+    /// Black and white swapped (hues kept), for reading in bed with the lights off.
+    case night
+
+    var label: String {
+        switch self {
+        case .none: "None"
+        case .sepia: "Sepia"
+        case .dim: "Dim"
+        case .night: "Night (inverted)"
+        }
+    }
+}
+
 /// Whether to pair pages into a two-page spread, the way a physical book falls open.
 enum SpreadMode: String, Codable, CaseIterable, Sendable {
     /// Pair them when the screen is wider than it is tall. The sane default.

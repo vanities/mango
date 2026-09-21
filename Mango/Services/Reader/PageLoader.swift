@@ -21,6 +21,8 @@ actor PageLoader {
     private struct Key: Hashable {
         let index: Int
         let sizing: PageSizing
+        /// Margins cropped (Crop margins) — a different picture from the same page.
+        var trim = false
     }
 
     private var cache: [Key: CGImage] = [:]
@@ -32,6 +34,11 @@ actor PageLoader {
     private var peeked: [Int: Data] = [:]
     /// Every page size learned so far, from peeks and header reads — each page is sized once.
     private var sizes: [Int: CGSize] = [:]
+    /// Small copies for the page grid, apart from the page cache so browsing thumbnails never
+    /// evicts the pages being read. Oldest dropped first.
+    private var thumbnails: [Int: CGImage] = [:]
+    private var thumbnailOrder: [Int] = []
+    private let thumbnailCapacity = 120
     /// Pages that turned out to be wider than they are tall — a double-page spread that should
     /// be shown on its own rather than paired with a neighbour.
     private(set) var widePages: Set<Int> = []
@@ -90,8 +97,8 @@ actor PageLoader {
 
     // MARK: Loading
 
-    func page(at index: Int, sizing: PageSizing) async throws -> CGImage {
-        let key = Key(index: index, sizing: sizing)
+    func page(at index: Int, sizing: PageSizing, trim: Bool = false) async throws -> CGImage {
+        let key = Key(index: index, sizing: sizing, trim: trim)
         if let hit = cache[key] {
             touch(key)
             return hit
@@ -111,9 +118,9 @@ actor PageLoader {
     /// Fire-and-forget: failures here are the reader's problem when it actually asks for the page.
     /// A prefetch is also the reader saying which layout is current, so pages sized for another
     /// one are dropped.
-    func prefetch(around index: Int, ahead: Int, behind: Int = 1, sizing: PageSizing) {
-        dropPages(notSizedFor: sizing)
-        let wanted = pagesToKeep(around: index, ahead: ahead, behind: behind).map { Key(index: $0, sizing: sizing) }
+    func prefetch(around index: Int, ahead: Int, behind: Int = 1, sizing: PageSizing, trim: Bool = false) {
+        dropPages(notMatching: sizing, trim: trim)
+        let wanted = pagesToKeep(around: index, ahead: ahead, behind: behind).map { Key(index: $0, sizing: sizing, trim: trim) }
         for key in wanted where cache[key] == nil && inFlight[key] == nil {
             let task = decodeTask(for: key)
             inFlight[key] = task
@@ -130,21 +137,49 @@ actor PageLoader {
     }
 
     private static func decode(_ archive: any ComicArchive, _ key: Key, peeked: Data?) async throws -> CGImage {
-        guard let peeked else { return try await archive.page(at: key.index, sizing: key.sizing) }
-        // Only image containers get peeked (a PDF knows its sizes), and for those decoding the
-        // bytes is exactly what the archive would have done after reading them again.
-        guard let image = ImageDecoder.decode(peeked, sizing: key.sizing) else {
-            throw ArchiveError.undecodable(page: archive.pageName(at: key.index))
+        let image: CGImage
+        if let peeked {
+            // Only image containers get peeked (a PDF knows its sizes), and for those decoding the
+            // bytes is exactly what the archive would have done after reading them again.
+            guard let decoded = ImageDecoder.decode(peeked, sizing: key.sizing) else {
+                throw ArchiveError.undecodable(page: archive.pageName(at: key.index))
+            }
+            image = decoded
+        } else {
+            image = try await archive.page(at: key.index, sizing: key.sizing)
         }
-        return image
+        return key.trim ? MarginTrimmer.trim(image) : image
     }
 
-    private func dropPages(notSizedFor sizing: PageSizing) {
-        let stale = cache.keys.filter { $0.sizing != sizing }
+    private func dropPages(notMatching sizing: PageSizing, trim: Bool) {
+        let stale = cache.keys.filter { $0.sizing != sizing || $0.trim != trim }
         guard !stale.isEmpty else { return }
         for key in stale { cache[key] = nil }
-        recency.removeAll { $0.sizing != sizing }
-        Logger.pages.info("[cache] layout changed, dropped \(stale.count) page(s) sized for the old one")
+        recency.removeAll { $0.sizing != sizing || $0.trim != trim }
+        Logger.pages.info("[cache] layout or crop changed, dropped \(stale.count) page(s) made for the old one")
+    }
+
+    // MARK: Thumbnails
+
+    /// A small copy of a page for the page grid. On a NAS this reads the page, so the grid asks
+    /// only for the cells on screen.
+    func thumbnail(at index: Int) async -> CGImage? {
+        if let hit = thumbnails[index] { return hit }
+        let image: CGImage?
+        if await archive.knownPageSize(at: index) != nil {
+            image = try? await archive.page(at: index, maxPixel: ImageDecoder.thumbnailPixels)
+        } else {
+            var data = peeked[index]
+            if data == nil { data = try? await archive.pageData(at: index) }
+            image = data.flatMap(ImageDecoder.thumbnail(from:))
+        }
+        guard let image else { return nil }
+        thumbnails[index] = image
+        thumbnailOrder.append(index)
+        if thumbnailOrder.count > thumbnailCapacity {
+            thumbnails[thumbnailOrder.removeFirst()] = nil
+        }
+        return image
     }
 
     private func pagesToKeep(around index: Int, ahead: Int, behind: Int) -> [Int] {
@@ -199,6 +234,8 @@ actor PageLoader {
         cache = kept
         recency.removeAll { $0.index != index }
         peeked.removeAll()
+        thumbnails.removeAll()
+        thumbnailOrder.removeAll()
         Logger.pages.notice("[cache] purged under memory pressure: \(before) → \(self.cache.count)")
     }
 

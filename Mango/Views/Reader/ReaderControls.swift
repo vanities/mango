@@ -8,6 +8,7 @@ import SwiftUI
 struct ReaderControls: View {
     @Bindable var engine: ReaderEngine
     @Binding var showingSettings: Bool
+    @Binding var showingPages: Bool
     var onClose: () -> Void
 
     var body: some View {
@@ -44,6 +45,10 @@ struct ReaderControls: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            button("square.grid.2x2", label: "All pages") {
+                showingPages = true
+                engine.keepControlsAwake()
+            }
             button(engine.isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
                    label: engine.isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page") {
                 engine.toggleBookmark()
@@ -169,6 +174,10 @@ struct ReaderSettingsSheet: View {
                     Toggle("Tap edges to turn", isOn: $settings.tapToTurn)
                     Toggle("Keep screen awake", isOn: $settings.keepScreenAwake)
                     Toggle("Black background", isOn: $settings.blackBackground)
+                    Toggle("Crop margins", isOn: $settings.cropMargins)
+                    Picker("Page tint", selection: $settings.pageFilter) {
+                        ForEach(PageFilter.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
                 }
                 Section {
                     Picker("Pages to load ahead", selection: $settings.prefetchCount) {

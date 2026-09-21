@@ -85,6 +85,17 @@ final class LibraryScannerTests: XCTestCase {
         XCTAssertEqual(ImageFileTypes.describeUnreadable(result.unreadable), "3 files in RAR or 7z")
     }
 
+    /// Converting with the originals kept leaves "Akira v01.rar" beside "Akira v01.cbz" — the
+    /// warning is about what can't be read, and that one can.
+    func testAnArchiveWithAConvertedTwinIsNotFlagged() throws {
+        try write("Akira/Akira v01.rar")
+        try write("Akira/Akira v01.cbz")
+        try write("Akira/Akira v02.rar")
+        let result = LibraryScanner.scanLocal(source: source, root: root)
+        XCTAssertEqual(result.comics.count, 1)
+        XCTAssertEqual(result.unreadable, ["rar": 1], "only v02 is still unreadable")
+    }
+
     func testIDsAreStableAcrossScans() throws {
         try write("Berserk/Berserk v01.cbz")
         let first = LibraryScanner.scanLocal(source: source, root: root)

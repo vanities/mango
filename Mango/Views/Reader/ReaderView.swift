@@ -18,6 +18,7 @@ struct ReaderView: View {
     @State private var current: Comic?
     @State private var engine: ReaderEngine?
     @State private var showingSettings = false
+    @State private var showingPages = false
     /// Shown after the last page: finished this one, what now?
     @State private var atEnd = false
 
@@ -37,7 +38,8 @@ struct ReaderView: View {
                         errorState(error)
                     } else {
                         content(engine: engine)
-                        ReaderControls(engine: engine, showingSettings: $showingSettings, onClose: close)
+                            .background { keys(engine) }
+                        ReaderControls(engine: engine, showingSettings: $showingSettings, showingPages: $showingPages, onClose: close)
                     }
                 } else {
                     ProgressView()
@@ -60,6 +62,9 @@ struct ReaderView: View {
         .persistentSystemOverlays(engine?.showsControls ?? true ? .automatic : .hidden)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showingPages) {
+            if let engine { PageGridView(engine: engine) }
+        }
         .sheet(isPresented: $showingSettings) {
             if let engine { ReaderSettingsSheet(engine: engine) }
         }
@@ -86,6 +91,27 @@ struct ReaderView: View {
         case .continuous:
             ContinuousReader(engine: engine)
         }
+    }
+
+    /// iPad keyboards: the arrows turn the way the book runs (← goes forward in a manga), space
+    /// goes forward and shift-space back, Esc closes. Invisible buttons, so the shortcuts are
+    /// real UIKit key commands and show in the ⌘-hold overlay.
+    private func keys(_ engine: ReaderEngine) -> some View {
+        ZStack {
+            Button("Page to the left") { engine.turn(towardsLeft: true) }
+                .keyboardShortcut(.leftArrow, modifiers: [])
+            Button("Page to the right") { engine.turn(towardsLeft: false) }
+                .keyboardShortcut(.rightArrow, modifiers: [])
+            Button("Next page") { engine.advance() }
+                .keyboardShortcut(.space, modifiers: [])
+            Button("Previous page") { engine.retreat() }
+                .keyboardShortcut(.space, modifiers: .shift)
+            Button("Close") { close() }
+                .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(width: 0, height: 0)
+        .opacity(0)
+        .accessibilityHidden(true)
     }
 
     // MARK: End of a volume

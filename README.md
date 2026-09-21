@@ -36,7 +36,9 @@ download queue with a progress bar in front of it — it just opens.
   ("Part 5 - Vento Aureo") on AniList and, once you pick the match, puts the proper name and author
   on every volume. Only the series name — and the volume number — is sent, and only then.
 - **Remembers where you were**, per volume, and knows which volume comes next in a run.
-- Pinch zoom, double-tap zoom, tap-to-turn, keep-screen-awake.
+- Pinch zoom, double-tap zoom, tap-to-turn, keep-screen-awake, a page grid to jump anywhere,
+  **crop margins** (cuts plain scan borders, never art), **sepia / dim / night** page tints, and
+  iPad keyboard turns — the arrows follow the reading direction.
 
 ## Light novels too
 

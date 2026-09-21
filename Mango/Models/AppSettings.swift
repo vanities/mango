@@ -51,6 +51,9 @@ final class AppSettings {
     var keepScreenAwake: Bool { didSet { defaults.set(keepScreenAwake, forKey: Key.keepAwake) } }
     /// Black background behind pages instead of the system one — less halo in the dark.
     var blackBackground: Bool { didSet { defaults.set(blackBackground, forKey: Key.blackBg) } }
+    /// Cut plain white or black scan borders so the art fills the screen (paged reading).
+    var cropMargins: Bool { didSet { defaults.set(cropMargins, forKey: Key.cropMargins) } }
+    var pageFilter: PageFilter { didSet { defaults.set(pageFilter.rawValue, forKey: Key.pageFilter) } }
     /// Volumes a year to aim for, drawn as a ring on Stats. 0 hides it.
     var yearlyGoal: Int { didSet { defaults.set(yearlyGoal, forKey: Key.yearlyGoal) } }
     /// Identifies this device's slot in the synced activity totals. Stable across launches.
@@ -86,6 +89,8 @@ final class AppSettings {
         tapToTurn = defaults.object(forKey: Key.tapToTurn) as? Bool ?? true
         keepScreenAwake = defaults.object(forKey: Key.keepAwake) as? Bool ?? true
         blackBackground = defaults.object(forKey: Key.blackBg) as? Bool ?? true
+        cropMargins = defaults.object(forKey: Key.cropMargins) as? Bool ?? false
+        pageFilter = PageFilter(rawValue: defaults.string(forKey: Key.pageFilter) ?? "") ?? .none
         novelFontScale = defaults.object(forKey: Key.novelFontScale) as? Double ?? 1.0
         yearlyGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 50
         if let existing = defaults.string(forKey: Key.deviceID) {
@@ -115,6 +120,8 @@ final class AppSettings {
         static let tapToTurn = "reader.tapToTurn"
         static let keepAwake = "reader.keepScreenAwake"
         static let blackBg = "reader.blackBackground"
+        static let cropMargins = "reader.cropMargins"
+        static let pageFilter = "reader.pageFilter"
         static let novelFontScale = "reader.novelFontScale"
         static let yearlyGoal = "stats.yearlyGoal"
         static let deviceID = "sync.deviceID"
