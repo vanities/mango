@@ -18,8 +18,14 @@ struct Series: Identifiable, Hashable, Sendable {
     var totalBytes: Int64 { comics.reduce(0) { $0 + $1.totalBytes } }
     var isStandalone: Bool { comics.count == 1 && comics[0].volume == nil && comics[0].chapter == nil }
 
-    /// "12 volumes" / "1 book".
+    /// "12 volumes", "201 chapters", "21 volumes, 34 chapters", "1 book".
     var subtitle: String {
-        comics.count == 1 ? "1 book" : "\(comics.count) volumes"
+        let volumes = comics.count { $0.volume != nil }
+        let chapters = comics.count { $0.volume == nil && $0.chapter != nil }
+        guard volumes + chapters > 0 else { return comics.count == 1 ? "1 book" : "\(comics.count) books" }
+        let parts = [(volumes, "volume"), (chapters, "chapter")]
+            .filter { $0.0 > 0 }
+            .map { count, noun in "\(count) \(noun)\(count == 1 ? "" : "s")" }
+        return parts.joined(separator: ", ")
     }
 }

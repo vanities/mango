@@ -31,6 +31,10 @@ download queue with a progress bar in front of it — it just opens.
 - **Webtoons and long strips just work.** A book whose pages are tall strips opens straight into
   vertical scroll, full width and sharp, without you choosing anything — and your own layout
   choice for a book always wins. Scroll past the last page to finish the chapter.
+- **Find Cover and Look Up Series**, when you ask. Find Cover shows each volume's real cover from
+  MangaDex, AniList and Apple Books (or use your own image); Look Up Series finds a messy shelf
+  ("Part 5 - Vento Aureo") on AniList and, once you pick the match, puts the proper name and author
+  on every volume. Only the series name — and the volume number — is sent, and only then.
 - **Remembers where you were**, per volume, and knows which volume comes next in a run.
 - Pinch zoom, double-tap zoom, tap-to-turn, keep-screen-awake.
 
@@ -52,7 +56,8 @@ the Mushoku Tensei manga and reading the Mushoku Tensei novels are different act
   can't be opened"), and `scripts/convert-to-cbz.sh <folder>` turns them into `.cbz` next to the
   originals — point it at the share mounted in Finder. It needs `brew install sevenzip` (or
   `unar`). Most releases ship as `.cbz` now anyway.
-- **No online catalog.** Mango reads files. It won't fetch chapters from anywhere.
+- **No online catalog.** Mango reads files. It won't fetch chapters from anywhere — the only
+  things it ever looks up online are the covers and series names you ask it to.
 - **No accounts, no sync service, no analytics.** Reading position syncs through your own iCloud.
 
 ## Downloading from (and to) your NAS

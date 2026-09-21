@@ -156,3 +156,51 @@ extension LibraryState {
         comic.series.map { SeriesGrouper.key(forName: $0) }
     }
 }
+
+// MARK: Picked covers
+
+extension LibraryState {
+    /// A comic and every other copy of it — the NAS original and its download share a `syncKey`,
+    /// and a cover picked for one belongs on both.
+    func copies(of comic: Comic) -> [Comic] {
+        let group = comics.filter { $0.syncKey == comic.syncKey }
+        return group.isEmpty ? [comic] : group
+    }
+
+    /// Points a comic at a picked cover. Returns the picked cover it replaces, whose file can go.
+    mutating func installCustomCover(_ coverID: String, for comicID: String) -> String? {
+        let previous = customCovers[comicID]
+        customCovers[comicID] = coverID
+        if let index = comics.firstIndex(where: { $0.id == comicID }) { comics[index].coverID = coverID }
+        return previous == coverID ? nil : previous
+    }
+
+    /// Back to the cover from page one — `original`, or none until the backfill makes it.
+    /// Returns the picked cover's id, whose file can go.
+    mutating func removeCustomCover(for comicID: String, original: String?) -> String? {
+        guard let previous = customCovers.removeValue(forKey: comicID) else { return nil }
+        if let index = comics.firstIndex(where: { $0.id == comicID }) { comics[index].coverID = original }
+        return previous
+    }
+
+    /// Renames a whole shelf — every comic in it gets the new series name — and carries its
+    /// per-series settings over, or reading direction and layout would silently reset.
+    mutating func renameSeries(_ comicIDs: [String], from oldName: String, to newName: String, author: String?) {
+        let oldKey = SeriesGrouper.key(forName: oldName), newKey = SeriesGrouper.key(forName: newName)
+        for id in comicIDs {
+            var override = overrides[id] ?? ComicOverride()
+            override.series = newName
+            if let author, !author.isEmpty, (comics.first { $0.id == id }?.author ?? "").isEmpty {
+                override.author = author
+            }
+            overrides[id] = override
+            if let index = comics.firstIndex(where: { $0.id == id }) { comics[index] = override.applied(to: comics[index]) }
+        }
+        if oldKey != newKey {
+            if let direction = seriesDirection.removeValue(forKey: oldKey), seriesDirection[newKey] == nil {
+                seriesDirection[newKey] = direction
+            }
+            if let mode = seriesMode.removeValue(forKey: oldKey), seriesMode[newKey] == nil { seriesMode[newKey] = mode }
+        }
+    }
+}

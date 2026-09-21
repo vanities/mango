@@ -45,7 +45,7 @@ struct LibraryView: View {
             // Must sit outside the lazy containers below — SwiftUI doesn't register a
             // navigationDestination declared inside a LazyVStack, and the links go dead.
             .navigationDestination(for: String.self) { id in
-                if let shelf = library.series.first(where: { $0.id == id }) {
+                if let shelf = library.shelf(id: id) {
                     SeriesDetailView(series: shelf)
                 }
             }

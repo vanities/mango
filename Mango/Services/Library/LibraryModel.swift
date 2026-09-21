@@ -20,6 +20,8 @@ final class LibraryModel {
 
     @ObservationIgnored let store: LibraryStore
     @ObservationIgnored let covers: CoverStore
+    /// Old shelf id → new, after a rename: a shelf's id is its name, and an open screen follows it.
+    @ObservationIgnored var seriesRedirects: [String: String] = [:]
     @ObservationIgnored let settings: AppSettings
 
     /// Resolved security-scoped roots, held for the app's lifetime so scanning and reading can
@@ -222,6 +224,13 @@ final class LibraryModel {
         if lostCovers > 0 {
             Logger.cover.notice("[cover] \(lostCovers) cover(s) missing or never made — queued for the backfill")
         }
+        // Only after a scan that reached every source — one that failed this time, or that demo
+        // mode skipped, still has comics whose covers must survive until it's back.
+        if !settings.demoMode, state.sources.allSatisfy({ $0.lastError == nil }) {
+            let referenced = Set(state.comics.compactMap(\.coverID))
+            let store = covers
+            Task.detached(priority: .utility) { store.removeUnreferenced(keeping: referenced) }
+        }
         adoptStateFromRemoteTwins()
         mergeFromCloud()
         save()
@@ -289,6 +298,7 @@ final class LibraryModel {
     }
 
     private func ensureNovelCover(for comic: Comic, using document: EPUBDocument) async {
+        if hasLiveCover(comic) { return }
         let coverID = state.customCovers[comic.id] ?? CoverStore.coverID(for: comic)
         guard !covers.exists(coverID) else {
             setCoverID(coverID, for: comic)
@@ -347,6 +357,9 @@ final class LibraryModel {
     }
 
     private func ensureCover(for comic: Comic, using archive: any ComicArchive) async {
+        // Whatever it already points at, while the file's there — covers made before ids were
+        // stable keep working without a second extraction.
+        if hasLiveCover(comic) { return }
         let coverID = state.customCovers[comic.id] ?? CoverStore.coverID(for: comic)
         guard !covers.exists(coverID) else {
             setCoverID(coverID, for: comic)
@@ -355,6 +368,10 @@ final class LibraryModel {
         if await covers.extractCover(from: archive, as: coverID) {
             setCoverID(coverID, for: comic)
         }
+    }
+
+    private func hasLiveCover(_ comic: Comic) -> Bool {
+        state.comics.first(where: { $0.id == comic.id })?.coverID.map(covers.exists) ?? false
     }
 
     private func setCoverID(_ coverID: String, for comic: Comic) {
@@ -535,6 +552,13 @@ final class LibraryModel {
     }
 
     // MARK: Persistence
+
+    /// For extensions in other files: change the state, then save and regroup once.
+    func mutateState(_ change: (inout LibraryState) -> Void) {
+        change(&state)
+        save()
+        rebuildSeries()
+    }
 
     private func save() {
         do {

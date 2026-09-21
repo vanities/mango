@@ -1,6 +1,18 @@
 import Foundation
 
 extension LibraryModel {
+    /// A shelf by id, following renames — a shelf's id is its name, so a screen that's showing
+    /// one when it's renamed would otherwise be left pointing at nothing.
+    func shelf(id: String) -> Series? {
+        var current = id
+        for _ in 0..<8 {
+            if let found = series.first(where: { $0.id == current }) { return found }
+            guard let next = seriesRedirects[current] else { return nil }
+            current = next
+        }
+        return nil
+    }
+
     /// What the top of the library shows: everything part-read, most recent first.
     var continueReading: [Comic] {
         visibleComics
