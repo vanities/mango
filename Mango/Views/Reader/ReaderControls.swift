@@ -7,6 +7,8 @@ import SwiftUI
 /// a few seconds after you stop touching them.
 struct ReaderControls: View {
     @Bindable var engine: ReaderEngine
+    @Environment(LibraryModel.self) private var library
+    @Environment(TransferManager.self) private var transfers
     @Binding var showingSettings: Bool
     @Binding var showingPages: Bool
     var onClose: () -> Void
@@ -45,6 +47,7 @@ struct ReaderControls: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            downloadButton
             button("square.grid.2x2", label: "All pages") {
                 showingPages = true
                 engine.keepControlsAwake()
@@ -68,6 +71,37 @@ struct ReaderControls: View {
         .glassEffect(in: .capsule)
         .padding(.horizontal, 12)
         .padding(.top, 4)
+    }
+
+    /// Reading off the NAS: one tap keeps a copy on this device, downloading while you read. A
+    /// ring while it comes down; a check once it's here. Nothing for a comic with no NAS copy.
+    @ViewBuilder
+    private var downloadButton: some View {
+        if let nas = library.nasCopy(of: engine.comic) {
+            if let job = transfers.job(for: nas.id), job.isActive {
+                ZStack {
+                    Circle().stroke(.white.opacity(0.25), lineWidth: 3)
+                    Circle().trim(from: 0, to: max(0.02, job.fraction))
+                        .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+                .frame(width: 22, height: 22)
+                .frame(width: 40, height: 40)
+                .accessibilityElement()
+                .accessibilityLabel("Downloading, \(Int(job.fraction * 100)) percent")
+            } else if library.downloadedCopy(of: engine.comic) != nil {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 40, height: 40)
+                    .accessibilityLabel("Downloaded to this device")
+            } else {
+                button("arrow.down.circle", label: "Download to this device") {
+                    transfers.download(nas)
+                    engine.keepControlsAwake()
+                }
+            }
+        }
     }
 
     private func button(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {

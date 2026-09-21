@@ -55,6 +55,8 @@ final class AppSettings {
     var cropMargins: Bool { didSet { defaults.set(cropMargins, forKey: Key.cropMargins) } }
     /// Face ID (or the passcode) to open Mango, and how long it may sit in the background first.
     var lockMode: LockMode { didSet { defaults.set(lockMode.rawValue, forKey: Key.lockMode) } }
+    /// Delete a volume's download once it's read to the end, when it's still on the NAS.
+    var removeFinishedDownloads: Bool { didSet { defaults.set(removeFinishedDownloads, forKey: Key.removeFinished) } }
     var pageFilter: PageFilter { didSet { defaults.set(pageFilter.rawValue, forKey: Key.pageFilter) } }
     /// Volumes a year to aim for, drawn as a ring on Stats. 0 hides it.
     var yearlyGoal: Int { didSet { defaults.set(yearlyGoal, forKey: Key.yearlyGoal) } }
@@ -93,6 +95,7 @@ final class AppSettings {
         blackBackground = defaults.object(forKey: Key.blackBg) as? Bool ?? true
         cropMargins = defaults.object(forKey: Key.cropMargins) as? Bool ?? false
         lockMode = LockMode(rawValue: defaults.string(forKey: Key.lockMode) ?? "") ?? .off
+        removeFinishedDownloads = defaults.object(forKey: Key.removeFinished) as? Bool ?? false
         pageFilter = PageFilter(rawValue: defaults.string(forKey: Key.pageFilter) ?? "") ?? .none
         novelFontScale = defaults.object(forKey: Key.novelFontScale) as? Double ?? 1.0
         yearlyGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 50
@@ -125,6 +128,7 @@ final class AppSettings {
         static let blackBg = "reader.blackBackground"
         static let cropMargins = "reader.cropMargins"
         static let lockMode = "privacy.lockMode"
+        static let removeFinished = "downloads.removeFinished"
         static let pageFilter = "reader.pageFilter"
         static let novelFontScale = "reader.novelFontScale"
         static let yearlyGoal = "stats.yearlyGoal"

@@ -64,6 +64,14 @@ the Mushoku Tensei manga and reading the Mushoku Tensei novels are different act
 
 ## Downloading from (and to) your NAS
 
+**Keep one on the phone while you read, give the space back when you're done.** The ⬇︎ in the
+reader's top bar downloads the volume you're reading while you keep reading; the end-of-volume
+card offers "Remove download", or turn on Settings → Downloads → Remove when finished. A removed
+download goes back to being read from the NAS with your place, bookmarks and rating intact.
+Settings → Downloads shows what's on the device and removes the finished ones, or all of them.
+Only ever a copy that's still on the NAS: nothing in a folder you picked yourself is touched.
+
+
 Pull a volume local from the context menu, or **Download everything** from a share in Sources.
 Transfers run one at a time, survive the app being killed, and resume a half-finished file
 rather than starting a 300 MB volume over. Uploads go the other way and skip anything already

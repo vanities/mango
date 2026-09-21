@@ -209,3 +209,43 @@ extension LibraryState {
         }
     }
 }
+
+// MARK: Downloads
+
+extension LibraryState {
+    /// Progress for a comic and every other copy of it: reading the NAS copy while its download
+    /// lands, then opening the download, mustn't lose the pages read in between.
+    mutating func setProgress(_ entry: ReadingProgress?, forCopiesOf comic: Comic) {
+        for copy in copies(of: comic) { progress[copy.id] = entry }
+    }
+
+    /// Before a download is deleted, everything done to it goes back to the NAS copy it came
+    /// from — the newer progress, bookmarks from both, rating, corrections, detection — so the
+    /// comic carries on from the NAS as though it never left. Then the download leaves the library.
+    mutating func returnState(from localID: String, to remoteID: String) {
+        if let local = progress[localID], local.updatedAt >= (progress[remoteID]?.updatedAt ?? .distantPast) {
+            progress[remoteID] = local
+        }
+        if let marks = bookmarks[localID] {
+            var merged = bookmarks[remoteID] ?? []
+            let known = Set(merged.map(\.id))
+            merged.append(contentsOf: marks.filter { !known.contains($0.id) })
+            bookmarks[remoteID] = merged.sorted { $0.page < $1.page }
+        }
+        if let rating = ratings[localID] { ratings[remoteID] = rating }
+        if overrides[remoteID] == nil, let override = overrides[localID] { overrides[remoteID] = override }
+        if customCovers[remoteID] == nil, let cover = customCovers[localID] { customCovers[remoteID] = cover }
+        if hiddenComicIDs.contains(localID) { hiddenComicIDs.insert(remoteID) }
+        if longStripComicIDs.contains(localID) { longStripComicIDs.insert(remoteID) }
+        if lastComicID == localID { lastComicID = remoteID }
+
+        progress[localID] = nil
+        bookmarks[localID] = nil
+        ratings[localID] = nil
+        overrides[localID] = nil
+        customCovers[localID] = nil
+        hiddenComicIDs.remove(localID)
+        longStripComicIDs.remove(localID)
+        comics.removeAll { $0.id == localID }
+    }
+}
