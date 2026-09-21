@@ -113,6 +113,10 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   the first decode reuses them (`TallPageTests` pins this). A detection is saved in
   `LibraryState.longStripComicIDs` — not in `overrides`, because it isn't the user's choice, and
   the user's choice (`ReaderEngine.chooseMode`) always beats it.
+- **A layout choice is series-wide**, like reading direction (`LibraryState.seriesMode`;
+  precedence in `LibraryState.mode(for:defaultMode:)`: the book's own override, its series, a
+  detection, the app default). Webtoon rips sliced into short pages (800×1280) never trip the
+  2.2 ratio, so choosing Continuous once has to cover every chapter.
 - **Decoded width-first** (`PageSizing.fitWidth`): bounding the longest edge makes an 800×12000
   strip 273 px wide. Width-first is capped by a 64 MB per-page budget, and pages taller than
   4096 px are drawn as stacked tiles (`ImageDecoder.tiles`, which share the bitmap) because GPUs

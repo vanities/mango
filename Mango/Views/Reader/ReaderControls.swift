@@ -138,12 +138,19 @@ struct ReaderSettingsSheet: View {
                         }
                     }
                 }
-                Section("This comic") {
+                Section {
                     Picker("Direction", selection: $engine.direction) {
                         ForEach(ReadingDirection.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     Picker("Layout", selection: Binding(get: { engine.mode }, set: { engine.chooseMode($0) })) {
                         ForEach(ReaderMode.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                } header: {
+                    Text(engine.comic.series == nil ? "This comic" : "This series")
+                } footer: {
+                    // Both are saved for the whole series, so a webtoon needs setting only once.
+                    if let series = engine.comic.series {
+                        Text("Applies to every volume and chapter of \(series).")
                     }
                 }
                 Section("Everywhere") {

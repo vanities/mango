@@ -36,6 +36,9 @@ struct LibraryState: Codable, Sendable {
     /// Comics detected as long strips (webtoon / manhwa). Kept apart from `overrides` because
     /// it's a detection, not something the user chose — their choice still wins.
     var longStripComicIDs: Set<String> = []
+    /// Layout chosen for a whole series, keyed like `seriesDirection`. A webtoon sliced into short
+    /// pages is never detected, so picking a layout once has to hold for every chapter.
+    var seriesMode: [String: ReaderMode] = [:]
 
     init(sources: [LibrarySource] = [], comics: [Comic] = [], progress: [String: ReadingProgress] = [:],
          hiddenComicIDs: Set<String> = [], lastComicID: String? = nil, nasServers: [NASServer] = [],
@@ -87,13 +90,14 @@ struct LibraryState: Codable, Sendable {
         sessions.append(contentsOf: old.sessions.filter { !sessionIDs.contains($0.id) })
         hiddenComicIDs.formUnion(old.hiddenComicIDs)
         longStripComicIDs.formUnion(old.longStripComicIDs)
+        for (key, value) in old.seriesMode where seriesMode[key] == nil { seriesMode[key] = value }
         if lastComicID == nil { lastComicID = old.lastComicID }
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
              customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog, sessions,
-             longStripComicIDs
+             longStripComicIDs, seriesMode
     }
 
     init(from decoder: any Decoder) throws {
@@ -114,5 +118,41 @@ struct LibraryState: Codable, Sendable {
         readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []
         sessions = try c.decodeIfPresent([ReadingSession].self, forKey: .sessions) ?? []
         longStripComicIDs = try c.decodeIfPresent(Set<String>.self, forKey: .longStripComicIDs) ?? []
+        seriesMode = try c.decodeIfPresent([String: ReaderMode].self, forKey: .seriesMode) ?? [:]
+    }
+}
+
+// MARK: Layout
+
+extension LibraryState {
+    /// The layout a book opens in: a choice made for this book, else for its series, else a
+    /// long-strip detection, else the app default.
+    func mode(for comic: Comic, defaultMode: ReaderMode) -> ReaderMode {
+        if let chosen = overrides[comic.id]?.mode { return chosen }
+        if let key = Self.seriesKey(comic), let chosen = seriesMode[key] { return chosen }
+        if longStripComicIDs.contains(comic.id) { return .continuous }
+        return defaultMode
+    }
+
+    /// Whether the user picked a layout for this book or its series — if so, detection stays out.
+    func hasChosenMode(for comic: Comic) -> Bool {
+        overrides[comic.id]?.mode != nil || Self.seriesKey(comic).flatMap { seriesMode[$0] } != nil
+    }
+
+    /// Records a layout picked while reading, for the whole series when the book has one — the
+    /// same way reading direction works.
+    mutating func chooseMode(_ mode: ReaderMode, for comic: Comic) {
+        if let key = Self.seriesKey(comic) {
+            seriesMode[key] = mode
+            overrides[comic.id]?.mode = nil
+        } else {
+            var override = overrides[comic.id] ?? ComicOverride()
+            override.mode = mode
+            overrides[comic.id] = override
+        }
+    }
+
+    private static func seriesKey(_ comic: Comic) -> String? {
+        comic.series.map { SeriesGrouper.key(forName: $0) }
     }
 }

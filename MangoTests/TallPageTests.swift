@@ -320,4 +320,44 @@ final class TallPageTests: XCTestCase {
         let size = await archive.pageSize(at: 0)
         XCTAssertEqual(size, CGSize(width: 690, height: 5000))
     }
+
+    // MARK: Layout choice
+
+    private func chapter(_ number: Double, series: String = "Rooftop Garden") -> Comic {
+        let source = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let path = "\(series)/\(series) - c\(Int(number)).cbz"
+        return Comic(id: Comic.makeID(sourceID: source, relativePath: path), sourceID: source,
+                     relativePath: path, kind: .archive, title: "Ch. \(Int(number))",
+                     series: series, volume: nil, chapter: number, author: nil, year: nil,
+                     subtitle: nil, pageCount: nil, totalBytes: 100, addedAt: Date(), coverID: nil)
+    }
+
+    /// A webtoon sliced into short pages never trips detection, so the layout you pick in one
+    /// chapter has to hold for the whole series — not just that chapter.
+    func testALayoutChosenInOneChapterAppliesToTheSeries() {
+        var state = LibraryState()
+        let one = chapter(1), two = chapter(2), other = chapter(1, series: "Quiet Machines")
+        XCTAssertEqual(state.mode(for: two, defaultMode: .paged), .paged)
+        XCTAssertFalse(state.hasChosenMode(for: two))
+
+        state.chooseMode(.continuous, for: one)
+
+        XCTAssertEqual(state.mode(for: two, defaultMode: .paged), .continuous)
+        XCTAssertTrue(state.hasChosenMode(for: two), "a chosen layout skips detection")
+        XCTAssertEqual(state.mode(for: other, defaultMode: .paged), .paged, "other series untouched")
+    }
+
+    /// Precedence: this book's own choice, then the series', then detection, then the default.
+    func testLayoutPrecedence() {
+        var state = LibraryState()
+        let one = chapter(1), two = chapter(2)
+        state.longStripComicIDs = [one.id, two.id]
+        XCTAssertEqual(state.mode(for: one, defaultMode: .paged), .continuous, "detection beats the default")
+
+        state.chooseMode(.paged, for: one)
+        XCTAssertEqual(state.mode(for: two, defaultMode: .paged), .paged, "your choice beats detection")
+
+        state.overrides[two.id] = ComicOverride(mode: .continuous)
+        XCTAssertEqual(state.mode(for: two, defaultMode: .paged), .continuous, "a book's own choice beats its series'")
+    }
 }
