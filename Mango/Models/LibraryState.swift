@@ -21,6 +21,9 @@ struct LibraryState: Codable, Sendable {
     /// Normalized series name → reading direction for the whole run, so setting it once on
     /// volume 1 carries to volume 2.
     var seriesDirection: [String: ReadingDirection] = [:]
+    /// Comic ID → the ComicInfo.xml read out of its archive. Scans never open archives, so this
+    /// is how that metadata survives a rescan.
+    var comicInfo: [String: ComicInfo] = [:]
 
     init(sources: [LibrarySource] = [], comics: [Comic] = [], progress: [String: ReadingProgress] = [:],
          hiddenComicIDs: Set<String> = [], lastComicID: String? = nil, nasServers: [NASServer] = [],
@@ -64,7 +67,7 @@ struct LibraryState: Codable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
-             customCovers, overrides, seriesDirection
+             customCovers, overrides, seriesDirection, comicInfo
     }
 
     init(from decoder: any Decoder) throws {
@@ -79,5 +82,6 @@ struct LibraryState: Codable, Sendable {
         customCovers = try c.decodeIfPresent([String: String].self, forKey: .customCovers) ?? [:]
         overrides = try c.decodeIfPresent([String: ComicOverride].self, forKey: .overrides) ?? [:]
         seriesDirection = try c.decodeIfPresent([String: ReadingDirection].self, forKey: .seriesDirection) ?? [:]
+        comicInfo = try c.decodeIfPresent([String: ComicInfo].self, forKey: .comicInfo) ?? [:]
     }
 }

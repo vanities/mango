@@ -14,6 +14,12 @@ protocol ComicArchive: Sendable {
     func page(at index: Int, maxPixel: Int) async throws -> CGImage
     /// Encoded bytes for a page, when the caller needs them raw (cover extraction).
     func pageData(at index: Int) async throws -> Data
+    /// The archive's own ComicInfo.xml, if it ships one.
+    func comicInfo() async -> ComicInfo?
+}
+
+extension ComicArchive {
+    func comicInfo() async -> ComicInfo? { nil }
 }
 
 enum ArchiveError: LocalizedError {
