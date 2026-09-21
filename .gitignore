@@ -27,3 +27,6 @@ fixtures/
 
 # Python bytecode from the release scripts
 __pycache__/
+
+# Downloaded sample comics (Pepper&Carrot, CC-BY) — fetched, not committed
+fixtures-real/
