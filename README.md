@@ -2,6 +2,8 @@
 
 An open-source manga and comic reader for iPhone and iPad.
 
+**[Join the TestFlight beta →](https://testflight.apple.com/join/nEjBWtgp)**
+
 It reads the comics you already have — in the Files app, in a folder you picked, or straight off
 your NAS — and it never copies, moves, or renames a single one of them. No account, no catalog,
 no tracking, no tip jar.
@@ -30,12 +32,34 @@ download queue with a progress bar in front of it — it just opens.
 - **Remembers where you were**, per volume, and knows which volume comes next in a run.
 - Pinch zoom, double-tap zoom, tap-to-turn, keep-screen-awake.
 
+## Light novels too
+
+An EPUB is a zip with an index, same as a `.cbz`, so the same machinery reads it: point Mango
+at a folder of `.epub` files and they appear under a **Novels** tab, with chapter navigation,
+text size, and a position that survives changing either. Chapters and their images are pulled
+out of the archive one at a time, so a light novel streams off the NAS exactly like a comic
+does rather than downloading the whole book first.
+
+Manga and light novels stay on separate shelves even when they're the same series — reading
+the Mushoku Tensei manga and reading the Mushoku Tensei novels are different activities.
+
 ## What it doesn't do
 
 - **No `.cbr`.** RAR's only decoder is non-free and can't ship in a GPL-3 app. Convert them:
   `for f in *.cbr; do ...` — or grab releases as `.cbz`, which most of them are now.
 - **No online catalog.** Mango reads files. It won't fetch chapters from anywhere.
 - **No accounts, no sync service, no analytics.** Reading position syncs through your own iCloud.
+
+## Downloading from (and to) your NAS
+
+Pull a volume local from the context menu, or **Download everything** from a share in Sources.
+Transfers run one at a time, survive the app being killed, and resume a half-finished file
+rather than starting a 300 MB volume over. Uploads go the other way and skip anything already
+on the share.
+
+A downloaded volume replaces its copy on the share in the library rather than appearing twice,
+and it takes your reading position with it — download something you're halfway through and
+you're still halfway through it.
 
 ## Building
 

@@ -39,9 +39,8 @@ final class AppSettings {
     var spreadMode: SpreadMode { didSet { defaults.set(spreadMode.rawValue, forKey: Key.spread) } }
     /// How many pages to decode ahead of the one on screen. Costs memory, buys instant turns.
     var prefetchCount: Int { didSet { defaults.set(prefetchCount, forKey: Key.prefetch) } }
-    /// Which way a zoomed page moves under your finger. Off (the default) drags the *view*
-    /// across the page, like panning a map; on drags the page itself, like moving a photo.
-    var dragMovesPage: Bool { didSet { defaults.set(dragMovesPage, forKey: Key.dragMovesPage) } }
+    /// Which way a zoomed page moves under your finger.
+    var panDirection: PanDirection { didSet { defaults.set(panDirection.rawValue, forKey: Key.panDirection) } }
     /// Tapping the left/right thirds of the screen turns the page.
     var tapToTurn: Bool { didSet { defaults.set(tapToTurn, forKey: Key.tapToTurn) } }
     /// Keep the screen on while reading. People read slower than the 30s auto-lock.
@@ -61,7 +60,10 @@ final class AppSettings {
         pageFit = PageFit(rawValue: defaults.string(forKey: Key.fit) ?? "") ?? .screen
         spreadMode = SpreadMode(rawValue: defaults.string(forKey: Key.spread) ?? "") ?? .auto
         prefetchCount = defaults.object(forKey: Key.prefetch) as? Int ?? 3
-        dragMovesPage = defaults.object(forKey: Key.dragMovesPage) as? Bool ?? false
+        // Carried over from the earlier boolean so an existing choice isn't silently reset.
+        let legacyMovesPage = defaults.object(forKey: Key.legacyDragMovesPage) as? Bool
+        panDirection = PanDirection(rawValue: defaults.string(forKey: Key.panDirection) ?? "")
+            ?? (legacyMovesPage == true ? .movesPage : .movesView)
         tapToTurn = defaults.object(forKey: Key.tapToTurn) as? Bool ?? true
         keepScreenAwake = defaults.object(forKey: Key.keepAwake) as? Bool ?? true
         blackBackground = defaults.object(forKey: Key.blackBg) as? Bool ?? true
@@ -77,7 +79,8 @@ final class AppSettings {
         static let fit = "reader.pageFit"
         static let spread = "reader.spreadMode"
         static let prefetch = "reader.prefetchCount"
-        static let dragMovesPage = "reader.dragMovesPage"
+        static let panDirection = "reader.panDirection"
+        static let legacyDragMovesPage = "reader.dragMovesPage"
         static let tapToTurn = "reader.tapToTurn"
         static let keepAwake = "reader.keepScreenAwake"
         static let blackBg = "reader.blackBackground"

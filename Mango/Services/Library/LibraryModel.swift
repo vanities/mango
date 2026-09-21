@@ -195,15 +195,37 @@ final class LibraryModel {
             }
             return merged
         }
+        adoptStateFromRemoteTwins()
         save()
         rebuildSeries()
         Logger.library.info("[library] scan complete: \(self.state.comics.count) comics, \(self.series.count) series in \(sw.seconds, format: .fixed(precision: 2))s")
         startCoverBackfill()
     }
 
+    /// Source ids that live on a share rather than on this device.
+    var remoteSourceIDs: Set<UUID> {
+        Set(state.sources.filter(\.isRemote).map(\.id))
+    }
+
+    /// What the user should actually see: a downloaded copy replaces its remote twin.
+    var visibleComics: [Comic] {
+        LibraryDedupe.visible(comics: state.comics, remoteSourceIDs: remoteSourceIDs, hidden: state.hiddenComicIDs)
+    }
+
+    /// True when this comic is a local copy of something that also lives on a share.
+    func isDownloadedCopy(_ comic: Comic) -> Bool {
+        LibraryDedupe.isDownloadedCopy(comic, comics: state.comics, remoteSourceIDs: remoteSourceIDs)
+    }
+
     private func rebuildSeries() {
-        let visible = state.comics.filter { !state.hiddenComicIDs.contains($0.id) }
-        series = SeriesGrouper.group(visible)
+        series = SeriesGrouper.group(visibleComics)
+    }
+
+    private func adoptStateFromRemoteTwins() {
+        let adopted = state.adoptStateFromRemoteTwins(remoteSourceIDs: remoteSourceIDs)
+        if adopted > 0 {
+            Logger.library.info("[library] carried the reading position to \(adopted) downloaded copy/copies")
+        }
     }
 
     // MARK: Opening
@@ -315,8 +337,9 @@ final class LibraryModel {
         var done = 0
         let sw = Stopwatch()
         while !Task.isCancelled {
-            let missing = Array(state.comics.filter { $0.coverID == nil }.prefix(batchSize))
-            coversRemaining = state.comics.count { $0.coverID == nil }
+            let visible = visibleComics
+            let missing = Array(visible.filter { $0.coverID == nil }.prefix(batchSize))
+            coversRemaining = visible.count { $0.coverID == nil }
             guard !missing.isEmpty else { break }
 
             for comic in missing {

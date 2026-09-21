@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Which way the pages turn. Manga is right-to-left; western comics and most webtoons are not.
@@ -78,4 +79,34 @@ enum SpreadMode: String, Codable, CaseIterable, Sendable {
         case .never: "Never"
         }
     }
+}
+
+
+/// Which way a zoomed page moves under your finger.
+///
+/// There is no right answer — a map pans one way, a photo drags the other — so it's a choice
+/// rather than a default someone has to live with.
+enum PanDirection: String, Codable, CaseIterable, Sendable {
+    /// Drag right and you see what was off to the right. The page appears to move the
+    /// opposite way, like panning across a map.
+    case movesView
+    /// The page follows your finger, like sliding a photo around a table.
+    case movesPage
+
+    var title: String {
+        switch self {
+        case .movesView: "Moves the view"
+        case .movesPage: "Moves the page"
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .movesView: "Drag right to see what's off to the right, like panning across a map."
+        case .movesPage: "The page follows your finger, like sliding a photo around."
+        }
+    }
+
+    /// +1 follows the finger, -1 moves the viewport instead.
+    var sign: CGFloat { self == .movesPage ? 1 : -1 }
 }

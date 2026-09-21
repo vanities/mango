@@ -10,9 +10,7 @@ import SwiftUI
 struct ZoomableView<Content: View>: View {
     var resetToken: AnyHashable
     var maxScale: CGFloat = 5
-    /// false: dragging moves the viewport across the page (the page appears to go the other
-    /// way). true: the page follows your finger. Neither is objectively right, so it's a setting.
-    var dragMovesPage: Bool = false
+    var panDirection: PanDirection = .movesView
     @Binding var isZoomed: Bool
     @ViewBuilder var content: () -> Content
 
@@ -56,7 +54,7 @@ struct ZoomableView<Content: View>: View {
     }
 
     private func pan(in size: CGSize) -> some Gesture {
-        let direction: CGFloat = dragMovesPage ? 1 : -1
+        let direction = panDirection.sign
         return DragGesture()
             .onChanged { value in
                 offset = clamp(CGSize(width: committedOffset.width + direction * value.translation.width,

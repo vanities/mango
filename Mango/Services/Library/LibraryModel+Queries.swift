@@ -3,10 +3,9 @@ import Foundation
 extension LibraryModel {
     /// What the top of the library shows: everything part-read, most recent first.
     var continueReading: [Comic] {
-        state.comics
+        visibleComics
             .compactMap { comic -> (Comic, Date)? in
                 guard let p = state.progress[comic.id], p.isStarted, !p.finished else { return nil }
-                guard !state.hiddenComicIDs.contains(comic.id) else { return nil }
                 return (comic, p.updatedAt)
             }
             .sorted { $0.1 > $1.1 }
@@ -16,7 +15,7 @@ extension LibraryModel {
     /// The single book the "Continue" button opens.
     var lastRead: Comic? {
         guard let id = state.lastComicID else { return continueReading.first }
-        return state.comics.first { $0.id == id } ?? continueReading.first
+        return visibleComics.first { $0.id == id } ?? continueReading.first
     }
 
     /// The next volume to read in a run — the one already started, else the first unfinished.
@@ -86,8 +85,8 @@ extension LibraryModel {
 
     /// Built fresh from the library and progress — nothing extra is recorded to produce it.
     var stats: ReadingStats {
-        let remoteSources = Set(state.sources.filter(\.isRemote).map(\.id))
-        let items = state.comics.map { comic in
+        let remoteSources = remoteSourceIDs
+        let items = visibleComics.map { comic in
             ReadingStats.Item(
                 seriesKey: SeriesGrouper.key(for: comic),
                 seriesName: comic.series ?? comic.title,
@@ -102,7 +101,7 @@ extension LibraryModel {
         return ReadingStats.build(items)
     }
 
-    var totalComics: Int { state.comics.count }
-    var totalBytes: Int64 { state.comics.reduce(0) { $0 + $1.totalBytes } }
+    var totalComics: Int { visibleComics.count }
+    var totalBytes: Int64 { visibleComics.reduce(0) { $0 + $1.totalBytes } }
     var remoteSourceCount: Int { state.sources.count { $0.isRemote } }
 }
