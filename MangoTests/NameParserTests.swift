@@ -206,3 +206,65 @@ final class RealFolderNameParserTests: XCTestCase {
         XCTAssertEqual(shelves[0].comics.dropFirst(5).compactMap(\.chapter), Array(20...28).map(Double.init))
     }
 }
+
+/// "Series - c001 - Episode Title" is a real pattern (Pepper&Carrot ships exactly this), and
+/// getting it wrong puts every chapter on its own shelf.
+final class SeriesSubtitleParsingTests: XCTestCase {
+    private func parse(_ name: String, folder: String? = nil) -> ParsedName {
+        NameParser.parse(fileName: name, folderName: folder)
+    }
+
+    func testEpisodeTitleDoesNotBecomePartOfTheSeries() {
+        let result = parse("Pepper and Carrot - c001 - Potion of Flight (Digital) (CC-BY).cbz")
+        XCTAssertEqual(result.series, "Pepper and Carrot")
+        XCTAssertEqual(result.chapter, 1)
+        XCTAssertEqual(result.subtitle, "Potion of Flight")
+    }
+
+    func testEveryEpisodeLandsOnOneShelf() {
+        let files = [
+            "Pepper and Carrot - c001 - Potion of Flight (Digital) (CC-BY).cbz",
+            "Pepper and Carrot - c002 - Rainbow potions (Digital) (CC-BY).cbz",
+            "Pepper and Carrot - c010 - Summer Special (Digital) (CC-BY).cbz",
+        ]
+        let parsed = NameParser.parseGroup(files.map { ($0, "Pepper and Carrot") })
+        XCTAssertEqual(Set(parsed.compactMap(\.series)), ["Pepper and Carrot"])
+        XCTAssertEqual(parsed.compactMap(\.chapter), [1, 2, 10])
+    }
+
+    func testVolumeWithATitle() {
+        let result = parse("Lone Wolf and Cub - v07 - Cloud Dragon Wind Tiger.cbz")
+        XCTAssertEqual(result.series, "Lone Wolf and Cub")
+        XCTAssertEqual(result.volume, 7)
+        XCTAssertEqual(result.subtitle, "Cloud Dragon Wind Tiger")
+    }
+
+    /// A dash in the series name itself must survive when no number sits between the parts.
+    func testDashInSeriesNameIsKept() {
+        let result = parse("Mushoku Tensei - Jobless Reincarnation v03.cbz")
+        XCTAssertEqual(result.series, "Mushoku Tensei - Jobless Reincarnation")
+        XCTAssertEqual(result.volume, 3)
+        XCTAssertNil(result.subtitle)
+    }
+
+    func testTrailingTagsAreNotASubtitle() {
+        let result = parse("Berserk v01 (2003) (Digital) (LuCaZ).cbz")
+        XCTAssertEqual(result.series, "Berserk")
+        XCTAssertNil(result.subtitle)
+    }
+
+    func testVolumeAndChapterTogetherStillHaveNoSubtitle() {
+        let result = parse("Chainsaw Man - Vol. 1 Ch. 4.cbz")
+        XCTAssertEqual(result.series, "Chainsaw Man")
+        XCTAssertEqual(result.volume, 1)
+        XCTAssertEqual(result.chapter, 4)
+        XCTAssertNil(result.subtitle)
+    }
+
+    func testBracketedGroupTagsStillStripped() {
+        let result = parse("[Scans] Oyasumi Punpun - c001 (v01) [Pub].cbz")
+        XCTAssertEqual(result.series, "Oyasumi Punpun")
+        XCTAssertEqual(result.volume, 1)
+        XCTAssertEqual(result.chapter, 1)
+    }
+}

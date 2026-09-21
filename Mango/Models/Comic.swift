@@ -28,6 +28,9 @@ struct Comic: Identifiable, Codable, Hashable, Sendable {
     var chapter: Double?
     var author: String?
     var year: Int?
+    /// Episode or volume title, when the filename carried one beyond the series and the number.
+    /// Optional, so older library files still decode.
+    var subtitle: String?
 
     /// Filled in the first time the archive is opened — cracking every archive during a scan
     /// would make scanning a 2,000-file share unbearable, so this stays nil until then.

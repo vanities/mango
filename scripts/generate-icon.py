@@ -52,18 +52,42 @@ SHARED = (
     "gradient, completely plain with no pattern or texture."
 )
 
-VARIANTS = {
-    "AppIcon.png": SHARED + (
-        " The glyph is very dark charcoal, almost black. The background gradient runs from "
-        "warm golden mango yellow in the top-left to deep ripe mango red-orange in the "
-        "bottom-right."
+# Earmark already owns warm orange, so Mango needs its own colour. Each palette is
+# (light-glyph, light-background, dark-glyph, dark-background).
+PALETTES = {
+    "green": (
+        "very dark charcoal, almost black",
+        "fresh unripe-mango green in the top-left to deep leaf green in the bottom-right",
+        "bright fresh mango green fading to lime",
+        "very dark green-black in the top-left to near-black in the bottom-right",
     ),
-    "AppIcon-Dark.png": SHARED + (
-        " The glyph is warm golden mango yellow fading to mango orange. The background "
-        "gradient runs from very dark warm brown-black in the top-left to near-black in the "
-        "bottom-right."
+    "teal": (
+        "very dark charcoal, almost black",
+        "bright turquoise in the top-left to deep teal in the bottom-right",
+        "bright turquoise fading to aqua",
+        "very dark teal-black in the top-left to near-black in the bottom-right",
+    ),
+    "berry": (
+        "very dark charcoal, almost black",
+        "vivid raspberry pink in the top-left to deep plum purple in the bottom-right",
+        "vivid raspberry pink fading to warm magenta",
+        "very dark plum-black in the top-left to near-black in the bottom-right",
+    ),
+    "indigo": (
+        "very dark charcoal, almost black",
+        "bright periwinkle indigo in the top-left to deep navy in the bottom-right",
+        "bright periwinkle indigo fading to soft violet",
+        "very dark indigo-black in the top-left to near-black in the bottom-right",
     ),
 }
+
+
+def variants(palette: str) -> dict[str, str]:
+    light_glyph, light_bg, dark_glyph, dark_bg = PALETTES[palette]
+    return {
+        "AppIcon.png": SHARED + f" The glyph is {light_glyph}. The background gradient runs from {light_bg}.",
+        "AppIcon-Dark.png": SHARED + f" The glyph is {dark_glyph}. The background gradient runs from {dark_bg}.",
+    }
 
 
 def load_env(path: Path) -> None:
@@ -128,30 +152,38 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--quality", default="high")
     parser.add_argument("--size", default="1024x1024")
+    parser.add_argument("--palette", default="green", choices=sorted(PALETTES))
+    parser.add_argument("--only-light", action="store_true", help="just the light variant, for comparing palettes")
+    parser.add_argument("--out", type=Path, default=None, help="write here instead of the iconset")
     parser.add_argument("--dry-run", action="store_true", help="print the prompts and stop")
     args = parser.parse_args()
 
+    chosen = variants(args.palette)
+    if args.only_light:
+        chosen = {"AppIcon.png": chosen["AppIcon.png"]}
+    destination = args.out or ICONSET
+
     if args.dry_run:
-        for name, prompt in VARIANTS.items():
+        for name, prompt in chosen.items():
             print(f"--- {name} ---\n{prompt}\n")
         return
 
     token, source = bearer_token()
-    print(f"Using {source} · model {args.model} · quality {args.quality}")
-    ICONSET.mkdir(parents=True, exist_ok=True)
+    print(f"Using {source} · model {args.model} · quality {args.quality} · palette {args.palette}")
+    destination.mkdir(parents=True, exist_ok=True)
 
     dark_png = b""
-    for name, prompt in VARIANTS.items():
+    for name, prompt in chosen.items():
         print(f"Generating {name}…", flush=True)
         data = generate(prompt, token, args.model, args.quality, args.size)
-        (ICONSET / name).write_bytes(data)
+        (destination / name).write_bytes(data)
         print(f"  wrote {name} ({len(data) // 1024} KB)")
         if name == "AppIcon-Dark.png":
             dark_png = data
 
     if dark_png:
         tinted = derive_tinted(dark_png)
-        (ICONSET / "AppIcon-Tinted.png").write_bytes(tinted)
+        (destination / "AppIcon-Tinted.png").write_bytes(tinted)
         print(f"  wrote AppIcon-Tinted.png ({len(tinted) // 1024} KB, derived greyscale)")
 
 

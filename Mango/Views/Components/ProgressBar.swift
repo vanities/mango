@@ -35,7 +35,7 @@ struct ComicThumbnail: View {
                         .padding(.bottom, 6)
                 }
             }
-            Text(comic.numberLabel ?? comic.title)
+            Text([comic.numberLabel, comic.subtitle].compactMap { $0 }.joined(separator: " · "))
                 .font(.caption)
                 .lineLimit(1)
             if let progress = library.progress(for: comic), progress.isStarted {

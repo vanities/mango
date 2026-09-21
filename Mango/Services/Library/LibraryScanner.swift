@@ -182,6 +182,7 @@ struct LibraryScanner: Sendable {
                 chapter: name.chapter,
                 author: nil,
                 year: name.year,
+                subtitle: name.subtitle,
                 pageCount: nil,
                 totalBytes: candidate.size,
                 addedAt: now,

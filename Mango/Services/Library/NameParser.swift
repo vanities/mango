@@ -7,6 +7,9 @@ struct ParsedName: Equatable, Sendable {
     var volume: Double?
     var chapter: Double?
     var year: Int?
+    /// The bit after the number in "Series - c001 - Potion of Flight": an episode or volume
+    /// title, kept separate so it never contaminates the series name.
+    var subtitle: String?
     /// True when `volume` came from a bare trailing number ("Akira 001") rather than an explicit
     /// marker ("v01"). A bare number is a guess, and `parseGroup` may overrule it.
     var volumeIsInferred = false
@@ -47,7 +50,9 @@ enum NameParser {
         }
 
         working = stripBracketed(working)
-        var series = tidy(working)
+        let split = splitAroundRemovedTokens(working)
+        var series = split.series
+        let subtitle = split.subtitle
 
         // "Akira 001" — a bare trailing number is a volume, unless it's a year.
         if volume == nil, chapter == nil,
@@ -74,7 +79,7 @@ enum NameParser {
 
         let title = displayTitle(series: series, volume: volume, chapter: chapter, fallback: tidy(stripBracketed(base)))
         return ParsedName(series: series.nilIfEmpty, title: title, volume: volume, chapter: chapter,
-                          year: year, volumeIsInferred: volumeIsInferred)
+                          year: year, subtitle: subtitle, volumeIsInferred: volumeIsInferred)
     }
 
     /// Parses a whole folder at once so siblings can correct each other.
@@ -122,14 +127,26 @@ enum NameParser {
         return value
     }
 
-    /// Returns the first captured number and the string with that match removed.
+    /// Marks where a number token was removed, so a later pass can tell
+    /// "Series - c001 - Episode Title" (a real split) from "Series v01 (2003)" (just trailing junk).
+    private static let removedToken = "\u{0}"
+
+    /// Returns the first captured number and the string with that match replaced by a sentinel.
     private static func extract(pattern: String, from text: String) -> (Double?, String) {
         guard let match = firstMatch(pattern: pattern, in: text, options: [.caseInsensitive]),
               let value = match.group(1, in: text).flatMap({ Double($0) })
         else { return (nil, text) }
-        var out = text as NSString
-        out = out.replacingCharacters(in: match.range, with: " ") as NSString
-        return (value, out as String)
+        let out = (text as NSString).replacingCharacters(in: match.range, with: removedToken)
+        return (value, out)
+    }
+
+    /// Splits on the sentinels left by `extract`. The first non-empty piece is the series; a
+    /// second non-empty piece is the episode or volume title.
+    private static func splitAroundRemovedTokens(_ text: String) -> (series: String, subtitle: String?) {
+        let pieces = text.components(separatedBy: removedToken).map(tidy).filter { !$0.isEmpty }
+        guard let first = pieces.first else { return ("", nil) }
+        let rest = pieces.dropFirst().joined(separator: " - ")
+        return (first, rest.nilIfEmpty)
     }
 
     /// Drops `(...)`, `[...]` and `{...}` groups — release group, scan quality, publisher tags.
@@ -145,6 +162,7 @@ enum NameParser {
     private static func tidy(_ text: String) -> String {
         var out = text.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         out = out.trimmingCharacters(in: .whitespacesAndNewlines)
+        out = out.replacingOccurrences(of: removedToken, with: "")
         while let last = out.last, "-–—_.,:;".contains(last) || last == " " {
             out.removeLast()
             out = out.trimmingCharacters(in: .whitespaces)

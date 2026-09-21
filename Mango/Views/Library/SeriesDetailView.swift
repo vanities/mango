@@ -99,9 +99,17 @@ struct VolumeRow: View {
             CoverView(coverID: comic.coverID, title: comic.title, cornerRadius: 4)
                 .frame(width: 40)
             VStack(alignment: .leading, spacing: 3) {
-                Text(comic.numberLabel ?? comic.title)
-                    .font(.body)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(comic.numberLabel ?? comic.title)
+                        .font(.body)
+                        .lineLimit(1)
+                    if let subtitle = comic.subtitle {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
                 HStack(spacing: 6) {
                     Text(comic.formatLabel)
                     if let pages = comic.pageCount {
