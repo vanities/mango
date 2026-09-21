@@ -491,16 +491,13 @@ final class LibraryModel {
         save()
     }
 
-    /// Your choice for this book, else continuous if it's a detected long strip, else the default.
+    /// Your choice for this book or its series, else continuous for a detected strip, else the default.
     func mode(for comic: Comic) -> ReaderMode {
-        if let chosen = state.overrides[comic.id]?.mode { return chosen }
-        if state.longStripComicIDs.contains(comic.id) { return .continuous }
-        return settings.defaultMode
+        state.mode(for: comic, defaultMode: settings.defaultMode)
     }
 
-    /// Whether this book's layout has been decided by the user, as opposed to defaulted or detected.
     func hasChosenMode(for comic: Comic) -> Bool {
-        state.overrides[comic.id]?.mode != nil
+        state.hasChosenMode(for: comic)
     }
 
     func markLongStrip(_ comic: Comic) {
@@ -510,10 +507,10 @@ final class LibraryModel {
         save()
     }
 
+    /// A layout picked while reading — for the whole series, like reading direction.
     func setMode(_ mode: ReaderMode, for comic: Comic) {
-        var override = state.overrides[comic.id] ?? ComicOverride()
-        override.mode = mode
-        state.overrides[comic.id] = override
+        state.chooseMode(mode, for: comic)
+        Logger.reader.info("[reader] layout \(mode.rawValue, privacy: .public) chosen for \(comic.series ?? comic.title, privacy: .public)")
         save()
     }
 
