@@ -10,6 +10,7 @@ struct MangoApp: App {
             RootView()
                 .environment(environment.library)
                 .environment(environment.settings)
+                .environment(environment.transfers)
                 .task {
                     Logger.ui.info("[app] launched")
                     await environment.library.scan()

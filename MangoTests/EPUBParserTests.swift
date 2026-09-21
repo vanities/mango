@@ -188,3 +188,101 @@ final class MediumSeparationTests: XCTestCase {
         XCTAssertTrue(shelves[0].isNovel)
     }
 }
+
+/// Stats are derived, not tracked, so the derivation is the thing that can be wrong.
+final class ReadingStatsTests: XCTestCase {
+    private func item(_ series: String, finished: Bool = false, page: Int = 0, pages: Int = 100,
+                      novel: Bool = false, remote: Bool = false, bytes: Int64 = 1000,
+                      updated: Date = Date()) -> ReadingStats.Item {
+        var progress: ReadingProgress?
+        if finished || page > 0 {
+            progress = ReadingProgress(page: finished ? pages - 1 : page, pageCount: pages,
+                                       updatedAt: updated, finished: finished)
+        }
+        return ReadingStats.Item(seriesKey: (novel ? "novel|" : "comic|") + series, seriesName: series,
+                                 isNovel: novel, format: novel ? "EPUB" : "CBZ", bytes: bytes,
+                                 isRemote: remote, pageCount: pages, progress: progress)
+    }
+
+    func testEmptyLibrary() {
+        let stats = ReadingStats.build([])
+        XCTAssertTrue(stats.isEmpty)
+        XCTAssertFalse(stats.hasReadAnything)
+    }
+
+    func testCountsSplitThreeWays() {
+        let stats = ReadingStats.build([
+            item("A", finished: true), item("A", page: 30), item("A"),
+        ])
+        XCTAssertEqual(stats.finishedVolumes, 1)
+        XCTAssertEqual(stats.inProgressVolumes, 1)
+        XCTAssertEqual(stats.unreadVolumes, 1)
+        XCTAssertEqual(stats.totalVolumes, 3)
+    }
+
+    /// A finished book counts all its pages; an open one counts only as far as you've read.
+    func testPagesRead() {
+        let stats = ReadingStats.build([
+            item("A", finished: true, pages: 100),
+            item("B", page: 30, pages: 200),
+            item("C"),
+        ])
+        XCTAssertEqual(stats.pagesRead, 130)
+    }
+
+    func testSeriesCompletionNeedsEveryVolume() {
+        let done = ReadingStats.build([item("A", finished: true), item("A", finished: true)])
+        XCTAssertEqual(done.finishedSeries, 1)
+        XCTAssertEqual(done.startedSeries, 0)
+
+        let partial = ReadingStats.build([item("A", finished: true), item("A")])
+        XCTAssertEqual(partial.finishedSeries, 0)
+        XCTAssertEqual(partial.startedSeries, 1)
+    }
+
+    /// Manga and novels of the same name are different series here too.
+    func testMediaAreCountedSeparately() {
+        let stats = ReadingStats.build([item("Mushoku Tensei"), item("Mushoku Tensei", novel: true)])
+        XCTAssertEqual(stats.totalSeries, 2)
+        XCTAssertEqual(Set(stats.byMedium.map(\.name)), ["Manga", "Novels"])
+    }
+
+    func testStorageSplitsLocalAndRemote() {
+        let stats = ReadingStats.build([
+            item("A", remote: true, bytes: 300),
+            item("B", remote: false, bytes: 200),
+        ])
+        XCTAssertEqual(stats.remoteBytes, 300)
+        XCTAssertEqual(stats.localBytes, 200)
+        XCTAssertEqual(stats.totalBytes, 500)
+    }
+
+    /// Twelve buckets, zero-filled — a gap in a bar chart reads as missing data, not a quiet month.
+    func testTwelveMonthsAlwaysPresent() {
+        let stats = ReadingStats.build([item("A", finished: true)])
+        XCTAssertEqual(stats.months.count, 12)
+        XCTAssertEqual(stats.months.last?.finished, 1, "a book finished now lands in the last bucket")
+        XCTAssertEqual(stats.months.dropLast().reduce(0) { $0 + $1.finished }, 0)
+    }
+
+    func testOldFinishesFallOutOfTheChartButStillCount() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 20)))
+        let longAgo = try XCTUnwrap(calendar.date(from: DateComponents(year: 2020, month: 1, day: 5)))
+        let stats = ReadingStats.build([item("A", finished: true, updated: longAgo)], now: now, calendar: calendar)
+        XCTAssertEqual(stats.finishedVolumes, 1)
+        XCTAssertEqual(stats.months.reduce(0) { $0 + $1.finished }, 0)
+        XCTAssertEqual(stats.thisYear, 0)
+        XCTAssertNil(stats.bestMonth)
+    }
+
+    func testTopSeriesOnlyListsWhatYouFinished() {
+        let stats = ReadingStats.build([
+            item("A", finished: true), item("A", finished: true),
+            item("B", finished: true),
+            item("C"),
+        ])
+        XCTAssertEqual(stats.topSeries.map(\.name), ["A", "B"])
+        XCTAssertEqual(stats.topSeries.first?.count, 2)
+    }
+}
