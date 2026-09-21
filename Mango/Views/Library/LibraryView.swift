@@ -65,6 +65,11 @@ struct LibraryView: View {
                         }
                         Toggle("Show finished", isOn: $settings.showFinished)
                         Divider()
+                        NavigationLink {
+                            ReadingListsView()
+                        } label: {
+                            Label("Reading Lists", systemImage: "list.bullet.rectangle")
+                        }
                         Button {
                             Task { await library.scan() }
                         } label: {

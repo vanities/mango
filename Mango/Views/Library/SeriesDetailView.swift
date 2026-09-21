@@ -14,6 +14,8 @@ struct SeriesDetailView: View {
     @State private var coverTarget: (comic: Comic, forSeries: Bool)?
     @State private var lookingUp = false
     @State private var grouping = false
+    /// Add to List…, for the shelf or one volume.
+    @State private var listing: (item: ReadingList.Item, title: String)?
 
     private var shelf: Series { library.shelf(id: series.id) ?? series }
 
@@ -59,6 +61,9 @@ struct SeriesDetailView: View {
                     .contextMenu {
                         // Also a swipe action, but a swipe is invisible until you know it's there.
                         Button("Edit…", systemImage: "pencil") { editing = comic }
+                        Button("Add to List…", systemImage: "text.badge.plus") {
+                            listing = (ReadingList.Item(comic), comic.numberLabel ?? comic.title)
+                        }
                         Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") {
                             coverTarget = (comic, false)
                         }
@@ -127,6 +132,9 @@ struct SeriesDetailView: View {
                         }
                     }
                     Divider()
+                    Button("Add to List…", systemImage: "text.badge.plus") {
+                        listing = (ReadingList.Item(shelf), shelf.name)
+                    }
                     Button("Look Up Series…", systemImage: "text.magnifyingglass") { lookingUp = true }
                     if let stack = library.group(containing: shelf) {
                         Button("Remove From \(stack.name)", systemImage: "square.stack.3d.up.slash") {
@@ -152,6 +160,9 @@ struct SeriesDetailView: View {
         }
         .sheet(isPresented: $lookingUp) { SeriesLookupView(series: shelf) }
         .sheet(isPresented: $grouping) { GroupPickerView(shelf: shelf) }
+        .sheet(isPresented: Binding(get: { listing != nil }, set: { if !$0 { listing = nil } })) {
+            if let listing { ListPickerView(item: listing.item, title: listing.title) }
+        }
     }
 
     private var header: some View {
