@@ -14,6 +14,8 @@ struct LibraryScanner: Sendable {
     struct Result: Sendable {
         var comics: [Comic] = []
         var fileCount = 0
+        /// Archives found that Mango can't open, by extension.
+        var unreadable: [String: Int] = [:]
         var error: String?
     }
 
@@ -24,7 +26,7 @@ struct LibraryScanner: Sendable {
         let sw = Stopwatch()
         var result = Result()
         walkLocal(root, base: root, source: source, depth: 0, into: &result)
-        Logger.scan.info("[scan] \(source.displayName, privacy: .public) → \(result.comics.count) comics from \(result.fileCount) files in \(sw.ms, format: .fixed(precision: 0))ms")
+        Logger.scan.info("[scan] \(source.displayName, privacy: .public) → \(result.comics.count) comics from \(result.fileCount) files (\(result.unreadable.values.reduce(0, +)) unreadable) in \(sw.ms, format: .fixed(precision: 0))ms")
         return result
     }
 
@@ -54,6 +56,8 @@ struct LibraryScanner: Sendable {
             result.fileCount += 1
             if ImageFileTypes.isPage(name) {
                 loosePages += 1
+            } else if ImageFileTypes.isUnreadableArchive(name) {
+                result.unreadable[(name as NSString).pathExtension.lowercased(), default: 0] += 1
             } else if ImageFileTypes.isReadable(name) {
                 candidates.append(Candidate(
                     name: name,
@@ -105,7 +109,7 @@ struct LibraryScanner: Sendable {
             result.error = error.localizedDescription
             Logger.scan.error("[scan:nas] \(source.displayName, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
         }
-        Logger.scan.info("[scan:nas] \(source.displayName, privacy: .public) → \(result.comics.count) comics from \(result.fileCount) files in \(sw.ms, format: .fixed(precision: 0))ms")
+        Logger.scan.info("[scan:nas] \(source.displayName, privacy: .public) → \(result.comics.count) comics from \(result.fileCount) files (\(result.unreadable.values.reduce(0, +)) unreadable) in \(sw.ms, format: .fixed(precision: 0))ms")
         return result
     }
 
@@ -127,6 +131,8 @@ struct LibraryScanner: Sendable {
             if ImageFileTypes.isPage(entry.name) {
                 loosePages += 1
                 looseBytes += entry.size
+            } else if ImageFileTypes.isUnreadableArchive(entry.name) {
+                result.unreadable[(entry.name as NSString).pathExtension.lowercased(), default: 0] += 1
             } else if ImageFileTypes.isReadable(entry.name) {
                 candidates.append(Candidate(
                     name: entry.name,

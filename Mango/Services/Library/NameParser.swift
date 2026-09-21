@@ -42,8 +42,10 @@ enum NameParser {
         var volume: Double?
         var chapter: Double?
         var volumeIsInferred = false
-        (volume, working) = extract(pattern: #"(?:\b|(?<=[\-–\.\(\[]))(?:v|vol|volume)\.?\s*(\d{1,4}(?:\.\d+)?)\b"#, from: working)
-        (chapter, working) = extract(pattern: #"(?:\b|(?<=[\-–\.\(\[]))(?:c|ch|chap|chapter)\.?\s*(\d{1,5}(?:\.\d+)?)\b"#, from: working)
+        // A range ("v01-02", "c00-02") is one token; its end would otherwise be left behind as a
+        // stray "02" subtitle. The volume is where the range starts.
+        (volume, working) = extract(pattern: #"(?:\b|(?<=[\-–\.\(\[]))(?:v|vol|volume)\.?\s*(\d{1,4}(?:\.\d+)?)(?:\s*[-–]\s*(?:v|vol|volume)?\.?\s*\d{1,4}(?:\.\d+)?)?\b"#, from: working)
+        (chapter, working) = extract(pattern: #"(?:\b|(?<=[\-–\.\(\[]))(?:c|ch|chap|chapter)\.?\s*(\d{1,5}(?:\.\d+)?)(?:\s*[-–]\s*(?:c|ch|chap|chapter)?\.?\s*\d{1,5}(?:\.\d+)?)?\b"#, from: working)
         if volume == nil {
             let (issue, rest) = extract(pattern: ##"#\s*(\d{1,5}(?:\.\d+)?)"##, from: working)
             if let issue { volume = issue; working = rest }
@@ -52,17 +54,15 @@ enum NameParser {
         working = stripBracketed(working)
         let split = splitAroundRemovedTokens(working)
         var series = split.series
-        let subtitle = split.subtitle
+        var subtitle = split.subtitle
 
-        // "Akira 001" — a bare trailing number is a volume, unless it's a year.
-        if volume == nil, chapter == nil,
-           let match = firstMatch(pattern: #"^(.*?)[\s\-–]+(\d{1,4}(?:\.\d+)?)$"#, in: series),
-           let prefix = match.group(1, in: series), let number = match.group(2, in: series).flatMap(Double.init),
-           !(number >= 1900 && number <= 2100 && number == number.rounded()),
-           !prefix.trimmingCharacters(in: .whitespaces).isEmpty {
-            volume = number
+        // "Akira 001", "Solo Leveling 180 - Epilogue 01" — a bare number is a volume (a guess
+        // `parseGroup` may overrule), and a title after it is the episode's.
+        if volume == nil, chapter == nil, let bare = bareNumber(in: series) {
+            volume = bare.number
             volumeIsInferred = true
-            series = tidy(prefix)
+            series = bare.series
+            if subtitle == nil { subtitle = bare.title }
         }
 
         // A folder named for the series is more reliable than whatever the file is called —
@@ -71,6 +71,17 @@ enum NameParser {
         // should shelve as "Tower Dungeon".
         let folder = folderName.map { tidy(stripBracketed($0)) }.flatMap { $0.nilIfEmpty }
         if series.isEmpty, let folder { series = folder }
+        // Same name, the folder's capitals: "the voynich hotel" → "The Voynich Hotel".
+        if let folder, folder.normalizedForMatching == series.normalizedForMatching { series = folder }
+        // "Mushoku Tensei - Jobless Reincarnation - A Journey of Two Lifetimes", unnumbered, in
+        // that series' folder: a side story, on the series' shelf. Numbered files are left alone
+        // — in a folder called "Frieren", "Frieren - Beyond Journey's End 138" is the series.
+        if let folder, volume == nil, chapter == nil,
+           series.count > folder.count + 3, series.lowercased().hasPrefix(folder.lowercased() + " - ") {
+            let rest = tidy(String(series.dropFirst(folder.count + 3)))
+            series = folder
+            if subtitle == nil { subtitle = rest.nilIfEmpty }
+        }
         if let folder, !series.isEmpty, folder.normalizedForMatching != series.normalizedForMatching,
            series.normalizedForMatching.count < folder.normalizedForMatching.count,
            folder.normalizedForMatching.contains(series.normalizedForMatching) {
@@ -79,29 +90,43 @@ enum NameParser {
 
         let title = displayTitle(series: series, volume: volume, chapter: chapter, fallback: tidy(stripBracketed(base)))
         return ParsedName(series: series.nilIfEmpty, title: title, volume: volume, chapter: chapter,
-                          year: year, subtitle: subtitle, volumeIsInferred: volumeIsInferred)
+                          year: year, subtitle: subtitle.flatMap(meaningfulSubtitle), volumeIsInferred: volumeIsInferred)
     }
 
     /// Parses a whole folder at once so siblings can correct each other.
     ///
-    /// Releases mix conventions inside one folder: Tower Dungeon ships `v01`…`v05` alongside
-    /// `c020`…`c026` and then, from the same scanlator, a bare `027`. On its own `027` reads as
-    /// volume 27; sitting next to five volumes and seven chapters it plainly isn't. The rule:
-    /// when a folder has both explicit volumes and explicit chapters, a *bare* number higher
-    /// than any real volume is a chapter.
+    /// A bare number ("Tower Dungeon 027") reads as a volume on its own; the folder decides
+    /// whether it's really a chapter:
+    ///
+    /// - Beside explicit volumes *and* chapters, a bare number past the last volume is a
+    ///   chapter — Tower Dungeon ships `v01`…`v05`, `c020`…`c026`, then a bare `027`.
+    /// - Beside explicit volumes alone, a bare number *far* past the last one is — how 1r0n and
+    ///   LuCaZ ship ongoing series: `Chainsaw Man v21` next to `Chainsaw Man 199`. Just past it
+    ///   ("011" after v10) is more likely a volume named inconsistently.
+    /// - With no volumes at all, bare numbers are chapters in a folder of chapters, a webtoon, or
+    ///   a run that reaches 100 — Solo Leveling is `000`…`200`. A short run ("Akira 001"…"006")
+    ///   stays volumes.
     static func parseGroup(_ files: [(fileName: String, folderName: String?)]) -> [ParsedName] {
         var results = files.map { parse(fileName: $0.fileName, folderName: $0.folderName) }
 
-        let explicitVolumes = results.filter { !$0.volumeIsInferred }.compactMap(\.volume)
+        let bare = results.indices.filter { results[$0].volumeIsInferred && results[$0].chapter == nil && results[$0].volume != nil }
+        guard !bare.isEmpty else { return results }
+        let highestVolume = results.filter { !$0.volumeIsInferred }.compactMap(\.volume).max()
         let hasExplicitChapters = results.contains { $0.chapter != nil }
-        guard hasExplicitChapters, let highestVolume = explicitVolumes.max() else { return results }
+        let folderName = files.first?.folderName ?? ""
+        let serialized = folderName.range(of: #"webtoon|manhwa|manhua"#, options: [.regularExpression, .caseInsensitive]) != nil
+            || (bare.compactMap { results[$0].volume }.max() ?? 0) >= 100
 
-        for index in results.indices {
-            guard results[index].volumeIsInferred,
-                  results[index].chapter == nil,
-                  let number = results[index].volume,
-                  number > highestVolume
-            else { continue }
+        for index in bare {
+            guard let number = results[index].volume else { continue }
+            let isChapter: Bool
+            if let highestVolume {
+                isChapter = number > highestVolume
+                    && (hasExplicitChapters || (number >= highestVolume * 2 && number > highestVolume + 5))
+            } else {
+                isChapter = hasExplicitChapters || serialized
+            }
+            guard isChapter else { continue }
             results[index].volume = nil
             results[index].chapter = number
             results[index].volumeIsInferred = false
@@ -118,6 +143,34 @@ enum NameParser {
         if let volume { return "\(series) Vol. \(Formatting.number(volume))" }
         if let chapter { return "\(series) Ch. \(Formatting.number(chapter))" }
         return series
+    }
+
+    /// "Akira 001" or "Solo Leveling 180 - Epilogue 01": a bare number after the series,
+    /// perhaps with an episode title after it. Never a year ("Blade Runner 2049"), and never a
+    /// part — "Part 4 - Diamond is Unbreakable" is a part of the series, not volume 4.
+    private static func bareNumber(in text: String) -> (series: String, number: Double, title: String?)? {
+        let patterns = [
+            #"^(.*?)[\s\-–]+(\d{1,4}(?:\.\d+)?)\s+[-–]\s+(\S.*)$"#,
+            #"^(.*?)[\s\-–]+(\d{1,4}(?:\.\d+)?)$"#,
+        ]
+        for pattern in patterns {
+            guard let match = firstMatch(pattern: pattern, in: text),
+                  let prefix = match.group(1, in: text).map(tidy), !prefix.isEmpty,
+                  let number = match.group(2, in: text).flatMap(Double.init)
+            else { continue }
+            if number >= 1900, number <= 2100, number == number.rounded() { continue }
+            if prefix.range(of: #"\b(part|season|book|arc)$"#, options: [.regularExpression, .caseInsensitive]) != nil {
+                continue
+            }
+            return (prefix, number, match.group(3, in: text).map(tidy)?.nilIfEmpty)
+        }
+        return nil
+    }
+
+    /// Scan-quality tags aren't titles: "GTO Volume 01 HQ" has no subtitle.
+    private static func meaningfulSubtitle(_ text: String) -> String? {
+        let noise = #"^(?:HQ|LQ|HD|SD|Hi-?Res|High Quality|Digital)$"#
+        return text.range(of: noise, options: [.regularExpression, .caseInsensitive]) == nil ? text.nilIfEmpty : nil
     }
 
     private static func firstYear(in text: String) -> Int? {
@@ -140,12 +193,14 @@ enum NameParser {
         return (value, out)
     }
 
-    /// Splits on the sentinels left by `extract`. The first non-empty piece is the series; a
-    /// second non-empty piece is the episode or volume title.
+    /// Splits on the sentinels left by `extract`: what comes before the first number is the
+    /// series, anything after it is the episode or volume title. Nothing before the number
+    /// ("Volume 01 - Enter Josuke Higashikata") means the filename doesn't name the series —
+    /// the folder will — and the words after it are the title, not the series.
     private static func splitAroundRemovedTokens(_ text: String) -> (series: String, subtitle: String?) {
-        let pieces = text.components(separatedBy: removedToken).map(tidy).filter { !$0.isEmpty }
+        let pieces = text.components(separatedBy: removedToken).map(tidy)
         guard let first = pieces.first else { return ("", nil) }
-        let rest = pieces.dropFirst().joined(separator: " - ")
+        let rest = pieces.dropFirst().filter { !$0.isEmpty }.joined(separator: " - ")
         return (first, rest.nilIfEmpty)
     }
 

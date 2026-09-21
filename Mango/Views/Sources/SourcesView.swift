@@ -180,6 +180,12 @@ struct SourceRow: View {
                     Text("\(count) comics · \(source.lastScanFileCount ?? 0) files")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    // Otherwise a series kept as .cbr just isn't there, with no clue why.
+                    if let unreadable = ImageFileTypes.describeUnreadable(source.lastScanUnreadable ?? [:]) {
+                        Text("\(unreadable) can't be opened — convert them to .cbz")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 } else {
                     Text("Not scanned yet")
                         .font(.caption)

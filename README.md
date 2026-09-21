@@ -47,8 +47,11 @@ the Mushoku Tensei manga and reading the Mushoku Tensei novels are different act
 
 ## What it doesn't do
 
-- **No `.cbr`.** RAR's only decoder is non-free and can't ship in a GPL-3 app. Convert them:
-  `for f in *.cbr; do ...` — or grab releases as `.cbz`, which most of them are now.
+- **No `.cbr`, `.cb7` or `.7z`.** RAR's only decoder is non-free and can't ship in a GPL-3 app,
+  and 7z isn't supported either. Mango tells you when a source has some ("68 files in RAR or 7z
+  can't be opened"), and `scripts/convert-to-cbz.sh <folder>` turns them into `.cbz` next to the
+  originals — point it at the share mounted in Finder. It needs `brew install sevenzip` (or
+  `unar`). Most releases ship as `.cbz` now anyway.
 - **No online catalog.** Mango reads files. It won't fetch chapters from anywhere.
 - **No accounts, no sync service, no analytics.** Reading position syncs through your own iCloud.
 

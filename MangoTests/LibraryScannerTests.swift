@@ -72,6 +72,19 @@ final class LibraryScannerTests: XCTestCase {
         XCTAssertTrue(result.comics.isEmpty)
     }
 
+    /// RAR and 7z can't be opened, but they mustn't vanish without a word either: a series
+    /// kept as .cbr simply wasn't there. The scan counts them so the source can say why.
+    func testUnreadableArchivesAreCountedNotShown() throws {
+        try write("Akira/Akira - Volume 01.rar")
+        try write("Akira/Akira - Volume 02.cbr")
+        try write("JoJo/Volume 1 - JoJo Vs. the Ultimate Lifeform.7z")
+        try write("Berserk/Berserk v01.cbz")
+        let result = LibraryScanner.scanLocal(source: source, root: root)
+        XCTAssertEqual(result.comics.count, 1)
+        XCTAssertEqual(result.unreadable, ["rar": 1, "cbr": 1, "7z": 1])
+        XCTAssertEqual(ImageFileTypes.describeUnreadable(result.unreadable), "3 files in RAR or 7z")
+    }
+
     func testIDsAreStableAcrossScans() throws {
         try write("Berserk/Berserk v01.cbz")
         let first = LibraryScanner.scanLocal(source: source, root: root)
