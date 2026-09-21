@@ -11,6 +11,8 @@ struct Comic: Identifiable, Codable, Hashable, Sendable {
         case pdf
         /// A folder of loose page images (001.jpg, 002.jpg, ...).
         case folder
+        /// An `.epub` — a light novel or any reflowable book. Read as text, not as pages.
+        case epub
     }
 
     /// Stable across rescans while the file layout doesn't change: `"<sourceID>|<relativePath>"`.
@@ -42,6 +44,10 @@ struct Comic: Identifiable, Codable, Hashable, Sendable {
 
     // MARK: Derived
 
+    /// Novels get their own shelf in the library: reading a light novel and reading a manga
+    /// are different activities, even when they're the same series.
+    var isNovel: Bool { kind == .epub }
+
     /// Device-independent identity for cross-device sync. Unlike `id`, it omits the per-install
     /// source UUID, so the same file on another device resolves to the same key.
     var syncKey: String { relativePath.lowercased() }
@@ -65,6 +71,7 @@ struct Comic: Identifiable, Codable, Hashable, Sendable {
         case .archive: format = "CBZ"
         case .pdf: format = "PDF"
         case .folder: format = "Folder"
+        case .epub: format = "EPUB"
         }
         return "\(format) · \(Formatting.bytes(totalBytes))"
     }

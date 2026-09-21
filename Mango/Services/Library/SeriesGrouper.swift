@@ -32,9 +32,12 @@ enum SeriesGrouper {
         return series
     }
 
-    /// Shelf identity. Normalized so punctuation and casing don't split a run in two.
+    /// Shelf identity. Normalized so punctuation and casing don't split a run in two, and
+    /// prefixed by medium so the manga and the light novel of the same series are two shelves
+    /// — Mushoku Tensei exists as both, and they are not the same thing to read.
     static func key(for comic: Comic) -> String {
-        key(forName: comic.series ?? comic.title, fallback: comic.title)
+        let medium = comic.isNovel ? "novel" : "comic"
+        return medium + "|" + key(forName: comic.series ?? comic.title, fallback: comic.title)
     }
 
     static func key(forName name: String, fallback: String = "") -> String {

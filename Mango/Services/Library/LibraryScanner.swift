@@ -54,12 +54,12 @@ struct LibraryScanner: Sendable {
             result.fileCount += 1
             if ImageFileTypes.isPage(name) {
                 loosePages += 1
-            } else if ImageFileTypes.isComic(name) {
+            } else if ImageFileTypes.isReadable(name) {
                 candidates.append(Candidate(
                     name: name,
                     folderName: directory == base ? nil : directory.lastPathComponent,
                     relativePath: relativePath(of: url, from: base),
-                    kind: (name as NSString).pathExtension.lowercased() == "pdf" ? .pdf : .archive,
+                    kind: ImageFileTypes.kind(for: name),
                     size: Int64(values?.fileSize ?? 0)
                 ))
             }
@@ -127,12 +127,12 @@ struct LibraryScanner: Sendable {
             if ImageFileTypes.isPage(entry.name) {
                 loosePages += 1
                 looseBytes += entry.size
-            } else if ImageFileTypes.isComic(entry.name) {
+            } else if ImageFileTypes.isReadable(entry.name) {
                 candidates.append(Candidate(
                     name: entry.name,
                     folderName: path.isEmpty ? nil : (path as NSString).lastPathComponent,
                     relativePath: entry.relativePath,
-                    kind: (entry.name as NSString).pathExtension.lowercased() == "pdf" ? .pdf : .archive,
+                    kind: ImageFileTypes.kind(for: entry.name),
                     size: entry.size
                 ))
             }
