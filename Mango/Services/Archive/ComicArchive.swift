@@ -16,10 +16,40 @@ protocol ComicArchive: Sendable {
     func pageData(at index: Int) async throws -> Data
     /// The archive's own ComicInfo.xml, if it ships one.
     func comicInfo() async -> ComicInfo?
+    /// A page's size when the container knows it without reading the page — a PDF's media box.
+    /// nil means read the page to find out.
+    func knownPageSize(at index: Int) async -> CGSize?
+    /// A page sized for a layout: whole on screen, or width-first for a long strip.
+    func page(at index: Int, sizing: PageSizing) async throws -> CGImage
+    /// A page's pixel size, read as cheaply as the container allows — free for a PDF, a header's
+    /// worth of bytes for a zip or a folder. For laying out a strip before its pages load.
+    func pageSize(at index: Int) async -> CGSize?
 }
 
 extension ComicArchive {
     func comicInfo() async -> ComicInfo? { nil }
+
+    func knownPageSize(at index: Int) async -> CGSize? { nil }
+
+    func pageSize(at index: Int) async -> CGSize? {
+        if let known = await knownPageSize(at: index) { return known }
+        guard let data = try? await pageData(at: index) else { return nil }
+        return ImageDecoder.pixelSize(of: data)
+    }
+
+    /// Image containers decode width-first from the page's bytes.
+    func page(at index: Int, sizing: PageSizing) async throws -> CGImage {
+        switch sizing {
+        case .fitScreen(let maxPixel):
+            return try await page(at: index, maxPixel: maxPixel)
+        case .fitWidth:
+            let data = try await pageData(at: index)
+            guard let image = ImageDecoder.decode(data, sizing: sizing) else {
+                throw ArchiveError.undecodable(page: pageName(at: index))
+            }
+            return image
+        }
+    }
 }
 
 enum ArchiveError: LocalizedError {

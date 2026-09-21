@@ -59,6 +59,7 @@ extension LibraryState {
             }
             // Hiding a remote twin must hide its download too, or it reappears.
             if hiddenComicIDs.contains(twin.id) { hiddenComicIDs.insert(local.id) }
+            if longStripComicIDs.contains(twin.id) { longStripComicIDs.insert(local.id) }
             // Continue Reading has to follow the copy that's actually on screen.
             if lastComicID == twin.id { lastComicID = local.id }
         }

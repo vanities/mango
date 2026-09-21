@@ -12,22 +12,26 @@ struct CoverView: View {
     @State private var image: CGImage?
 
     var body: some View {
-        ZStack {
-            if let image {
-                Image(decorative: image, scale: 1, orientation: .up)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                placeholder
+        // The frame is a fixed 2:3 and the art is an overlay on it. Overlays can't size their
+        // parent, so a cover of any shape — a wide spread, a 1:9 strip — fills the frame and is
+        // clipped, instead of stretching the tile to its own shape.
+        Color.clear
+            .aspectRatio(2 / 3, contentMode: .fit)
+            .overlay(alignment: .top) {
+                if let image {
+                    Image(decorative: image, scale: 1, orientation: .up)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    placeholder
+                }
             }
-        }
-        .aspectRatio(2 / 3, contentMode: .fit)
-        .clipShape(.rect(cornerRadius: cornerRadius))
-        .overlay {
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .strokeBorder(.separator, lineWidth: 0.5)
-        }
-        .task(id: coverID) { await load() }
+            .clipShape(.rect(cornerRadius: cornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(.separator, lineWidth: 0.5)
+            }
+            .task(id: coverID) { await load() }
     }
 
     private var placeholder: some View {

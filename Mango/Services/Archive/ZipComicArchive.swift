@@ -43,6 +43,21 @@ struct ZipComicArchive: ComicArchive {
         return try await ZipReader.read(entries[index], from: reader)
     }
 
+    /// Enough of a page to find its size in: JPEG and PNG headers sit well inside this unless a
+    /// file carries a huge metadata block, in which case the whole page is read after all.
+    static let sizeProbeBytes = 64 * 1024
+
+    func pageSize(at index: Int) async -> CGSize? {
+        guard entries.indices.contains(index) else { return nil }
+        if let prefix = try? await ZipReader.readPrefix(entries[index], limit: Self.sizeProbeBytes, from: reader),
+           let size = ImageDecoder.pixelSize(of: prefix) {
+            return size
+        }
+        Logger.archive.notice("[zip] no size in the first \(Self.sizeProbeBytes)B of \(entries[index].name, privacy: .public) — reading it whole")
+        guard let data = try? await pageData(at: index) else { return nil }
+        return ImageDecoder.pixelSize(of: data)
+    }
+
     func comicInfo() async -> ComicInfo? {
         guard let comicInfoEntry, let data = try? await ZipReader.read(comicInfoEntry, from: reader) else { return nil }
         return ComicInfoParser.parse(data)

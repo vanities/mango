@@ -97,9 +97,41 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - `SpreadLayout` pairs pages like a printed book: cover alone, then 1-2, 3-4. A page wider than
   it is tall is a real double-page spread and takes the screen to itself, which re-syncs the
   pairing after it.
-- `PageLoader` caps how many decoded pages it holds (`prefetch * 2 + 3`) and drops the ones
-  behind you first. A 2000×3000 page is 24 MB decoded — holding a dozen gets the app killed.
+- `PageLoader` caps how many decoded pages it holds (`prefetch * 2 + 3`) *and* what they weigh
+  (160 MB), dropping the ones behind you first. A 2000×3000 page is 24 MB decoded and a strip page
+  can be 40 — holding a dozen gets the app killed. Its cache is keyed by page *and* sizing, so a
+  layout switch can never be handed a page decoded for the other layout, whatever order the
+  requests arrive in.
 - Memory warnings purge everything but the visible page.
+
+### Long strips (webtoons, manhwa)
+
+- **Detected, not configured.** On open, if the reader hasn't chosen a layout for the book,
+  `PageLoader.looksLikeLongStrip(from:)` checks the page it's about to show (plus two more only
+  if that one is tall — `PageShape`: height/width ≥ 2.2, most sampled pages tall). An ordinary
+  book pays one page read, which is the page about to be drawn anyway: the bytes are kept and
+  the first decode reuses them (`TallPageTests` pins this). A detection is saved in
+  `LibraryState.longStripComicIDs` — not in `overrides`, because it isn't the user's choice, and
+  the user's choice (`ReaderEngine.chooseMode`) always beats it.
+- **Decoded width-first** (`PageSizing.fitWidth`): bounding the longest edge makes an 800×12000
+  strip 273 px wide. Width-first is capped by a 64 MB per-page budget, and pages taller than
+  4096 px are drawn as stacked tiles (`ImageDecoder.tiles`, which share the bitmap) because GPUs
+  refuse very tall textures.
+- **Laid out at real heights before anything loads.** The engine sizes every page from its
+  header (`ComicArchive.pageSize`: a PDF's media box, a 64 KB prefix of a zip entry — inflated
+  as far as it goes if deflated — or a file header), the pages around the start before first
+  layout and the rest in the background. Without it a page arriving shoves everything below it,
+  and reopening at page 30 lands inside page 29 once that one fills in.
+- **Position** is the page crossing a reading line near the top (`onGeometryChange`), tracked as
+  a set so a page misplaced by the first layout pass can't stick. `scrollPosition(id:)` and
+  `onAppear` both get this wrong. The strip's own reports go through `readingPage(_:)`; moves
+  from the slider or a bookmark bump `jumpCount`, which is the only thing the strip scrolls for —
+  otherwise it chases its own reports.
+- A strip starts below the Dynamic Island and scrolls under it (no `ignoresSafeArea`), and
+  scrolling past the end-of-chapter footer finishes the chapter, like the paged reader's empty
+  trailing slot.
+- Covers: a strip's cover is the top of page one cut to 2:3 (`CoverStore.coverImage`), and
+  `CoverView` draws art as an overlay on a fixed 2:3 frame so no cover shape can resize a tile.
 
 ## Releasing
 
@@ -132,7 +164,7 @@ make demo SIMID=<udid>    # generates ./demo-library, installs it, launches in d
 Demo mode (`-MangoDemoMode YES`, or the toggle at the bottom of Settings) makes the scan skip
 every share and picked folder and read only the app's own folder. The user's sources stay
 configured, just unscanned. `scripts/make-demo-library.py` generates the content: invented
-series, generated pages, generated EPUBs, nothing anyone owns.
+series, generated pages, generated EPUBs, a long-strip series (Rooftop Garden), nothing anyone owns.
 
 **Never put the Sources screen in a store screenshot** — it prints the NAS host address.
 

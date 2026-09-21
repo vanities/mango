@@ -142,7 +142,7 @@ struct ReaderSettingsSheet: View {
                     Picker("Direction", selection: $engine.direction) {
                         ForEach(ReadingDirection.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
-                    Picker("Layout", selection: $engine.mode) {
+                    Picker("Layout", selection: Binding(get: { engine.mode }, set: { engine.chooseMode($0) })) {
                         ForEach(ReaderMode.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                 }

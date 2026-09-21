@@ -3,6 +3,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
+@testable import Mango
 
 /// Builds real zip bytes in memory so `ZipReader` can be tested against something it didn't
 /// also produce — stored and deflated entries, ordered however the test wants.
@@ -98,7 +99,7 @@ enum ZipTestBuilder {
         Data([UInt8(value & 0xFF), UInt8(value >> 8 & 0xFF), UInt8(value >> 16 & 0xFF), UInt8(value >> 24 & 0xFF)])
     }
 
-    private static func deflate(_ input: Data) -> Data {
+    static func deflate(_ input: Data) -> Data {
         guard !input.isEmpty else { return Data() }
         let capacity = max(64, input.count + input.count / 2 + 64)
         var out = Data(count: capacity)
@@ -122,5 +123,21 @@ enum ZipTestBuilder {
         var crc: UInt32 = 0xFFFF_FFFF
         for byte in data { crc = table[Int((crc ^ UInt32(byte)) & 0xFF)] ^ (crc >> 8) }
         return crc ^ 0xFFFF_FFFF
+    }
+}
+
+/// Wraps a reader and records how many bytes were actually requested.
+actor CountingReader: RandomAccessReader {
+    private let inner: any RandomAccessReader
+    private(set) var bytesRead = 0
+
+    init(_ inner: any RandomAccessReader) { self.inner = inner }
+
+    func length() async throws -> Int64 { try await inner.length() }
+
+    func read(offset: Int64, count: Int) async throws -> Data {
+        let data = try await inner.read(offset: offset, count: count)
+        bytesRead += data.count
+        return data
     }
 }

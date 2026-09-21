@@ -67,11 +67,44 @@ struct CoverStore: Sendable {
     func extractCover(from archive: any ComicArchive, as coverID: String) async -> Bool {
         guard archive.pageCount > 0 else { return false }
         do {
-            let image = try await archive.page(at: 0, maxPixel: Self.maxPixel)
-            return store(image, as: coverID)
+            return store(try await Self.cover(from: archive), as: coverID)
         } catch {
             Logger.cover.error("[cover] page 1 failed for \(coverID, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return false
         }
+    }
+
+    /// A long strip's cover is drawn at this width, then cut to a book's 2:3 shape.
+    static let stripCoverWidth = maxPixel * 2 / 3
+
+    private static func cover(from archive: any ComicArchive) async throws -> CGImage {
+        // A PDF knows its page size and renders straight to it; only a strip needs the top cut out.
+        if let known = await archive.knownPageSize(at: 0) {
+            guard PageShape.isLongStrip(width: known.width, height: known.height) else {
+                return try await archive.page(at: 0, maxPixel: maxPixel)
+            }
+            return topOfStrip(try await archive.page(at: 0, sizing: .fitWidth(pixels: stripCoverWidth)))
+        }
+        let data = try await archive.pageData(at: 0)
+        guard let image = coverImage(from: data) else {
+            throw ArchiveError.undecodable(page: archive.pageName(at: 0))
+        }
+        return image
+    }
+
+    /// A cover from page one's bytes: an ordinary page shrunk whole; a long strip cut to its top
+    /// at full cover width — shrinking a whole 1:9 strip into 600 pixels would leave a
+    /// 67-pixel-wide smear, and the top is where a strip puts its title.
+    static func coverImage(from data: Data) -> CGImage? {
+        guard let size = ImageDecoder.pixelSize(of: data),
+              PageShape.isLongStrip(width: size.width, height: size.height),
+              let strip = ImageDecoder.decode(data, sizing: .fitWidth(pixels: stripCoverWidth))
+        else { return ImageDecoder.downsample(data, maxPixel: maxPixel) }
+        return topOfStrip(strip)
+    }
+
+    private static func topOfStrip(_ strip: CGImage) -> CGImage {
+        let height = min(strip.height, strip.width * 3 / 2)
+        return strip.cropping(to: CGRect(x: 0, y: 0, width: strip.width, height: height)) ?? strip
     }
 }

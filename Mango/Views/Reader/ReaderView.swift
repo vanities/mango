@@ -52,7 +52,8 @@ struct ReaderView: View {
                 created.isLandscape = geometry.size.width > geometry.size.height
                 created.onReachedEnd = { reachEnd() }
                 engine = created
-                await created.open(maxPixel: maxPixel(for: geometry.size))
+                await created.open(screenPixels: CGSize(width: geometry.size.width * displayScale,
+                                                        height: geometry.size.height * displayScale))
             }
         }
         .statusBarHidden(!(engine?.showsControls ?? true))
@@ -74,12 +75,6 @@ struct ReaderView: View {
 
     private var background: Color {
         settings.blackBackground ? .black : Color(.systemBackground)
-    }
-
-    /// Decode budget: the screen's longest edge in real pixels, with headroom so a pinch-zoom
-    /// doesn't immediately go soft. Capped inside `ImageDecoder`.
-    private func maxPixel(for size: CGSize) -> Int {
-        Int(max(size.width, size.height) * displayScale * 1.5)
     }
 
     @ViewBuilder

@@ -133,6 +133,16 @@ final class LibraryDedupeTests: XCTestCase {
         XCTAssertTrue(visible.isEmpty)
     }
 
+    /// A downloaded webtoon should open straight into scroll mode, like the copy it came from.
+    func testLongStripDetectionCarriesToTheDownload() {
+        var (state, remote, local) = state(withTwinsAt: "strip.cbz")
+        state.longStripComicIDs = [remote.id]
+
+        state.adoptStateFromRemoteTwins(remoteSourceIDs: remoteIDs)
+
+        XCTAssertTrue(state.longStripComicIDs.contains(local.id))
+    }
+
     func testNothingHappensWithoutAShare() {
         var state = LibraryState()
         state.comics = [comic("a.cbz", source: localSource)]

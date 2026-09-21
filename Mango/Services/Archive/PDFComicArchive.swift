@@ -41,14 +41,45 @@ actor PDFComicArchive: ComicArchive {
     }
 
     func page(at index: Int, maxPixel: Int) async throws -> CGImage {
+        let page = try pdfPage(at: index)
+        let bounds = page.bounds(for: .mediaBox)
+        let longest = max(bounds.width, bounds.height)
+        let scale = longest > 0 ? min(CGFloat(min(maxPixel, ImageDecoder.maxPixelCap)) / longest, Self.maxUpscale) : 1
+        return try render(page, index: index, size: CGSize(width: bounds.width * scale, height: bounds.height * scale))
+    }
+
+    /// Rendered straight to size — going through `pageData` would mean an oversized bitmap and
+    /// a JPEG round trip first, which for a tall page is a lot of memory for nothing.
+    func page(at index: Int, sizing: PageSizing) async throws -> CGImage {
+        switch sizing {
+        case .fitScreen(let maxPixel):
+            return try await page(at: index, maxPixel: maxPixel)
+        case .fitWidth(let pixels):
+            let page = try pdfPage(at: index)
+            let bounds = page.bounds(for: .mediaBox)
+            let ceiling = CGSize(width: bounds.width * Self.maxUpscale, height: bounds.height * Self.maxUpscale)
+            return try render(page, index: index, size: ImageDecoder.widthFirstSize(of: ceiling, width: pixels))
+        }
+    }
+
+    func knownPageSize(at index: Int) async -> CGSize? {
+        guard let page = try? pdfPage(at: index) else { return nil }
+        return page.bounds(for: .mediaBox).size
+    }
+
+    /// Vector pages have real detail to give when drawn bigger — up to a point.
+    private static let maxUpscale: CGFloat = 4
+
+    private func pdfPage(at index: Int) throws -> PDFPage {
         guard index >= 0, index < pageCount, let page = document.page(at: index) else {
             throw ArchiveError.pageOutOfRange(index, count: pageCount)
         }
+        return page
+    }
+
+    private func render(_ page: PDFPage, index: Int, size: CGSize) throws -> CGImage {
         let sw = Stopwatch()
-        let bounds = page.bounds(for: .mediaBox)
-        let longest = max(bounds.width, bounds.height)
-        let scale = longest > 0 ? min(CGFloat(min(maxPixel, ImageDecoder.maxPixelCap)) / longest, 4) : 1
-        let target = CGSize(width: max(1, bounds.width * scale), height: max(1, bounds.height * scale))
+        let target = CGSize(width: max(1, size.width), height: max(1, size.height))
         guard let cgImage = page.thumbnail(of: target, for: .mediaBox).cgImage else {
             throw ArchiveError.undecodable(page: pageName(at: index))
         }

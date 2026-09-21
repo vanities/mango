@@ -204,7 +204,6 @@ final class NovelEngine {
         }
     }
 
-
     // MARK: Session timing
 
     /// Starts timing a session. Leaving the app commits what's accrued rather than just pausing:

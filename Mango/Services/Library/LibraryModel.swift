@@ -1,7 +1,6 @@
 import CoreGraphics
 import Foundation
 import Observation
-import WidgetKit
 import os
 
 /// The one source of truth the UI reads from.
@@ -190,12 +189,20 @@ final class LibraryModel {
         // Carry forward everything the user set, and keep page counts already discovered so a
         // rescan doesn't make every book claim it has no pages again.
         let previous = Dictionary(state.comics.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var lostCovers = 0
         state.comics = found.map { comic in
             var merged = comic
             if let old = previous[comic.id] {
                 merged.pageCount = old.pageCount
-                merged.coverID = old.coverID
                 merged.addedAt = old.addedAt
+                // Only while the thumbnail is still there. Covers live in Caches, which iOS empties
+                // when storage runs low; dropping the id sends the book back through the backfill,
+                // and gives one that failed before another try.
+                if let coverID = old.coverID, covers.exists(coverID) {
+                    merged.coverID = coverID
+                } else if old.coverID != nil {
+                    lostCovers += 1
+                }
             }
             // Precedence: filename guess < what the archive says about itself < what the user
             // typed. ComicInfo is only known once an archive has been opened, so it's kept in
@@ -210,6 +217,9 @@ final class LibraryModel {
                 merged.coverID = custom
             }
             return merged
+        }
+        if lostCovers > 0 {
+            Logger.cover.notice("[cover] \(lostCovers) cover(s) missing or never made — queued for the backfill")
         }
         adoptStateFromRemoteTwins()
         mergeFromCloud()
@@ -421,7 +431,7 @@ final class LibraryModel {
     private func markCoverAttempted(_ comic: Comic) {
         guard let index = state.comics.firstIndex(where: { $0.id == comic.id }) else { return }
         state.comics[index].coverID = CoverStore.coverID(for: comic)
-        Logger.cover.notice("[cover] no cover for \(comic.title, privacy: .public) — not retrying until rescan")
+        Logger.cover.notice("[cover] no cover for \(comic.title, privacy: .public) — retried on the next scan")
     }
 
     // MARK: Progress
@@ -481,8 +491,23 @@ final class LibraryModel {
         save()
     }
 
+    /// Your choice for this book, else continuous if it's a detected long strip, else the default.
     func mode(for comic: Comic) -> ReaderMode {
-        state.overrides[comic.id]?.mode ?? settings.defaultMode
+        if let chosen = state.overrides[comic.id]?.mode { return chosen }
+        if state.longStripComicIDs.contains(comic.id) { return .continuous }
+        return settings.defaultMode
+    }
+
+    /// Whether this book's layout has been decided by the user, as opposed to defaulted or detected.
+    func hasChosenMode(for comic: Comic) -> Bool {
+        state.overrides[comic.id]?.mode != nil
+    }
+
+    func markLongStrip(_ comic: Comic) {
+        guard !state.longStripComicIDs.contains(comic.id) else { return }
+        state.longStripComicIDs.insert(comic.id)
+        Logger.reader.info("[reader] \(comic.title, privacy: .public) is a long strip — continuous scroll")
+        save()
     }
 
     func setMode(_ mode: ReaderMode, for comic: Comic) {
@@ -567,35 +592,6 @@ final class LibraryModel {
         pushActivity()
     }
 
-    // MARK: Opening from outside the app
-
-    static let deepLinkScheme = "mango"
-
-    static func deepLink(for comic: Comic) -> URL? {
-        var components = URLComponents()
-        components.scheme = deepLinkScheme
-        components.host = "open"
-        components.path = "/" + comic.id
-        return components.url
-    }
-
-    /// `mango://open/<comic id>`, or `mango://continue` for whatever you were last reading.
-    func handleDeepLink(_ url: URL) {
-        guard url.scheme == Self.deepLinkScheme else { return }
-        Logger.ui.info("[deeplink] \(url.absoluteString, privacy: .public)")
-        switch url.host {
-        case "continue":
-            requestedComic = lastRead
-        case "open":
-            let id = String(url.path.dropFirst()).removingPercentEncoding ?? String(url.path.dropFirst())
-            requestedComic = visibleComics.first { $0.id == id }
-        default:
-            break
-        }
-    }
-
-    func comic(id: String) -> Comic? { visibleComics.first { $0.id == id } }
-
     // MARK: Reading activity
 
     /// Keeps the session log bounded: two years of detail is plenty for Stats, and the file
@@ -635,34 +631,6 @@ final class LibraryModel {
         let cutoff = DayKey.string(for: Date().addingTimeInterval(-Self.sessionRetention))
         all[settings.deviceID] = DayKey.rollUp(state.sessions).filter { $0.key >= cutoff }
         cloud.save(all, .activity)
-    }
-
-    // MARK: Widget
-
-    /// Hands the widget what you're reading. Called when a book closes rather than on every
-    /// page turn: the widget is what you look at when you're *not* in the app.
-    func publishWidgetSnapshot() {
-        guard let comic = lastRead else {
-            SharedReading.write(nil)
-            SharedReading.writeCover(nil)
-            WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
-            return
-        }
-        let progress = state.progress[comic.id]
-        SharedReading.write(ReadingSnapshot(
-            comicID: comic.id,
-            title: [comic.numberLabel, comic.subtitle].compactMap { $0 }.joined(separator: " · ").nilIfEmpty ?? comic.title,
-            series: comic.displaySeries,
-            positionLabel: progress.map { comic.isNovel ? $0.novelLabel : $0.label } ?? "Not started",
-            fraction: progress?.fraction ?? 0,
-            isNovel: comic.isNovel,
-            updatedAt: progress?.updatedAt ?? .now
-        ))
-        if let coverID = comic.coverID {
-            SharedReading.writeCover(try? Data(contentsOf: covers.url(for: coverID)))
-        }
-        WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
-        Logger.ui.info("[widget] published \(comic.title, privacy: .public)")
     }
 
     // MARK: Bookmarks, ratings, reading log
