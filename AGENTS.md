@@ -120,4 +120,24 @@ Xcode and uploads fine. The key is still correct for `archive` and for every `sc
 Note the API rejects `APP_IPHONE_69`: a 6.9" capture (1320×2868) goes in the `APP_IPHONE_67`
 slot, and 13" iPad (2752×2064) in `APP_IPAD_PRO_3GEN_129`.
 
+### Screenshots
+
+**Store screenshots are taken in demo mode, never from a real library** — someone else's
+copyrighted covers don't belong on a store listing and neither does Adam's shelf.
+
+```bash
+make demo SIMID=<udid>    # generates ./demo-library, installs it, launches in demo mode
+```
+
+Demo mode (`-MangoDemoMode YES`, or the toggle at the bottom of Settings) makes the scan skip
+every share and picked folder and read only the app's own folder. The user's sources stay
+configured, just unscanned. `scripts/make-demo-library.py` generates the content: invented
+series, generated pages, generated EPUBs, nothing anyone owns.
+
 **Never put the Sources screen in a store screenshot** — it prints the NAS host address.
+
+iPad landscape shots need two workarounds. `simctl io screenshot` captures the raw framebuffer
+without applying device rotation, so a landscape app still returns portrait dimensions —
+rotate the PNG afterwards with `sips -r 90`. And the simulator can't be rotated from here (no
+xcodebuildmcp preset, System Events keystrokes don't land), so temporarily narrow
+`UISupportedInterfaceOrientations~ipad` to landscape only, build, capture, then restore it.

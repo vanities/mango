@@ -150,6 +150,9 @@ final class LibraryModel {
         var found: [Comic] = []
         for index in state.sources.indices {
             let source = state.sources[index]
+            // Demo mode photographs a generated library: skip shares and picked folders so
+            // nobody's real shelf ends up in a screenshot. Their sources stay configured.
+            if settings.demoMode, source.kind != .appDocuments { continue }
             scanStatus = "Scanning \(source.displayName)…"
             var result = LibraryScanner.Result()
 
