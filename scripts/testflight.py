@@ -93,16 +93,19 @@ class ASC:
         return self.get(f"/v1/apps/{app_id}/betaGroups", {"fields[betaGroups]": "name,isInternalGroup,hasAccessToAllBuilds,publicLinkEnabled,publicLink"})["data"]
 
 
-BETA_DESCRIPTION = """Mango reads the manga and comics you already have \u2014 in Files, in a folder you \
-picked, or straight off your NAS over SMB \u2014 and never copies, moves or renames any of them.
+BETA_DESCRIPTION = """Mango reads the manga, comics and light novels you already have \u2014 in Files, in a \
+folder you picked, or straight off your NAS over SMB \u2014 and never copies, moves or renames any of them.
 
 What to try:
-\u2022 Drop some .cbz files into Mango's folder in the Files app, or add a folder in Sources
+\u2022 Drop some .cbz or .epub files into Mango's folder in the Files app, or add a folder in Sources
 \u2022 Add a NAS share (Sources \u2192 Add a NAS share). A 300 MB volume should open in well under a
   second: Mango reads the archive index off the end of the file and then one page at a time
 \u2022 Turn the device to landscape \u2014 pages pair into two-page spreads like a printed book, and a
   real double-page spread takes the whole screen
 \u2022 Reading is right-to-left by default; the arrow in the top bar flips it for western comics
+\u2022 Light novels land under the Novels tab, with chapters and text size in the top bar
+\u2022 Download a volume from the NAS: it should replace the remote copy in the list rather than
+  appearing twice, and keep the page you were on
 \u2022 Check that it reopens on the page you left off on
 
 Known gaps: no .cbr (RAR's only decoder is non-free and can't ship in a GPL-3 app) \u2014 convert

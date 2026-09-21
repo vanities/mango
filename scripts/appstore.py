@@ -31,9 +31,9 @@ LOCALE = "en-US"
 SITE = "https://am2.biz/mango"
 
 COPY = {
-    "subtitle": "Your comics, your files",
-    "promotionalText": "Reads the manga you already have, right where it lives \u2014 including straight off your NAS. No accounts, no ads, no tip jar.",
-    "description": """Mango is a manga and comic reader for people who already have a library.
+    "subtitle": "Manga, comics, novels",
+    "promotionalText": "Reads the manga, comics and light novels you already have, right where they live \u2014 including straight off your NAS. No accounts, no ads, no tip jar.",
+    "description": """Mango is a manga, comic and light novel reader for people who already have a library.
 
 READS YOUR FILES WHERE THEY ARE
 Point Mango at a folder in Files, iCloud Drive, or another app and it reads from there. Nothing is copied, nothing is moved, nothing is renamed, nothing is uploaded. Delete the app and your library is exactly where you left it.
@@ -43,6 +43,9 @@ Add an SMB share and the whole thing appears on your shelf. A comic archive keep
 
 ORGANIZED FROM THE FILENAMES
 Series, volumes and chapters are worked out from the names scanlation groups and digital releases actually use \u2014 v01, Vol. 3, c012.5, #45, bracket tags and all. Volumes land on one shelf in reading order, and Mango knows which one you are up to.
+
+LIGHT NOVELS TOO
+An EPUB is an archive with an index, the same as a comic archive, so the same machinery reads it. Point Mango at your .epub files and they appear under a Novels tab with chapter navigation, adjustable text size, and a position that survives changing it. Chapters and their illustrations are pulled out one at a time, so a light novel reads off your NAS exactly like a comic does instead of downloading the whole book first. Manga and light novels stay on separate shelves even when they are the same series.
 
 A READER BUILT FOR MANGA
 \u2022 Right to left by default, with per-series and per-book overrides for western comics
@@ -54,8 +57,8 @@ A READER BUILT FOR MANGA
 NO TIP JAR
 No accounts, no analytics, no ads, no donation screens, no catalog trying to sell you anything. Mango is free and open source (GPL-3.0). Read the code at github.com/vanities/mango.
 
-Supported formats: CBZ, PDF, and folders of page images (JPEG, PNG, WebP, HEIC, GIF, TIFF). CBR is not supported \u2014 the only RAR decoder is non-free and cannot ship in a GPL-3 app.""",
-    "keywords": "manga,comic,cbz,reader,nas,smb,manhwa,webtoon,offline,library,rtl,volumes,ipad",
+Supported formats: CBZ, EPUB, PDF, and folders of page images (JPEG, PNG, WebP, HEIC, GIF, TIFF). CBR is not supported \u2014 the only RAR decoder is non-free and cannot ship in a GPL-3 app.""",
+    "keywords": "manga,comic,cbz,epub,light novel,reader,nas,smb,manhwa,webtoon,offline,rtl,ipad",
     "whatsNew": "First release.",
     "copyright": "2026 AM2 LLC",
     "supportUrl": f"{SITE}/support",
