@@ -5,6 +5,9 @@ import Observation
 /// so nothing reaches for a singleton and tests can build their own.
 @MainActor
 final class AppEnvironment {
+    /// App Intents and widget deep links run outside the SwiftUI tree and need a way in.
+    static let shared = AppEnvironment()
+
     let settings: AppSettings
     let library: LibraryModel
     let transfers: TransferManager

@@ -98,6 +98,7 @@ final class NovelEngine {
         saveTask?.cancel()
         hideTask?.cancel()
         persist()
+        library.publishWidgetSnapshot()
         Logger.reader.info("[novel] closed \(self.comic.title, privacy: .public) at chapter \(self.chapterIndex + 1)")
     }
 

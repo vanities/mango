@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import Observation
+import WidgetKit
 import os
 
 /// The one source of truth the UI reads from.
@@ -13,6 +14,8 @@ final class LibraryModel {
     private(set) var state: LibraryState
     private(set) var series: [Series] = []
     private(set) var isScanning = false
+    /// Set by Siri, Shortcuts or a widget tap; the library view opens it and clears it.
+    var requestedComic: Comic?
     private(set) var scanStatus: String?
     var lastError: String?
 
@@ -561,6 +564,63 @@ final class LibraryModel {
         cloud.save(CollectionSync.bookmarksSnapshot(local: state.bookmarks, comics: state.comics, existingCloud: marks), .bookmarks)
         let log = cloud.load([ReadingLogEntry].self, .readingLog) ?? []
         cloud.save(CollectionSync.mergedLog(local: state.readingLog, cloud: log), .readingLog)
+    }
+
+    // MARK: Opening from outside the app
+
+    static let deepLinkScheme = "mango"
+
+    static func deepLink(for comic: Comic) -> URL? {
+        var components = URLComponents()
+        components.scheme = deepLinkScheme
+        components.host = "open"
+        components.path = "/" + comic.id
+        return components.url
+    }
+
+    /// `mango://open/<comic id>`, or `mango://continue` for whatever you were last reading.
+    func handleDeepLink(_ url: URL) {
+        guard url.scheme == Self.deepLinkScheme else { return }
+        Logger.ui.info("[deeplink] \(url.absoluteString, privacy: .public)")
+        switch url.host {
+        case "continue":
+            requestedComic = lastRead
+        case "open":
+            let id = String(url.path.dropFirst()).removingPercentEncoding ?? String(url.path.dropFirst())
+            requestedComic = visibleComics.first { $0.id == id }
+        default:
+            break
+        }
+    }
+
+    func comic(id: String) -> Comic? { visibleComics.first { $0.id == id } }
+
+    // MARK: Widget
+
+    /// Hands the widget what you're reading. Called when a book closes rather than on every
+    /// page turn: the widget is what you look at when you're *not* in the app.
+    func publishWidgetSnapshot() {
+        guard let comic = lastRead else {
+            SharedReading.write(nil)
+            SharedReading.writeCover(nil)
+            WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
+            return
+        }
+        let progress = state.progress[comic.id]
+        SharedReading.write(ReadingSnapshot(
+            comicID: comic.id,
+            title: [comic.numberLabel, comic.subtitle].compactMap { $0 }.joined(separator: " · ").nilIfEmpty ?? comic.title,
+            series: comic.displaySeries,
+            positionLabel: progress.map { comic.isNovel ? $0.novelLabel : $0.label } ?? "Not started",
+            fraction: progress?.fraction ?? 0,
+            isNovel: comic.isNovel,
+            updatedAt: progress?.updatedAt ?? .now
+        ))
+        if let coverID = comic.coverID {
+            SharedReading.writeCover(try? Data(contentsOf: covers.url(for: coverID)))
+        }
+        WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
+        Logger.ui.info("[widget] published \(comic.title, privacy: .public)")
     }
 
     // MARK: Bookmarks, ratings, reading log
