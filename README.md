@@ -1,12 +1,12 @@
 # Mango
 
-An open-source manga and comic reader for iPhone and iPad.
+An open-source manga, comic and light novel reader for iPhone and iPad.
 
 **[Join the TestFlight beta →](https://testflight.apple.com/join/nEjBWtgp)**
 
-It reads the comics you already have — in the Files app, in a folder you picked, or straight off
-your NAS — and it never copies, moves, or renames a single one of them. No account, no catalog,
-no tracking, no tip jar.
+It reads the manga, comics and light novels you already have — in the Files app, in a folder you
+picked, or straight off your NAS — and it never copies, moves, or renames a single one of them.
+No account, no catalog, no tracking, no tip jar.
 
 ## Why
 
@@ -21,7 +21,7 @@ download queue with a progress bar in front of it — it just opens.
 
 ## What it does
 
-- **Reads `.cbz`, `.pdf`, and folders of loose page images.** Series, volumes and chapters are
+- **Reads `.cbz`, `.pdf`, `.epub`, and folders of loose page images.** Series, volumes and chapters are
   worked out from the filenames scanlation groups and digital releases actually use.
 - **Reads off a NAS over SMB**, page by page, without downloading the volume first.
 - **Right-to-left by default**, because it's a manga reader — per-comic and per-series overrides

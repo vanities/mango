@@ -2,9 +2,9 @@
 
 > `CLAUDE.md` is a symlink to this file.
 
-Mango is an open-source iOS/iPadOS manga and comic reader (SwiftUI, iOS 26; the only dependency
-is AMSMB2 for SMB). Its whole reason to exist: read the comics you already have, where they
-are — including straight off a NAS, without downloading a 300 MB volume to see page one.
+Mango is an open-source iOS/iPadOS manga, comic and light novel reader (SwiftUI, iOS 26; the only dependency
+is AMSMB2 for SMB). Its whole reason to exist: read the manga, comics and light novels you
+already have, where they are — including straight off a NAS, without downloading a 300 MB volume to see page one.
 
 It is Earmark's sibling (`../earmark`, the audiobook player) and deliberately shares its
 architecture: derived library, JSON state keyed by stable ids, SMB via AMSMB2, xcodegen.
@@ -103,6 +103,21 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 
 ## Releasing
 
-`make archive && make upload`. `ExportOptions.plist` = automatic signing,
-`manageAppVersionAndBuildNumber`, team 8Q3RG3ULSU. The App Store Connect app record must exist
-before the first upload (`missingApp` otherwise).
+**Pushing to `main` is the release path.** An Xcode Cloud workflow builds it and distributes to
+both the internal and external TestFlight groups automatically, so don't also upload by hand —
+that just makes a duplicate build number.
+
+Manual builds are for when Xcode Cloud isn't an option: `make archive && make upload`.
+
+`make upload` deliberately does **not** pass the App Store Connect API key. With it, export uses
+cloud signing, which that key isn't permitted for ("Cloud signing permission error / No profiles
+for com.vanities.mango were found"), and there's no local Apple Distribution certificate to fall
+back on — only Apple Development. Without the key, xcodebuild uses the Apple ID signed into
+Xcode and uploads fine. The key is still correct for `archive` and for every `scripts/*.py` call.
+
+`scripts/appstore.py` manages the listing (`setup`, `screenshots --replace --display-type`,
+`review`, `submit`) and `scripts/testflight.py` the beta side (`status`, `beta-info`, `groups`).
+Note the API rejects `APP_IPHONE_69`: a 6.9" capture (1320×2868) goes in the `APP_IPHONE_67`
+slot, and 13" iPad (2752×2064) in `APP_IPAD_PRO_3GEN_129`.
+
+**Never put the Sources screen in a store screenshot** — it prints the NAS host address.
