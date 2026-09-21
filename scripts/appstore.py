@@ -209,12 +209,11 @@ def cmd_setup(asc: Store, phone: str | None) -> None:
     print("and the review contact phone number under Version → App Review Information.")
 
 
-def cmd_screenshots(asc: Store, directory: Path) -> None:
+def cmd_screenshots(asc: Store, directory: Path, display_type: str) -> None:
     app = asc.app() or sys.exit("no app record")
     version = editable_version(asc, app["id"], create=False) or sys.exit("no editable version; run setup first")
     loc = version_localization(asc, version["id"])
     sets = asc.get(f"/v1/appStoreVersionLocalizations/{loc['id']}/appScreenshotSets", {"fields[appScreenshotSets]": "screenshotDisplayType"})["data"]
-    display_type = "APP_IPHONE_67"
     shot_set = next((s for s in sets if s["attributes"]["screenshotDisplayType"] == display_type), None)
     if not shot_set:
         shot_set = asc.post("/v1/appScreenshotSets", {"data": {"type": "appScreenshotSets", "attributes": {"screenshotDisplayType": display_type}, "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"]}}}}})["data"]
@@ -222,6 +221,9 @@ def cmd_screenshots(asc: Store, directory: Path) -> None:
     existing = asc.get(f"/v1/appScreenshotSets/{shot_set['id']}/appScreenshots", {"fields[appScreenshots]": "fileName,assetDeliveryState", "limit": 20})["data"]
     existing_names = {e["attributes"]["fileName"] for e in existing}
     files = sorted(p for p in directory.iterdir() if p.suffix.lower() == ".png")
+    if not files:
+        sys.exit(f"no .png files in {directory}")
+    print(f"{display_type}: uploading {len(files)} file(s) from {directory}")
     for path in files[:10]:
         if path.name in existing_names:
             print(f"  = {path.name} already uploaded")
@@ -316,6 +318,8 @@ def main() -> None:
     setup = sub.add_parser("setup"); setup.add_argument("--phone", help="App Review contact phone, e.g. '+1 555 555 5555'")
     review = sub.add_parser("review"); review.add_argument("--phone", required=True)
     shots = sub.add_parser("screenshots"); shots.add_argument("directory")
+    shots.add_argument("--display-type", default="APP_IPHONE_67",
+                       help="APP_IPHONE_67 (also takes 6.9in 1320x2868) / APP_IPAD_PRO_3GEN_129 (13in) / APP_IPAD_PRO_3GEN_11")
     attach = sub.add_parser("attach-build"); attach.add_argument("build", nargs="?")
     sub.add_parser("status")
     submit = sub.add_parser("submit"); submit.add_argument("--dry-run", action="store_true")
@@ -328,7 +332,7 @@ def main() -> None:
             app = asc.app() or sys.exit("no app record")
             version = editable_version(asc, app["id"], create=False) or sys.exit("no editable version")
             set_review_details(asc, version["id"], args.phone)
-        case "screenshots": cmd_screenshots(asc, Path(args.directory))
+        case "screenshots": cmd_screenshots(asc, Path(args.directory), args.display_type)
         case "attach-build": cmd_attach_build(asc, args.build)
         case "status": cmd_status(asc)
         case "submit": cmd_submit(asc, args.dry_run)
