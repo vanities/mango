@@ -7,25 +7,33 @@ import os
 /// Cover thumbnails, on disk in Caches. Alongside the library JSON, these are the only files
 /// Mango ever writes about a comic — the comics themselves are never copied or touched.
 ///
-/// Caches because the system may reclaim them; they're always rebuildable from page one.
+/// Caches because the system may reclaim them; they're always rebuildable from page one. Covers
+/// the user picked (Find Cover, Photos) aren't — they live in Application Support instead, told
+/// apart by their id's `custom-` prefix, so every caller keeps passing one kind of id.
 struct CoverStore: Sendable {
     let directory: URL
+    let customDirectory: URL
     /// Big enough for a grid cell on a 13" iPad at 3x, small enough that a 500-volume library
     /// isn't a gigabyte of thumbnails.
     static let maxPixel = 600
+    /// A picked cover is also shown large in the series header, so it keeps more detail.
+    static let customMaxPixel = 1200
+    static let customPrefix = "custom-"
 
-    init(directory: URL? = nil) {
-        if let directory {
-            self.directory = directory
-        } else {
-            let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            self.directory = base.appending(path: "Covers", directoryHint: .isDirectory)
-        }
-        try? FileManager.default.createDirectory(at: self.directory, withIntermediateDirectories: true)
+    init(directory: URL? = nil, customDirectory: URL? = nil) {
+        let fileManager = FileManager.default
+        self.directory = directory ?? fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appending(path: "Covers", directoryHint: .isDirectory)
+        self.customDirectory = customDirectory ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appending(path: "Mango/Covers", directoryHint: .isDirectory)
+        try? fileManager.createDirectory(at: self.directory, withIntermediateDirectories: true)
+        try? fileManager.createDirectory(at: self.customDirectory, withIntermediateDirectories: true)
     }
 
+    static func isCustom(_ coverID: String) -> Bool { coverID.hasPrefix(customPrefix) }
+
     func url(for coverID: String) -> URL {
-        directory.appending(path: "\(coverID).jpg")
+        (Self.isCustom(coverID) ? customDirectory : directory).appending(path: "\(coverID).jpg")
     }
 
     func exists(_ coverID: String) -> Bool {
@@ -33,10 +41,62 @@ struct CoverStore: Sendable {
     }
 
     /// A stable id for a comic's cover — hashed so it's filesystem-safe whatever the path holds.
+    /// Stable across launches: this used `Hasher`, which is seeded randomly per process, so every
+    /// launch expected a different file, re-extracted the cover on open (a page read, over the
+    /// NAS) and orphaned the last one.
     static func coverID(for comic: Comic) -> String {
-        var hasher = Hasher()
-        hasher.combine(comic.id)
-        return String(format: "%016llx", UInt64(bitPattern: Int64(hasher.finalize())))
+        stableHex(comic.id)
+    }
+
+    /// Deletes cached thumbnails no comic points at any more — the leftovers of the unstable ids
+    /// above, and of comics that left the library. Picked covers are never touched.
+    @discardableResult
+    func removeUnreferenced(keeping referenced: Set<String>) -> Int {
+        let sw = Stopwatch()
+        guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else {
+            return 0
+        }
+        var removed = 0
+        for file in files where file.pathExtension == "jpg" {
+            let id = file.deletingPathExtension().lastPathComponent
+            guard !referenced.contains(id), !Self.isCustom(id) else { continue }
+            if (try? FileManager.default.removeItem(at: file)) != nil { removed += 1 }
+        }
+        if removed > 0 {
+            Logger.cover.info("[cover] removed \(removed) unreferenced thumbnail(s) of \(files.count) in \(sw.ms, format: .fixed(precision: 1))ms")
+        }
+        return removed
+    }
+
+    /// An id for a cover the user picked. It changes with the picture (`origin` is the URL it
+    /// came from, or a fingerprint of a photo), so a view showing the old cover reloads.
+    static func customID(for comic: Comic, origin: String) -> String {
+        customPrefix + stableHex(comic.id + "|" + origin)
+    }
+
+    /// FNV-1a — unlike `Hasher`, the same across launches, which a filename has to be.
+    static func stableHex(_ text: String) -> String {
+        stableHex(bytes: Data(text.utf8))
+    }
+
+    static func stableHex(bytes: Data) -> String {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in bytes {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x0000_0100_0000_01b3
+        }
+        return String(format: "%016llx", hash)
+    }
+
+    /// Files a picked image: decoded (so a file that isn't a picture is refused here, not in the
+    /// grid), shrunk to `customMaxPixel`, and stored as JPEG.
+    @discardableResult
+    func storeCustom(imageData: Data, as coverID: String) -> Bool {
+        guard Self.isCustom(coverID), let image = ImageDecoder.downsample(imageData, maxPixel: Self.customMaxPixel) else {
+            Logger.cover.error("[cover] picked image unusable for \(coverID, privacy: .public) (\(imageData.count)B)")
+            return false
+        }
+        return store(image, as: coverID)
     }
 
     @discardableResult

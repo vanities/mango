@@ -12,6 +12,7 @@ struct EditComicView: View {
     @State private var volume = ""
     @State private var chapter = ""
     @State private var author = ""
+    @State private var findingCover = false
 
     var body: some View {
         NavigationStack {
@@ -31,6 +32,14 @@ struct EditComicView: View {
                     }
                     LabeledContent("Author") { TextField("Author", text: $author).multilineTextAlignment(.trailing) }
                 }
+                Section("Cover") {
+                    Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { findingCover = true }
+                    if library.hasCustomCover(comic) {
+                        Button("Use Original Cover", systemImage: "arrow.uturn.backward") {
+                            library.useOriginalCover(for: comic)
+                        }
+                    }
+                }
                 Section {
                     LabeledContent("File", value: comic.relativePath)
                         .font(.caption)
@@ -46,6 +55,7 @@ struct EditComicView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Save") { save() } }
             }
             .onAppear(perform: load)
+            .sheet(isPresented: $findingCover) { CoverPickerView(comic: comic, forSeries: false) }
         }
     }
 

@@ -9,8 +9,11 @@ struct SeriesDetailView: View {
     @State private var readingComic: Comic?
     @State private var editing: Comic?
     @State private var summaryExpanded = false
+    /// Find Cover: for the shelf (true) or for one volume (false).
+    @State private var coverTarget: (comic: Comic, forSeries: Bool)?
+    @State private var lookingUp = false
 
-    private var shelf: Series { library.series.first(where: { $0.id == series.id }) ?? series }
+    private var shelf: Series { library.shelf(id: series.id) ?? series }
 
     var body: some View {
         List {
@@ -52,6 +55,16 @@ struct SeriesDetailView: View {
                         .tint(.orange)
                     }
                     .contextMenu {
+                        // Also a swipe action, but a swipe is invisible until you know it's there.
+                        Button("Edit…", systemImage: "pencil") { editing = comic }
+                        Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") {
+                            coverTarget = (comic, false)
+                        }
+                        if library.hasCustomCover(comic) {
+                            Button("Use Original Cover", systemImage: "arrow.uturn.backward") {
+                                library.useOriginalCover(for: comic)
+                            }
+                        }
                         if comic.isRemote(in: library) {
                             Button("Download to device", systemImage: "arrow.down.circle") {
                                 transfers.download(comic)
@@ -83,8 +96,29 @@ struct SeriesDetailView: View {
         }
         .navigationTitle(shelf.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    if let first = shelf.comics.first {
+                        Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { coverTarget = (first, true) }
+                        if library.hasCustomCover(first) {
+                            Button("Use Original Cover", systemImage: "arrow.uturn.backward") {
+                                library.useOriginalCover(for: first)
+                            }
+                        }
+                    }
+                    Button("Look Up Series…", systemImage: "text.magnifyingglass") { lookingUp = true }
+                } label: {
+                    Label("Series", systemImage: "ellipsis.circle")
+                }
+            }
+        }
         .fullScreenCover(item: $readingComic) { ReaderRouter(comic: $0) }
         .sheet(item: $editing) { EditComicView(comic: $0) }
+        .sheet(isPresented: Binding(get: { coverTarget != nil }, set: { if !$0 { coverTarget = nil } })) {
+            if let target = coverTarget { CoverPickerView(comic: target.comic, forSeries: target.forSeries) }
+        }
+        .sheet(isPresented: $lookingUp) { SeriesLookupView(series: shelf) }
     }
 
     private var header: some View {

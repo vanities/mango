@@ -96,4 +96,18 @@ final class SeriesGrouperTests: XCTestCase {
         let progress = [one.id: ReadingProgress(page: 40, pageCount: 40, finished: true)]
         XCTAssertNil(SeriesGrouper.nextUp(in: shelf, progress: progress))
     }
+
+    /// "201 volumes" for a webtoon of 201 chapters was simply wrong.
+    func testTheShelfSubtitleCountsWhatItHolds() {
+        func comic(_ volume: Double?, _ chapter: Double?) -> Comic {
+            Comic(id: UUID().uuidString, sourceID: UUID(), relativePath: "x", kind: .archive, title: "x", series: "S",
+                  volume: volume, chapter: chapter, author: nil, year: nil, subtitle: nil, pageCount: nil,
+                  totalBytes: 1, addedAt: Date(), coverID: nil)
+        }
+        XCTAssertEqual(Series(id: "a", name: "S", comics: [comic(1, nil), comic(2, nil)]).subtitle, "2 volumes")
+        XCTAssertEqual(Series(id: "b", name: "S", comics: [comic(nil, 1), comic(nil, 2), comic(nil, 3)]).subtitle, "3 chapters")
+        XCTAssertEqual(Series(id: "c", name: "S", comics: [comic(1, nil), comic(nil, 199)]).subtitle, "1 volume, 1 chapter")
+        XCTAssertEqual(Series(id: "d", name: "S", comics: [comic(nil, nil)]).subtitle, "1 book")
+        XCTAssertEqual(Series(id: "e", name: "S", comics: [comic(1, 4)]).subtitle, "1 volume", "a volume that names its chapter is a volume")
+    }
 }

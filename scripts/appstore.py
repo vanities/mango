@@ -103,7 +103,7 @@ To test: on the device, open the Files app and copy any .cbz or .pdf file (or a 
 
 Light novels: copy an .epub in instead and it appears under the Novels tab, with chapter navigation and text size controls.
 
-The NAS feature (Sources > Add a NAS share) connects to the reviewer's own SMB server on their local network. It is entirely optional and can be skipped — everything above works with local files alone. The app never contacts any server operated by us, and collects no data."""
+The NAS feature (Sources > Add a NAS share) connects to the reviewer's own SMB server on their local network. It is entirely optional and can be skipped — everything above works with local files alone. The app never contacts any server operated by us, and collects no data. The optional Find Cover and Look Up Series buttons (on a series or volume) query MangaDex, AniList and Apple's iTunes Search API with the series name, only when tapped, to show cover art and titles to choose from."""
 
 
 class Store(tf.ASC):

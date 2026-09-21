@@ -13,7 +13,12 @@ architecture: derived library, JSON state keyed by stable ids, SMB via AMSMB2, x
 
 - **Never copy, move, or rename the user's comics.** Sources are security-scoped bookmarks
   (`BookmarkStore`) or the app's own Documents folder. The only things Mango writes are cover
-  thumbnails in Caches (`CoverStore`) and JSON in Application Support.
+  thumbnails in Caches (`CoverStore`), covers the user picked in Application Support, and JSON
+  in Application Support.
+- **Nothing leaves the device unless the user asks.** The one exception to "talks only to your
+  NAS" is Find Cover / Look Up Series, which send the series name (and volume number) to
+  MangaDex, AniList and Apple's iTunes Search API when tapped — never in the background. The
+  privacy page (am2.biz/mango/privacy) says exactly this; change both together.
 - **No donation / tip / rating prompts. Ever.**
 - **Never read a whole archive to show one page.** `ZipReader` works over `RandomAccessReader`,
   so opening a `.cbz` costs a ~4 KB tail read plus the central directory whatever the file
@@ -103,6 +108,30 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   layout switch can never be handed a page decoded for the other layout, whatever order the
   requests arrive in.
 - Memory warnings purge everything but the visible page.
+
+## Covers and names from online
+
+- **Find Cover** (`CoverSearch`, `CoverPickerView`): MangaDex first — it has a cover for *each
+  volume*, ranked Japanese original, then English; AniList for the series art; Apple Books for
+  retail covers (filtered to comics by genre, since "Berserk" also finds paranormal romance).
+  Results must contain every searched word in one of their titles (`isRelevant`) — catalogs
+  answer loosely ("Power Leveling" for "Solo Leveling").
+- **Look Up Series** (`SeriesLookup`, `SeriesLookupView`): AniList, retried without edition
+  words ("Goodnight Punpun Omnibus" finds nothing, "Goodnight Punpun" does); the user picks the
+  match; `LibraryState.renameSeries` writes an override on every volume *and* carries the shelf's
+  direction and layout to the new key, and `LibraryModel.seriesRedirects` lets an open screen
+  follow the shelf (its id is its name).
+- **Apple Intelligence was tried and rejected** (2026-09-21, the on-device Foundation Models,
+  iOS 26). On real names it called "Part 5 - Vento Aureo" *One Piece* — twice, the second time
+  when told to use only what the file name says — read "Solo Leveling 180 - Epilogue 01" as
+  volume 180, and "c00-02 (v01)" as chapter 2. `NameParser` gets all of those right. Don't
+  add it back for naming without a grounding step that would make it redundant.
+- Picked covers live in `CoverStore.customDirectory` (Application Support), told apart by a
+  `custom-` id prefix; they can't be rebuilt from page one, so they must not be in Caches.
+- **Cover ids must be stable across launches** — `CoverStore.stableHex` (FNV-1a), never
+  `Hasher`, which is seeded per process: with it, every launch expected a different file,
+  re-extracted covers on open and orphaned the old ones. A scan that reached every source
+  (and isn't demo mode) sweeps unreferenced thumbnails.
 
 ### Long strips (webtoons, manhwa)
 
