@@ -9,10 +9,12 @@ import Foundation
 enum LibraryDedupe {
     /// Drops hidden comics, and drops a remote comic once a local copy of the same file exists.
     /// The local one wins: it opens instantly and works off the network.
-    static func visible(comics: [Comic], remoteSourceIDs: Set<UUID>, hidden: Set<String>) -> [Comic] {
+    static func visible(comics: [Comic], remoteSourceIDs: Set<UUID>, hidden: Set<String>,
+                        hiddenSeries: Set<String> = []) -> [Comic] {
         let localKeys = Set(comics.filter { !remoteSourceIDs.contains($0.sourceID) }.map(\.syncKey))
         return comics.filter { comic in
             guard !hidden.contains(comic.id) else { return false }
+            guard hiddenSeries.isEmpty || !hiddenSeries.contains(SeriesGrouper.key(for: comic)) else { return false }
             guard remoteSourceIDs.contains(comic.sourceID) else { return true }
             return !localKeys.contains(comic.syncKey)
         }

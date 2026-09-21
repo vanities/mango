@@ -12,6 +12,9 @@ struct LibraryState: Codable, Sendable {
     var comics: [Comic] = []
     var progress: [String: ReadingProgress] = [:]
     var hiddenComicIDs: Set<String> = []
+    /// Whole shelves the user hid, by shelf id (`SeriesGrouper.key`) — so a volume that arrives
+    /// later is hidden too.
+    var hiddenSeries: Set<String> = []
     var lastComicID: String?
     var nasServers: [NASServer] = []
     /// Comic ID → cover ID chosen by the user. Survives rescans.
@@ -89,6 +92,7 @@ struct LibraryState: Codable, Sendable {
         let sessionIDs = Set(sessions.map(\.id))
         sessions.append(contentsOf: old.sessions.filter { !sessionIDs.contains($0.id) })
         hiddenComicIDs.formUnion(old.hiddenComicIDs)
+        hiddenSeries.formUnion(old.hiddenSeries)
         longStripComicIDs.formUnion(old.longStripComicIDs)
         for (key, value) in old.seriesMode where seriesMode[key] == nil { seriesMode[key] = value }
         if lastComicID == nil { lastComicID = old.lastComicID }
@@ -97,7 +101,7 @@ struct LibraryState: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
              customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog, sessions,
-             longStripComicIDs, seriesMode
+             longStripComicIDs, seriesMode, hiddenSeries
     }
 
     init(from decoder: any Decoder) throws {
@@ -119,6 +123,7 @@ struct LibraryState: Codable, Sendable {
         sessions = try c.decodeIfPresent([ReadingSession].self, forKey: .sessions) ?? []
         longStripComicIDs = try c.decodeIfPresent(Set<String>.self, forKey: .longStripComicIDs) ?? []
         seriesMode = try c.decodeIfPresent([String: ReaderMode].self, forKey: .seriesMode) ?? [:]
+        hiddenSeries = try c.decodeIfPresent(Set<String>.self, forKey: .hiddenSeries) ?? []
     }
 }
 

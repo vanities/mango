@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(LibraryModel.self) private var library
+    @Environment(AppLock.self) private var lock
 
     var body: some View {
         @Bindable var settings = settings
@@ -46,6 +47,32 @@ struct SettingsView: View {
                     Text("Behaviour")
                 } footer: {
                     Text("Loading more pages ahead makes turns instant and uses more memory. Over a network, three is about right.")
+                }
+
+                Section {
+                    Picker("Lock with Face ID", selection: Binding(
+                        get: { settings.lockMode },
+                        set: { mode in
+                            Task {
+                                // Asks first; the picker snaps back if Face ID says no.
+                                if await lock.setMode(mode) { library.publishWidgetSnapshot() }
+                            }
+                        }
+                    )) {
+                        ForEach(LockMode.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .disabled(!AppLock.canLock)
+                    NavigationLink {
+                        HiddenItemsView()
+                    } label: {
+                        LabeledContent("Hidden", value: "\(library.state.hiddenSeries.count + library.state.hiddenComicIDs.count)")
+                    }
+                } header: {
+                    Text("Privacy")
+                } footer: {
+                    Text(AppLock.canLock
+                         ? "With the lock on, Mango asks for Face ID when it opens, covers itself in the app switcher, and the widget stops showing what you're reading."
+                         : "Set a passcode for this device to use the lock.")
                 }
 
                 Section {

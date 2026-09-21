@@ -6,6 +6,7 @@ struct SeriesDetailView: View {
 
     @Environment(LibraryModel.self) private var library
     @Environment(TransferManager.self) private var transfers
+    @Environment(\.dismiss) private var dismiss
     @State private var readingComic: Comic?
     @State private var editing: Comic?
     @State private var summaryExpanded = false
@@ -108,6 +109,11 @@ struct SeriesDetailView: View {
                         }
                     }
                     Button("Look Up Series…", systemImage: "text.magnifyingglass") { lookingUp = true }
+                    Divider()
+                    Button("Hide Series", systemImage: "eye.slash", role: .destructive) {
+                        library.setSeriesHidden(true, shelf)
+                        dismiss()
+                    }
                 } label: {
                     Label("Series", systemImage: "ellipsis.circle")
                 }
