@@ -564,6 +564,7 @@ final class LibraryModel {
         cloud.save(CollectionSync.bookmarksSnapshot(local: state.bookmarks, comics: state.comics, existingCloud: marks), .bookmarks)
         let log = cloud.load([ReadingLogEntry].self, .readingLog) ?? []
         cloud.save(CollectionSync.mergedLog(local: state.readingLog, cloud: log), .readingLog)
+        pushActivity()
     }
 
     // MARK: Opening from outside the app
@@ -594,6 +595,47 @@ final class LibraryModel {
     }
 
     func comic(id: String) -> Comic? { visibleComics.first { $0.id == id } }
+
+    // MARK: Reading activity
+
+    /// Keeps the session log bounded: two years of detail is plenty for Stats, and the file
+    /// is loaded on every launch.
+    private static let sessionRetention: TimeInterval = 730 * 86_400
+
+    func recordSession(_ session: ReadingSession) {
+        state.sessions.append(session)
+        let cutoff = Date().addingTimeInterval(-Self.sessionRetention)
+        state.sessions.removeAll { $0.startedAt < cutoff }
+        Logger.library.info("[activity] \(Durations.short(session.activeSeconds), privacy: .public) in \(session.seriesName, privacy: .public), \(session.pagesTurned) pages")
+        save()
+    }
+
+    /// Day totals from every device: this one's live sessions plus the other devices' slots.
+    var allDayActivity: [String: DayActivity] {
+        var days = DayKey.rollUp(state.sessions)
+        let others = cloud.load([String: [String: DayActivity]].self, .activity) ?? [:]
+        for (device, deviceDays) in others where device != settings.deviceID {
+            for (key, value) in deviceDays {
+                var day = days[key] ?? DayActivity()
+                day.seconds += value.seconds
+                day.pages += value.pages
+                day.sessions += value.sessions
+                days[key] = day
+            }
+        }
+        return days
+    }
+
+    var activityStats: ActivityStats {
+        ActivityStats.build(days: allDayActivity, sessions: state.sessions)
+    }
+
+    private func pushActivity() {
+        var all = cloud.load([String: [String: DayActivity]].self, .activity) ?? [:]
+        let cutoff = DayKey.string(for: Date().addingTimeInterval(-Self.sessionRetention))
+        all[settings.deviceID] = DayKey.rollUp(state.sessions).filter { $0.key >= cutoff }
+        cloud.save(all, .activity)
+    }
 
     // MARK: Widget
 
