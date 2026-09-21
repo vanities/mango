@@ -11,6 +11,7 @@ final class AppEnvironment {
     let settings: AppSettings
     let library: LibraryModel
     let transfers: TransferManager
+    let lock: AppLock
 
     init() {
         let settings = AppSettings()
@@ -18,5 +19,6 @@ final class AppEnvironment {
         self.settings = settings
         self.library = library
         self.transfers = TransferManager(library: library)
+        self.lock = AppLock(settings: settings)
     }
 }

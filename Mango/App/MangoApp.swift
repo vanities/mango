@@ -11,6 +11,7 @@ struct MangoApp: App {
                 .environment(environment.library)
                 .environment(environment.settings)
                 .environment(environment.transfers)
+                .environment(environment.lock)
                 // Widget taps and Siri land here as mango://open/<comic id>.
                 .onOpenURL { url in environment.library.handleDeepLink(url) }
                 .task {

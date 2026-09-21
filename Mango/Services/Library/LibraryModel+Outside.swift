@@ -46,6 +46,16 @@ extension LibraryModel {
             WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
             return
         }
+        // With the lock on, the Home Screen mustn't say what's being read — the widget still
+        // opens it, after Face ID.
+        if settings.lockMode != .off {
+            SharedReading.write(ReadingSnapshot(comicID: comic.id, title: "Continue reading", series: "Mango is locked",
+                                                positionLabel: "", fraction: 0, isNovel: comic.isNovel, updatedAt: .now))
+            SharedReading.writeCover(nil)
+            WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
+            Logger.ui.info("[widget] published a locked snapshot")
+            return
+        }
         let progress = state.progress[comic.id]
         SharedReading.write(ReadingSnapshot(
             comicID: comic.id,

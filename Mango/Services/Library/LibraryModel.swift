@@ -246,7 +246,7 @@ final class LibraryModel {
 
     /// What the user should actually see: a downloaded copy replaces its remote twin.
     var visibleComics: [Comic] {
-        LibraryDedupe.visible(comics: state.comics, remoteSourceIDs: remoteSourceIDs, hidden: state.hiddenComicIDs)
+        LibraryDedupe.visible(comics: state.comics, remoteSourceIDs: remoteSourceIDs, hidden: state.hiddenComicIDs, hiddenSeries: state.hiddenSeries)
     }
 
     /// True when this comic is a local copy of something that also lives on a share.
