@@ -10,7 +10,7 @@ import SwiftUI
 struct ZoomableView<Content: View>: View {
     var resetToken: AnyHashable
     var maxScale: CGFloat = 5
-    var panDirection: PanDirection = .movesView
+    var panAxes: PanAxes = .standard
     @Binding var isZoomed: Bool
     @ViewBuilder var content: () -> Content
 
@@ -54,11 +54,9 @@ struct ZoomableView<Content: View>: View {
     }
 
     private func pan(in size: CGSize) -> some Gesture {
-        let direction = panDirection.sign
-        return DragGesture()
+        DragGesture()
             .onChanged { value in
-                offset = clamp(CGSize(width: committedOffset.width + direction * value.translation.width,
-                                      height: committedOffset.height + direction * value.translation.height), in: size)
+                offset = clamp(panAxes.offset(from: committedOffset, translation: value.translation), in: size)
             }
             .onEnded { _ in committedOffset = offset }
     }

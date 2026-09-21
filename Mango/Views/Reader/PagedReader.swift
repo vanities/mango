@@ -13,7 +13,7 @@ struct PagedReader: View {
     @Bindable var engine: ReaderEngine
     var fit: PageFit
     var tapToTurn: Bool
-    var panDirection: PanDirection
+    var panAxes: PanAxes
 
     @State private var scrollPosition: Int?
     @State private var isZoomed = false
@@ -76,7 +76,7 @@ struct PagedReader: View {
     /// the HStack too, so the lower page number lands on the right — which is correct.
     @ViewBuilder
     private func spread(_ group: [Int]) -> some View {
-        ZoomableView(resetToken: group, panDirection: panDirection, isZoomed: $isZoomed) {
+        ZoomableView(resetToken: group, panAxes: panAxes, isZoomed: $isZoomed) {
             if group.count == 1 {
                 PageImageView(index: group[0], engine: engine, fit: fit)
             } else {

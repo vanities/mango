@@ -23,11 +23,16 @@ struct SettingsView: View {
                     }
                 }
                 Section {
-                    Picker("Dragging a zoomed page", selection: $settings.panDirection) {
+                    Picker("Dragging sideways", selection: $settings.horizontalPan) {
                         ForEach(PanDirection.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
+                    Picker("Dragging up and down", selection: $settings.verticalPan) {
+                        ForEach(PanDirection.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                } header: {
+                    Text("Panning a zoomed page")
                 } footer: {
-                    Text(settings.panDirection.explanation)
+                    Text("Moves the view: drag right and you see what's off to the right, like panning a map. Moves the page: it follows your finger, like sliding a photo. The two axes can differ — sideways often wants one and up-down the other.")
                 }
 
                 Section {
