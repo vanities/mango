@@ -216,6 +216,41 @@ enum ZipReader {
         return out
     }
 
+    /// The first bytes of an entry — up to `limit` of them, decompressed as far as they go — for
+    /// reading an image's header without the page: a JPEG states its size in its first few KB, a
+    /// PNG in its first 33 bytes. One ranged read covers the local header and the prefix, and it
+    /// never runs past the entry's own data by more than the header's slack.
+    static func readPrefix(_ entry: ZipEntry, limit: Int, from reader: any RandomAccessReader) async throws -> Data {
+        let sw = Stopwatch()
+        let wanted = Int(min(entry.compressedSize, Int64(limit)))
+        // The local header's name and extra lengths are only known once it's read. Allow for the
+        // name the central directory gave and a typical extra field; top up if it's bigger.
+        let headerGuess = 30 + entry.name.utf8.count + 64
+        var chunk = [UInt8](try await reader.read(offset: entry.localHeaderOffset, count: headerGuess + wanted))
+        guard chunk.count >= 30, u32(chunk, 0) == localSignature else {
+            throw ZipError.corruptCentralDirectory("no local header for \(entry.name) at \(entry.localHeaderOffset)")
+        }
+        let dataStart = 30 + Int(u16(chunk, 26)) + Int(u16(chunk, 28))
+        if chunk.count < dataStart + wanted {
+            let rest = try await reader.read(offset: entry.localHeaderOffset + Int64(dataStart), count: wanted)
+            chunk = Array(chunk.prefix(dataStart)) + [UInt8](rest)
+        }
+        let compressed = Data(chunk[dataStart..<min(chunk.count, dataStart + wanted)])
+        let out: Data
+        switch entry.method {
+        case 0:
+            out = compressed
+        case 8:
+            out = wanted == Int(entry.compressedSize)
+                ? try inflate(compressed, expectedSize: Int(entry.uncompressedSize), entryName: entry.name)
+                : inflatePrefix(compressed, maxOutput: limit)
+        default:
+            throw ZipError.unsupportedMethod(entry.method, entry: entry.name)
+        }
+        Logger.archive.debug("[zip] prefix of \(entry.name, privacy: .public) \(compressed.count)→\(out.count)B in \(sw.ms, format: .fixed(precision: 1))ms")
+        return out
+    }
+
     // MARK: Deflate
 
     /// Apple's `COMPRESSION_ZLIB` is raw DEFLATE (RFC 1951) — exactly what zip method 8 stores,
@@ -228,6 +263,38 @@ enum ZipReader {
         // Unknown or wrong declared size (streamed entries with a data descriptor) — grow instead.
         guard let out = inflateStreaming(input) else { throw ZipError.inflateFailed(entry: entryName) }
         return out
+    }
+
+    /// Inflates as much of a truncated DEFLATE stream as its bytes allow, up to `maxOutput`. What
+    /// comes out is a true prefix of the entry — the decoder just stops where its input does.
+    static func inflatePrefix(_ input: Data, maxOutput: Int) -> Data {
+        guard !input.isEmpty else { return Data() }
+        let bufferSize = 64 * 1024
+        let streamPointer = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
+        defer { streamPointer.deallocate() }
+        guard compression_stream_init(streamPointer, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
+            return Data()
+        }
+        defer { compression_stream_destroy(streamPointer) }
+        let destination = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+        defer { destination.deallocate() }
+
+        var output = Data()
+        input.withUnsafeBytes { src in
+            guard let srcBase = src.bindMemory(to: UInt8.self).baseAddress else { return }
+            streamPointer.pointee.src_ptr = srcBase
+            streamPointer.pointee.src_size = input.count
+            while output.count < maxOutput {
+                streamPointer.pointee.dst_ptr = destination
+                streamPointer.pointee.dst_size = bufferSize
+                // No FINALIZE: the input is deliberately cut short, and that isn't an error here.
+                let status = compression_stream_process(streamPointer, 0)
+                let produced = bufferSize - streamPointer.pointee.dst_size
+                if produced > 0 { output.append(destination, count: produced) }
+                guard status == COMPRESSION_STATUS_OK, produced > 0 else { break }
+            }
+        }
+        return output.prefix(maxOutput)
     }
 
     private static func inflateFixed(_ input: Data, size: Int) -> Data? {

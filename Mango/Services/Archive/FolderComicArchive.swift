@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import os
 
 /// A folder of loose page images — what you get after unzipping, or from a scanlation dump.
@@ -76,6 +77,24 @@ struct FolderComicArchive: ComicArchive {
             return try Data(contentsOf: url, options: .mappedIfSafe)
         case .remote(let client, let path):
             return try await client.readAll(path, maxBytes: 64_000_000)
+        }
+    }
+
+    func pageSize(at index: Int) async -> CGSize? {
+        guard pages.indices.contains(index) else { return nil }
+        switch pages[index].location {
+        case .local(let url):
+            // ImageIO reads only the header from a URL source.
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
+                  let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+            else { return nil }
+            return ImageDecoder.pixelSize(from: properties)
+        case .remote(let client, let path):
+            let reader = RemoteFileReader(client: client, relativePath: path, knownLength: nil)
+            guard let prefix = try? await reader.read(offset: 0, count: ZipComicArchive.sizeProbeBytes),
+                  let size = ImageDecoder.pixelSize(of: prefix)
+            else { return nil }
+            return size
         }
     }
 

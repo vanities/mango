@@ -28,7 +28,9 @@ download queue with a progress bar in front of it — it just opens.
   for the western trades in the same library.
 - **Two-page spreads in landscape**, paired like a printed book, with real double-page art given
   the whole screen instead of being sliced down the middle.
-- **Continuous scroll** for webtoons and long-strip scanlations.
+- **Webtoons and long strips just work.** A book whose pages are tall strips opens straight into
+  vertical scroll, full width and sharp, without you choosing anything — and your own layout
+  choice for a book always wins. Scroll past the last page to finish the chapter.
 - **Remembers where you were**, per volume, and knows which volume comes next in a run.
 - Pinch zoom, double-tap zoom, tap-to-turn, keep-screen-awake.
 

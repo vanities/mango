@@ -24,13 +24,93 @@ final class ReaderEngine {
     private(set) var widePages: Set<Int> = []
 
     var direction: ReadingDirection { didSet { library.setDirection(direction, for: comic, wholeSeries: true) } }
-    var mode: ReaderMode { didSet { library.setMode(mode, for: comic); rebuildGroups() } }
+    /// Layout in use. Setting it here doesn't save anything — `chooseMode` is for the user's
+    /// own choice; detection sets this directly so it never masquerades as one.
+    var mode: ReaderMode {
+        didSet {
+            guard mode != oldValue else { return }
+            Logger.reader.info("[reader] layout \(oldValue.rawValue, privacy: .public) → \(self.mode.rawValue, privacy: .public)")
+            rebuildGroups()
+        }
+    }
     /// Visible on open so the way out is obvious, then it gets out of the way on its own.
     var showsControls = true
 
     @ObservationIgnored private let library: LibraryModel
     @ObservationIgnored private let settings: AppSettings
     @ObservationIgnored private var loader: PageLoader?
+    /// Screen geometry, for sizing decodes: longest edge for a page, width for a strip.
+    @ObservationIgnored private var screenPixels = CGSize(width: 1200, height: 2600)
+
+    private var sizing: PageSizing {
+        switch mode {
+        case .paged:
+            // Headroom so a pinch-zoom doesn't go soft straight away; capped in ImageDecoder.
+            .fitScreen(maxPixel: Int(max(screenPixels.width, screenPixels.height) * 1.5))
+        case .continuous:
+            // A strip spans the full width, so decode to the screen's longer edge: sharp in
+            // either orientation without re-decoding on rotation. In practice the source width
+            // is the limit — strips are 800–1200px wide and are never upscaled.
+            .fitWidth(pixels: Int(max(screenPixels.width, screenPixels.height)))
+        }
+    }
+
+    /// The user picked a layout in settings. Saved for this book, and it beats detection.
+    func chooseMode(_ newMode: ReaderMode) {
+        mode = newMode
+        library.setMode(newMode, for: comic)
+        if newMode == .continuous { startSizeSurvey(around: currentPage) }
+        prefetchAround()
+    }
+
+    /// Height over width of each page decoded so far. A strip is laid out from these, so a page
+    /// that scrolled away and came back — its bitmap long since dropped — keeps its height
+    /// instead of collapsing to a placeholder and yanking everything below it.
+    @ObservationIgnored private var pageAspects: [Int: Double] = [:]
+    @ObservationIgnored private var lastAspect: Double?
+
+    /// A page's shape if it's known, else the last page's — strips keep one width, so it's a far
+    /// better guess than a fixed placeholder height.
+    func aspectRatio(of index: Int) -> Double? {
+        pageAspects[index] ?? lastAspect
+    }
+
+    @ObservationIgnored private var sizeSurvey: Task<Void, Never>?
+
+    /// A strip is laid out from every page's real height before its pages load — otherwise a
+    /// page arriving shoves everything below it, and a book reopened at page 30 lands inside
+    /// page 29 once that one fills in. The pages around where reading starts are sized before the
+    /// first layout (the loader already has most of them from detection).
+    private func sizePagesNear(_ start: Int, loader: PageLoader) async {
+        let sw = Stopwatch()
+        let near = max(0, start - 2)..<min(pageCount, start + 3)
+        for index in near {
+            await noteSize(of: index, from: loader)
+        }
+        Logger.reader.info("[strip] sized pages \(near.lowerBound + 1)–\(near.upperBound) in \(sw.ms, format: .fixed(precision: 1))ms")
+    }
+
+    /// …and the rest in the background, nearest first, one header read each.
+    private func startSizeSurvey(around start: Int) {
+        guard sizeSurvey == nil, let loader else { return }
+        let count = pageCount
+        sizeSurvey = Task { [weak self] in
+            let sw = Stopwatch()
+            let order = (0..<count).sorted { abs($0 - start) < abs($1 - start) }
+            for index in order {
+                guard !Task.isCancelled, let self else { return }
+                await self.noteSize(of: index, from: loader)
+            }
+            Logger.reader.info("[strip] sized all \(count) pages in \(sw.ms, format: .fixed(precision: 0))ms")
+        }
+    }
+
+    private func noteSize(of index: Int, from loader: PageLoader) async {
+        guard pageAspects[index] == nil,
+              let size = await loader.pageSize(at: index), size.width > 0 else { return }
+        pageAspects[index] = size.height / size.width
+        if lastAspect == nil { lastAspect = pageAspects[index] }
+    }
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var hideControlsTask: Task<Void, Never>?
     @ObservationIgnored private var recorder: SessionRecorder?
@@ -47,6 +127,7 @@ final class ReaderEngine {
 
     deinit {
         saveTask?.cancel()
+        sizeSurvey?.cancel()
         hideControlsTask?.cancel()
     }
 
@@ -84,20 +165,34 @@ final class ReaderEngine {
 
     // MARK: Opening
 
-    func open(maxPixel: Int) async {
+    func open(screenPixels: CGSize) async {
         let sw = Stopwatch()
         isOpening = true
         openError = nil
+        self.screenPixels = screenPixels
         do {
             let archive = try await library.openArchive(comic)
             pageCount = archive.pageCount
-            let prefetch = settings.prefetchCount
-            loader = PageLoader(archive: archive, maxPixel: maxPixel, capacity: prefetch * 2 + 3)
+            let loader = PageLoader(archive: archive, capacity: settings.prefetchCount * 2 + 3)
+            self.loader = loader
+            let startPage = resumePage()
+            // Long strips read as one vertical scroll. Decide before the first page is drawn so a
+            // webtoon never flashes up as a sliver in paged mode first. It costs an ordinary book
+            // nothing: the page it checks is the one about to be drawn, and the bytes are reused.
+            // Your own choice for this book always wins; a known strip is already continuous.
+            if !library.hasChosenMode(for: comic), mode == .paged,
+               await loader.looksLikeLongStrip(from: startPage) {
+                library.markLongStrip(comic)
+                mode = .continuous
+            }
             rebuildGroups()
-            // Pick up where this comic was left off.
-            if let saved = library.progress(for: comic), saved.page > 0, saved.page < pageCount, !saved.finished {
-                groupIndex = SpreadLayout.groupIndex(containing: saved.page, in: groups)
-                Logger.reader.info("[reader] resumed \(self.comic.title, privacy: .public) at page \(saved.page + 1)")
+            if startPage > 0 {
+                groupIndex = SpreadLayout.groupIndex(containing: startPage, in: groups)
+                Logger.reader.info("[reader] resumed \(self.comic.title, privacy: .public) at page \(startPage + 1)")
+            }
+            if mode == .continuous {
+                await sizePagesNear(startPage, loader: loader)
+                startSizeSurvey(around: startPage)
             }
             isOpening = false
             Logger.reader.info("[reader] opened \(self.comic.title, privacy: .public) pages=\(self.pageCount) in \(sw.ms, format: .fixed(precision: 0))ms")
@@ -111,8 +206,17 @@ final class ReaderEngine {
         }
     }
 
+    /// Where this comic was left off, if that's somewhere worth resuming.
+    private func resumePage() -> Int {
+        guard let saved = library.progress(for: comic), saved.page > 0, saved.page < pageCount, !saved.finished else {
+            return 0
+        }
+        return saved.page
+    }
+
     func close() {
         saveTask?.cancel()
+        sizeSurvey?.cancel()
         hideControlsTask?.cancel()
         endSession()
         persistProgress()
@@ -127,7 +231,10 @@ final class ReaderEngine {
     func image(at index: Int) async -> CGImage? {
         guard let loader, index >= 0, index < pageCount else { return nil }
         do {
-            let image = try await loader.page(at: index)
+            let image = try await loader.page(at: index, sizing: sizing)
+            let aspect = Double(image.height) / Double(max(1, image.width))
+            pageAspects[index] = aspect
+            lastAspect = aspect
             let wide = await loader.widePages
             if wide != widePages {
                 widePages = wide
@@ -206,18 +313,32 @@ final class ReaderEngine {
     }
     func retreat() { goToGroup(groupIndex - 1) }
 
+    /// Bumped by every move that isn't the reader scrolling — the slider, a bookmark, a tap — so
+    /// a continuous strip knows to scroll there itself. Its own scrolling reports through
+    /// `readingPage(_:)` instead, which leaves this alone: a strip that took its own reports as
+    /// jumps would chase them, and did (open at page 2 → 1 → 2 → 1).
+    private(set) var jumpCount = 0
+
     func goToGroup(_ index: Int) {
         guard groups.indices.contains(index) else { return }
         groupIndex = index
+        jumpCount += 1
     }
 
     func goToPage(_ page: Int) {
         goToGroup(SpreadLayout.groupIndex(containing: page, in: groups))
     }
 
+    /// The strip saying which page is under its reading line. Moves the position without asking
+    /// anything to scroll — the strip is already there.
+    func readingPage(_ page: Int) {
+        let index = SpreadLayout.groupIndex(containing: page, in: groups)
+        guard groups.indices.contains(index), index != groupIndex else { return }
+        groupIndex = index
+    }
+
     var isAtStart: Bool { groupIndex <= 0 }
     var isAtEnd: Bool { groupIndex >= groups.count - 1 }
-
 
     // MARK: Session timing
 
@@ -293,7 +414,8 @@ final class ReaderEngine {
         guard let loader else { return }
         let page = currentPage
         let ahead = settings.prefetchCount
-        Task { await loader.prefetch(around: page, ahead: ahead) }
+        let sizing = self.sizing
+        Task { await loader.prefetch(around: page, ahead: ahead, sizing: sizing) }
     }
 
     /// Writing the library JSON on every page turn would hammer the disk during a fast read.

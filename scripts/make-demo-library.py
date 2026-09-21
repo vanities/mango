@@ -34,6 +34,9 @@ MANGA = [
 ]
 STANDALONE = ("Quiet Machines", 8)
 
+# A long strip, webtoon-style: every page one tall image, meant to be scrolled.
+LONG_STRIP = ("Rooftop Garden", [(1, 6, 7200), (2, 6, 7200)])
+
 NOVELS = [
     ("Ashfall Almanac", [1, 2]),
 ]
@@ -66,11 +69,13 @@ nobody had been willing to be the one to change it, and that this was the whole 
 and that she had walked eleven doors to arrive at something she already knew."""
 
 
-def render_pages(out_dir: Path, count: int, label: str, wide: int | None) -> None:
+def render_pages(out_dir: Path, count: int, label: str, wide: int | None, tall: int | None = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     args = ["swift", str(RENDER), str(out_dir), str(count), label]
     if wide:
         args += ["--wide", str(wide)]
+    if tall:
+        args += ["--tall", str(tall)]
     subprocess.run(args, check=True, capture_output=True)
 
 
@@ -152,6 +157,14 @@ def main() -> None:
             destination = out / series / f"{series} v{volume:02d} (2026) (Digital).cbz"
             pack_cbz(pages_dir, destination)
             print(f"  {destination.relative_to(out)} ({pages} pages)")
+
+    strip, chapters = LONG_STRIP
+    for number, pages, height in chapters:
+        pages_dir = work / f"{strip}-{number}"
+        render_pages(pages_dir, pages, f"{strip} c{number}", None, tall=height)
+        destination = out / strip / f"{strip} - c{number:03d} (2026) (Digital).cbz"
+        pack_cbz(pages_dir, destination)
+        print(f"  {destination.relative_to(out)} ({pages} tall pages)")
 
     title, pages = STANDALONE
     pages_dir = work / title

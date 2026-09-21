@@ -29,6 +29,7 @@ final class LibraryStateCompatTests: XCTestCase {
         XCTAssertTrue(state.nasServers.isEmpty)
         XCTAssertTrue(state.overrides.isEmpty)
         XCTAssertTrue(state.seriesDirection.isEmpty)
+        XCTAssertTrue(state.longStripComicIDs.isEmpty, "a library from before long-strip detection")
     }
 
     func testRoundTrips() throws {
@@ -37,6 +38,7 @@ final class LibraryStateCompatTests: XCTestCase {
         state.seriesDirection["berserk"] = .rightToLeft
         state.overrides["a"] = ComicOverride(series: "Berserk", volume: 2)
         state.hiddenComicIDs = ["b"]
+        state.longStripComicIDs = ["w"]
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -48,6 +50,7 @@ final class LibraryStateCompatTests: XCTestCase {
         XCTAssertEqual(round.seriesDirection["berserk"], .rightToLeft)
         XCTAssertEqual(round.overrides["a"]?.series, "Berserk")
         XCTAssertEqual(round.hiddenComicIDs, ["b"])
+        XCTAssertEqual(round.longStripComicIDs, ["w"])
     }
 
     // MARK: Salvage
@@ -63,6 +66,7 @@ final class LibraryStateCompatTests: XCTestCase {
         old.nasServers = [NASServer(id: UUID(), name: "NAS", host: "192.168.1.3", share: "all",
                                     path: "manga", username: "guest", addedAt: Date())]
         old.seriesDirection["berserk"] = .leftToRight
+        old.longStripComicIDs = ["w"]
 
         current.merge(restoring: old)
 
@@ -70,6 +74,7 @@ final class LibraryStateCompatTests: XCTestCase {
         XCTAssertEqual(current.progress["b"]?.page, 5, "missing progress comes back")
         XCTAssertEqual(current.nasServers.count, 1, "the server comes back")
         XCTAssertEqual(current.seriesDirection["berserk"], .leftToRight)
+        XCTAssertEqual(current.longStripComicIDs, ["w"])
     }
 
     func testMergeDoesNotDuplicateTheDocumentsSource() {

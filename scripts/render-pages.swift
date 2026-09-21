@@ -11,6 +11,8 @@ func flag(_ name: String) -> String? {
 }
 let pdfPath = flag("--pdf")
 let widePage = flag("--wide").flatMap(Int.init)
+/// Every page this tall — for long-strip (webtoon) samples.
+let tallHeight = flag("--tall").flatMap(Int.init)
 guard args.count >= 3 else { fatalError("usage: <outDir> <count> <label>") }
 let outDir = args[0]
 let count = Int(args[1]) ?? 8
@@ -32,10 +34,13 @@ func drawPage(_ number: Int, size: CGSize, into context: CGContext) {
     let inset = size.width * 0.06
     let gutter = size.width * 0.03
     let isWide = size.width > size.height
-    let columns = isWide ? 4 : 2
-    let rows = 3
+    let isTall = size.height / size.width > 2.2
+    // Type is sized to an ordinary page's height, or a long strip's title would be enormous.
+    let typeScale = min(size.height, size.width * 1.5)
+    let columns = isWide ? 4 : (isTall ? 1 : 2)
+    let rows = isTall ? max(3, Int(size.height / 900)) : 3
     let cellW = (size.width - inset * 2 - gutter * CGFloat(columns - 1)) / CGFloat(columns)
-    let cellH = (size.height - inset * 2 - gutter * CGFloat(rows - 1) - size.height * 0.08) / CGFloat(rows)
+    let cellH = (size.height - inset * 2 - gutter * CGFloat(rows - 1) - typeScale * 0.08) / CGFloat(rows)
     for row in 0..<rows {
         for column in 0..<columns {
             let rect = NSRect(x: inset + CGFloat(column) * (cellW + gutter),
@@ -52,7 +57,7 @@ func drawPage(_ number: Int, size: CGSize, into context: CGContext) {
 
     let title = "\(label) — page \(number)\(isWide ? "  (spread)" : "")"
     let attributes: [NSAttributedString.Key: Any] = [
-        .font: NSFont.boldSystemFont(ofSize: size.height * 0.035),
+        .font: NSFont.boldSystemFont(ofSize: typeScale * 0.035),
         .foregroundColor: NSColor(white: 0.12, alpha: 1),
     ]
     let string = NSAttributedString(string: title, attributes: attributes)
@@ -60,7 +65,7 @@ func drawPage(_ number: Int, size: CGSize, into context: CGContext) {
     string.draw(at: NSPoint(x: (size.width - textSize.width) / 2, y: size.height - inset - textSize.height))
 
     let big = NSAttributedString(string: "\(number)", attributes: [
-        .font: NSFont.boldSystemFont(ofSize: size.height * 0.16),
+        .font: NSFont.boldSystemFont(ofSize: typeScale * 0.16),
         .foregroundColor: NSColor(white: 0.10, alpha: 0.22),
     ])
     let bigSize = big.size()
@@ -70,7 +75,8 @@ func drawPage(_ number: Int, size: CGSize, into context: CGContext) {
 }
 
 func pageSize(_ number: Int) -> CGSize {
-    number == widePage ? CGSize(width: 1600, height: 1200) : CGSize(width: 800, height: 1200)
+    if let tallHeight { return CGSize(width: 800, height: CGFloat(tallHeight)) }
+    return number == widePage ? CGSize(width: 1600, height: 1200) : CGSize(width: 800, height: 1200)
 }
 
 if let pdfPath {
