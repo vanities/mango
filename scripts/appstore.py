@@ -94,11 +94,13 @@ AGE_RATING = {
     "koreaAgeRatingOverride": "NONE",
 }
 
-REVIEW_NOTES = """Mango is a local manga player. It has no accounts.
+REVIEW_NOTES = """Mango is a manga and comic reader for files the user already has. It has no accounts, no sign-in, and no catalog — it does not download or supply any content.
 
-To test: on the device, open the Files app and copy any MP3 or M4B files into On My iPhone > Mango, or tap + in the Library tab and pick any folder containing audio. Books appear on the shelf; tap one and press Play. Speed, chapters, sleep timer, and skips are in the player.
+To test: on the device, open the Files app and copy any .cbz or .pdf file (or a folder of JPEGs) into Mango's folder under On My iPhone. It appears on the shelf immediately; tap it to read. Swipe or tap the screen edges to turn pages, tap the middle for the controls, pinch to zoom, and rotate to landscape for two-page spreads. Reading is right-to-left by default (it is a manga reader); the arrow in the top bar flips it.
 
-The NAS feature (Folders > Add NAS…) connects to the user's own SMB server on their local network; it is optional and can be skipped during review. The app never contacts servers operated by us."""
+Light novels: copy an .epub in instead and it appears under the Novels tab, with chapter navigation and text size controls.
+
+The NAS feature (Sources > Add a NAS share) connects to the reviewer's own SMB server on their local network. It is entirely optional and can be skipped — everything above works with local files alone. The app never contacts any server operated by us, and collects no data."""
 
 
 class Store(tf.ASC):
@@ -109,6 +111,11 @@ class Store(tf.ASC):
     def post_ok(self, path: str, body: dict) -> dict:
         response = requests.post(f"{tf.API}{path}", headers=self._headers(), json=body, timeout=30)
         return response.json() if response.ok and response.text else {"_status": response.status_code, "_text": response.text}
+
+    def delete(self, path: str) -> None:
+        response = requests.delete(f"{tf.API}{path}", headers=self._headers(), timeout=30)
+        if not response.ok:
+            sys.exit(f"DELETE {path} → {response.status_code}\n{response.text[:300]}")
 
 
 def report(label: str, result: dict) -> None:
@@ -209,7 +216,7 @@ def cmd_setup(asc: Store, phone: str | None) -> None:
     print("and the review contact phone number under Version → App Review Information.")
 
 
-def cmd_screenshots(asc: Store, directory: Path, display_type: str) -> None:
+def cmd_screenshots(asc: Store, directory: Path, display_type: str, replace: bool = False) -> None:
     app = asc.app() or sys.exit("no app record")
     version = editable_version(asc, app["id"], create=False) or sys.exit("no editable version; run setup first")
     loc = version_localization(asc, version["id"])
@@ -219,6 +226,11 @@ def cmd_screenshots(asc: Store, directory: Path, display_type: str) -> None:
         shot_set = asc.post("/v1/appScreenshotSets", {"data": {"type": "appScreenshotSets", "attributes": {"screenshotDisplayType": display_type}, "relationships": {"appStoreVersionLocalization": {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"]}}}}})["data"]
         print(f"created screenshot set {display_type}")
     existing = asc.get(f"/v1/appScreenshotSets/{shot_set['id']}/appScreenshots", {"fields[appScreenshots]": "fileName,assetDeliveryState", "limit": 20})["data"]
+    if replace:
+        for shot in existing:
+            asc.delete(f"/v1/appScreenshots/{shot['id']}")
+            print(f"  - removed {shot['attributes']['fileName']}")
+        existing = []
     existing_names = {e["attributes"]["fileName"] for e in existing}
     files = sorted(p for p in directory.iterdir() if p.suffix.lower() == ".png")
     if not files:
@@ -318,6 +330,7 @@ def main() -> None:
     setup = sub.add_parser("setup"); setup.add_argument("--phone", help="App Review contact phone, e.g. '+1 555 555 5555'")
     review = sub.add_parser("review"); review.add_argument("--phone", required=True)
     shots = sub.add_parser("screenshots"); shots.add_argument("directory")
+    shots.add_argument("--replace", action="store_true", help="delete what's there first")
     shots.add_argument("--display-type", default="APP_IPHONE_67",
                        help="APP_IPHONE_67 (also takes 6.9in 1320x2868) / APP_IPAD_PRO_3GEN_129 (13in) / APP_IPAD_PRO_3GEN_11")
     attach = sub.add_parser("attach-build"); attach.add_argument("build", nargs="?")
@@ -332,7 +345,7 @@ def main() -> None:
             app = asc.app() or sys.exit("no app record")
             version = editable_version(asc, app["id"], create=False) or sys.exit("no editable version")
             set_review_details(asc, version["id"], args.phone)
-        case "screenshots": cmd_screenshots(asc, Path(args.directory), args.display_type)
+        case "screenshots": cmd_screenshots(asc, Path(args.directory), args.display_type, args.replace)
         case "attach-build": cmd_attach_build(asc, args.build)
         case "status": cmd_status(asc)
         case "submit": cmd_submit(asc, args.dry_run)
