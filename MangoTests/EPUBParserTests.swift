@@ -286,3 +286,49 @@ final class ReadingStatsTests: XCTestCase {
         XCTAssertEqual(stats.topSeries.first?.count, 2)
     }
 }
+
+/// Panning a zoomed page. The two axes genuinely want different answers — sideways reads like
+/// a pager, up-and-down like scrolling a document — so the signs are independent, and getting
+/// one of them backwards is exactly the bug this guards.
+final class PanAxesTests: XCTestCase {
+    private let committed = CGSize(width: 10, height: 20)
+
+    func testMovesViewGoesAgainstTheFinger() {
+        let axes = PanAxes(horizontal: .movesView, vertical: .movesView)
+        let offset = axes.offset(from: .zero, translation: CGSize(width: 30, height: 40))
+        XCTAssertEqual(offset.width, -30)
+        XCTAssertEqual(offset.height, -40)
+    }
+
+    func testMovesPageFollowsTheFinger() {
+        let axes = PanAxes(horizontal: .movesPage, vertical: .movesPage)
+        let offset = axes.offset(from: .zero, translation: CGSize(width: 30, height: 40))
+        XCTAssertEqual(offset.width, 30)
+        XCTAssertEqual(offset.height, 40)
+    }
+
+    /// The whole reason this is two settings: one axis inverted, the other not.
+    func testAxesAreIndependent() {
+        let axes = PanAxes(horizontal: .movesView, vertical: .movesPage)
+        let offset = axes.offset(from: .zero, translation: CGSize(width: 30, height: 40))
+        XCTAssertEqual(offset.width, -30, "sideways moves the view")
+        XCTAssertEqual(offset.height, 40, "up and down moves the page")
+    }
+
+    func testTheDefaultIsSidewaysViewDownwardsPage() {
+        XCTAssertEqual(PanAxes.standard.horizontal, .movesView)
+        XCTAssertEqual(PanAxes.standard.vertical, .movesPage)
+    }
+
+    /// Dragging continues from wherever the last drag left off.
+    func testOffsetAccumulates() {
+        let offset = PanAxes.standard.offset(from: committed, translation: CGSize(width: 5, height: 5))
+        XCTAssertEqual(offset.width, 10 - 5)
+        XCTAssertEqual(offset.height, 20 + 5)
+    }
+
+    func testNoTranslationLeavesTheOffsetAlone() {
+        let offset = PanAxes.standard.offset(from: committed, translation: .zero)
+        XCTAssertEqual(offset, committed)
+    }
+}

@@ -131,7 +131,10 @@ struct ReaderSettingsSheet: View {
                     Picker("Two-page spreads", selection: $settings.spreadMode) {
                         ForEach(SpreadMode.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
-                    Picker("Dragging a zoomed page", selection: $settings.panDirection) {
+                    Picker("Dragging sideways", selection: $settings.horizontalPan) {
+                        ForEach(PanDirection.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    Picker("Dragging up and down", selection: $settings.verticalPan) {
                         ForEach(PanDirection.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     Toggle("Tap edges to turn", isOn: $settings.tapToTurn)

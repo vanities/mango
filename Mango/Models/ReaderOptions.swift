@@ -81,10 +81,11 @@ enum SpreadMode: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// Which way a zoomed page moves under your finger.
+/// Which way a zoomed page moves under your finger, on one axis.
 ///
-/// There is no right answer — a map pans one way, a photo drags the other — so it's a choice
-/// rather than a default someone has to live with.
+/// There is no right answer — a map pans one way, a photo drags the other — and the two axes
+/// genuinely pull in different directions: sideways feels like a pager, downwards feels like
+/// scrolling a document. So each axis is its own choice.
 enum PanDirection: String, Codable, CaseIterable, Sendable {
     /// Drag right and you see what was off to the right. The page appears to move the
     /// opposite way, like panning across a map.
@@ -108,4 +109,19 @@ enum PanDirection: String, Codable, CaseIterable, Sendable {
 
     /// +1 follows the finger, -1 moves the viewport instead.
     var sign: CGFloat { self == .movesPage ? 1 : -1 }
+}
+
+/// The pair of choices, and the arithmetic that applies them. Pure so the signs are testable
+/// without a gesture.
+struct PanAxes: Equatable, Sendable {
+    var horizontal: PanDirection
+    var vertical: PanDirection
+
+    /// Defaults land where Adam settled: sideways moves the view, downwards moves the page.
+    static let standard = PanAxes(horizontal: .movesView, vertical: .movesPage)
+
+    func offset(from committed: CGSize, translation: CGSize) -> CGSize {
+        CGSize(width: committed.width + horizontal.sign * translation.width,
+               height: committed.height + vertical.sign * translation.height)
+    }
 }
