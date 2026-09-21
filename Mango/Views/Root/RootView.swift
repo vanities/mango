@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(LibraryModel.self) private var library
-    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         TabView {
@@ -17,7 +16,5 @@ struct RootView: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
-        // nil means "match the system" — the reader forces its own dark chrome regardless.
-        .preferredColorScheme(settings.appearance.colorScheme)
     }
 }

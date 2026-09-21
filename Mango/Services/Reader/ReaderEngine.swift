@@ -146,9 +146,30 @@ final class ReaderEngine {
 
     // MARK: Navigation
 
+    /// Set when the reader tries to go past the last page. The view turns this into "open the
+    /// next volume", or an end-of-series card when there isn't one.
+    private(set) var reachedEnd = false
+    /// Called once when the reader tries to turn past the last page.
+    @ObservationIgnored var onReachedEnd: (@MainActor () -> Void)?
+
     /// "Forward" always means further into the book. Right-to-left flips which screen edge that is,
     /// which the view handles — this stays in page order.
-    func advance() { goToGroup(groupIndex + 1) }
+    func advance() {
+        guard !isAtEnd else {
+            notifyReachedEnd()
+            return
+        }
+        goToGroup(groupIndex + 1)
+    }
+
+    /// Fires once per opened volume, whether the reader tapped past the last page or swiped
+    /// into the trailing slot.
+    func notifyReachedEnd() {
+        guard !reachedEnd, !isOpening, pageCount > 0 else { return }
+        Logger.reader.info("[reader] reached the end of \(self.comic.title, privacy: .public)")
+        reachedEnd = true
+        onReachedEnd?()
+    }
     func retreat() { goToGroup(groupIndex - 1) }
 
     func goToGroup(_ index: Int) {

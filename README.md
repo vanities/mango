@@ -64,9 +64,9 @@ any other folder — iCloud Drive, an external drive, another app's folder — i
 folder inside it to treat as the top of the library:
 
 ```
-Host    192.168.1.3
-Share   all
-Folder  downloads/complete/manga
+Host    nas.local
+Share   media
+Folder  comics
 ```
 
 Credentials go in the Keychain, never in the library file. Test the connection before saving.

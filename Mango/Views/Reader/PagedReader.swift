@@ -13,6 +13,7 @@ struct PagedReader: View {
     @Bindable var engine: ReaderEngine
     var fit: PageFit
     var tapToTurn: Bool
+    var dragMovesPage: Bool
 
     @State private var scrollPosition: Int?
     @State private var isZoomed = false
@@ -28,6 +29,12 @@ struct PagedReader: View {
                             .containerRelativeFrame(.horizontal)
                             .id(position)
                     }
+                    // One empty slot past the last page. Swiping into it is how a reader
+                    // naturally says "I'm done with this one" — without it, the end is only
+                    // reachable by tapping, and over-scrolling drove groupIndex out of range.
+                    Color.clear
+                        .containerRelativeFrame(.horizontal)
+                        .id(engine.groups.count)
                 }
                 .scrollTargetLayout()
             }
@@ -54,7 +61,13 @@ struct PagedReader: View {
             if scrollPosition != new { scrollPosition = new }
         }
         .onChange(of: scrollPosition) { _, new in
-            guard let new, engine.groupIndex != new else { return }
+            guard let new else { return }
+            // Landing on the trailing slot means "past the last page", not "page N+1".
+            guard new < engine.groups.count else {
+                engine.notifyReachedEnd()
+                return
+            }
+            guard engine.groupIndex != new else { return }
             engine.groupIndex = new
         }
     }
@@ -63,7 +76,7 @@ struct PagedReader: View {
     /// the HStack too, so the lower page number lands on the right — which is correct.
     @ViewBuilder
     private func spread(_ group: [Int]) -> some View {
-        ZoomableView(resetToken: group, isZoomed: $isZoomed) {
+        ZoomableView(resetToken: group, dragMovesPage: dragMovesPage, isZoomed: $isZoomed) {
             if group.count == 1 {
                 PageImageView(index: group[0], engine: engine, fit: fit)
             } else {
