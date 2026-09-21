@@ -44,3 +44,58 @@ enum ProgressSync {
         return cloud
     }
 }
+
+/// Merge rules for the smaller things that follow you between devices: ratings, bookmarks and
+/// the reading log. Unlike positions these don't go stale — an older rating isn't wrong — so
+/// they merge as unions rather than last-writer-wins, with this device winning a conflict.
+enum CollectionSync {
+    /// Cloud ratings for books this device has but hasn't rated.
+    static func mergedRatings(local: [String: Int], comics: [Comic], cloud: [String: Int]) -> [String: Int] {
+        var result = local
+        for comic in comics where result[comic.id] == nil {
+            if let rating = cloud[comic.syncKey] { result[comic.id] = rating }
+        }
+        return result
+    }
+
+    static func ratingsSnapshot(local: [String: Int], comics: [Comic], existingCloud: [String: Int]) -> [String: Int] {
+        var cloud = existingCloud
+        let keyByID = Dictionary(comics.map { ($0.id, $0.syncKey) }, uniquingKeysWith: { first, _ in first })
+        for (id, rating) in local { if let key = keyByID[id] { cloud[key] = rating } }
+        return cloud
+    }
+
+    /// Bookmarks unioned by id, so a spot saved on the iPad appears on the phone without the
+    /// phone's own being lost.
+    static func mergedBookmarks(local: [String: [Bookmark]], comics: [Comic],
+                                cloud: [String: [Bookmark]]) -> [String: [Bookmark]] {
+        var result = local
+        for comic in comics {
+            guard let remote = cloud[comic.syncKey], !remote.isEmpty else { continue }
+            var list = result[comic.id] ?? []
+            let known = Set(list.map(\.id))
+            list.append(contentsOf: remote.filter { !known.contains($0.id) })
+            result[comic.id] = list.sorted { ($0.page, $0.fraction ?? 0) < ($1.page, $1.fraction ?? 0) }
+        }
+        return result
+    }
+
+    static func bookmarksSnapshot(local: [String: [Bookmark]], comics: [Comic],
+                                  existingCloud: [String: [Bookmark]]) -> [String: [Bookmark]] {
+        var cloud = existingCloud
+        let keyByID = Dictionary(comics.map { ($0.id, $0.syncKey) }, uniquingKeysWith: { first, _ in first })
+        for (id, marks) in local {
+            guard let key = keyByID[id] else { continue }
+            var list = cloud[key] ?? []
+            let known = Set(list.map(\.id))
+            list.append(contentsOf: marks.filter { !known.contains($0.id) })
+            cloud[key] = list
+        }
+        return cloud
+    }
+
+    static func mergedLog(local: [ReadingLogEntry], cloud: [ReadingLogEntry]) -> [ReadingLogEntry] {
+        let known = Set(local.map(\.id))
+        return (local + cloud.filter { !known.contains($0.id) }).sorted { $0.finishedAt > $1.finishedAt }
+    }
+}

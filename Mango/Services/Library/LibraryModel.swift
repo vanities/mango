@@ -525,19 +525,84 @@ final class LibraryModel {
     /// Folds in anything another device wrote more recently. Positions are matched by relative
     /// path, so a book only syncs to devices that have the same file in the same place.
     private func mergeFromCloud() {
-        guard let remote = cloud.load([String: ReadingProgress].self, .progress), !remote.isEmpty else { return }
-        let merged = ProgressSync.merged(local: state.progress, comics: state.comics, cloud: remote)
-        guard merged != state.progress else { return }
-        let changed = merged.filter { state.progress[$0.key] != $0.value }.count
-        state.progress = merged
+        var changed = false
+        if let remote = cloud.load([String: ReadingProgress].self, .progress), !remote.isEmpty {
+            let merged = ProgressSync.merged(local: state.progress, comics: state.comics, cloud: remote)
+            if merged != state.progress {
+                let count = merged.filter { state.progress[$0.key] != $0.value }.count
+                state.progress = merged
+                changed = true
+                Logger.store.info("[cloud] took \(count) newer position(s) from another device")
+            }
+        }
+        if let remote = cloud.load([String: Int].self, .ratings) {
+            let merged = CollectionSync.mergedRatings(local: state.ratings, comics: state.comics, cloud: remote)
+            if merged != state.ratings { state.ratings = merged; changed = true }
+        }
+        if let remote = cloud.load([String: [Bookmark]].self, .bookmarks) {
+            let merged = CollectionSync.mergedBookmarks(local: state.bookmarks, comics: state.comics, cloud: remote)
+            if merged != state.bookmarks { state.bookmarks = merged; changed = true }
+        }
+        if let remote = cloud.load([ReadingLogEntry].self, .readingLog) {
+            let merged = CollectionSync.mergedLog(local: state.readingLog, cloud: remote)
+            if merged != state.readingLog { state.readingLog = merged; changed = true }
+        }
+        guard changed else { return }
         try? store.saveLibrary(state)
         rebuildSeries()
-        Logger.store.info("[cloud] took \(changed) newer position(s) from another device")
     }
 
     private func pushToCloud() {
-        let existing = cloud.load([String: ReadingProgress].self, .progress) ?? [:]
-        let snapshot = ProgressSync.cloudSnapshot(local: state.progress, comics: state.comics, existingCloud: existing)
-        cloud.save(snapshot, .progress)
+        let progress = cloud.load([String: ReadingProgress].self, .progress) ?? [:]
+        cloud.save(ProgressSync.cloudSnapshot(local: state.progress, comics: state.comics, existingCloud: progress), .progress)
+        let ratings = cloud.load([String: Int].self, .ratings) ?? [:]
+        cloud.save(CollectionSync.ratingsSnapshot(local: state.ratings, comics: state.comics, existingCloud: ratings), .ratings)
+        let marks = cloud.load([String: [Bookmark]].self, .bookmarks) ?? [:]
+        cloud.save(CollectionSync.bookmarksSnapshot(local: state.bookmarks, comics: state.comics, existingCloud: marks), .bookmarks)
+        let log = cloud.load([ReadingLogEntry].self, .readingLog) ?? []
+        cloud.save(CollectionSync.mergedLog(local: state.readingLog, cloud: log), .readingLog)
+    }
+
+    // MARK: Bookmarks, ratings, reading log
+
+    func bookmarks(for comic: Comic) -> [Bookmark] { state.bookmarks[comic.id] ?? [] }
+
+    func addBookmark(page: Int, fraction: Double? = nil, note: String = "", to comic: Comic) {
+        var list = state.bookmarks[comic.id] ?? []
+        // One mark per spot: tapping twice on the same page shouldn't make two.
+        guard !list.contains(where: { $0.page == page && abs(($0.fraction ?? 0) - (fraction ?? 0)) < 0.02 }) else { return }
+        list.append(Bookmark(page: page, fraction: fraction, note: note))
+        state.bookmarks[comic.id] = list.sorted { ($0.page, $0.fraction ?? 0) < ($1.page, $1.fraction ?? 0) }
+        Logger.library.info("[bookmark] added at \(page + 1) in \(comic.title, privacy: .public)")
+        save()
+    }
+
+    func removeBookmark(_ bookmark: Bookmark, from comic: Comic) {
+        state.bookmarks[comic.id]?.removeAll { $0.id == bookmark.id }
+        if state.bookmarks[comic.id]?.isEmpty == true { state.bookmarks[comic.id] = nil }
+        save()
+    }
+
+    func rating(for comic: Comic) -> Int? { state.ratings[comic.id] }
+
+    func setRating(_ stars: Int?, for comic: Comic) {
+        if let stars, (1...5).contains(stars) {
+            state.ratings[comic.id] = stars
+        } else {
+            state.ratings[comic.id] = nil
+        }
+        save()
+    }
+
+    func logBook(_ entry: ReadingLogEntry) {
+        state.readingLog.removeAll { $0.id == entry.id }
+        state.readingLog.append(entry)
+        state.readingLog.sort { $0.finishedAt > $1.finishedAt }
+        save()
+    }
+
+    func removeLogEntry(_ entry: ReadingLogEntry) {
+        state.readingLog.removeAll { $0.id == entry.id }
+        save()
     }
 }

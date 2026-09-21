@@ -24,6 +24,13 @@ struct LibraryState: Codable, Sendable {
     /// Comic ID → the ComicInfo.xml read out of its archive. Scans never open archives, so this
     /// is how that metadata survives a rescan.
     var comicInfo: [String: ComicInfo] = [:]
+    /// Comic ID → saved spots in it.
+    var bookmarks: [String: [Bookmark]] = [:]
+    /// Comic ID → 1–5 stars. Kept apart from progress on purpose: rating a book shouldn't
+    /// count as reading it and reshuffle Continue Reading.
+    var ratings: [String: Int] = [:]
+    /// Books read outside the app, so Stats can count them.
+    var readingLog: [ReadingLogEntry] = []
 
     init(sources: [LibrarySource] = [], comics: [Comic] = [], progress: [String: ReadingProgress] = [:],
          hiddenComicIDs: Set<String> = [], lastComicID: String? = nil, nasServers: [NASServer] = [],
@@ -43,6 +50,7 @@ struct LibraryState: Codable, Sendable {
     /// User state worth protecting: anything beyond the always-present Documents source.
     var hasUserData: Bool {
         !progress.isEmpty || !nasServers.isEmpty || !customCovers.isEmpty || !overrides.isEmpty
+            || !bookmarks.isEmpty || !ratings.isEmpty || !readingLog.isEmpty
             || sources.contains { $0.kind != .appDocuments }
     }
 
@@ -61,13 +69,22 @@ struct LibraryState: Codable, Sendable {
         for (key, value) in old.customCovers where customCovers[key] == nil { customCovers[key] = value }
         for (key, value) in old.overrides where overrides[key] == nil { overrides[key] = value }
         for (key, value) in old.seriesDirection where seriesDirection[key] == nil { seriesDirection[key] = value }
+        for (key, value) in old.ratings where ratings[key] == nil { ratings[key] = value }
+        for (key, oldList) in old.bookmarks {
+            var list = bookmarks[key] ?? []
+            let known = Set(list.map(\.id))
+            list.append(contentsOf: oldList.filter { !known.contains($0.id) })
+            bookmarks[key] = list.sorted { $0.page < $1.page }
+        }
+        let logIDs = Set(readingLog.map(\.id))
+        readingLog.append(contentsOf: old.readingLog.filter { !logIDs.contains($0.id) })
         hiddenComicIDs.formUnion(old.hiddenComicIDs)
         if lastComicID == nil { lastComicID = old.lastComicID }
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
-             customCovers, overrides, seriesDirection, comicInfo
+             customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog
     }
 
     init(from decoder: any Decoder) throws {
@@ -83,5 +100,8 @@ struct LibraryState: Codable, Sendable {
         overrides = try c.decodeIfPresent([String: ComicOverride].self, forKey: .overrides) ?? [:]
         seriesDirection = try c.decodeIfPresent([String: ReadingDirection].self, forKey: .seriesDirection) ?? [:]
         comicInfo = try c.decodeIfPresent([String: ComicInfo].self, forKey: .comicInfo) ?? [:]
+        bookmarks = try c.decodeIfPresent([String: [Bookmark]].self, forKey: .bookmarks) ?? [:]
+        ratings = try c.decodeIfPresent([String: Int].self, forKey: .ratings) ?? [:]
+        readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []
     }
 }

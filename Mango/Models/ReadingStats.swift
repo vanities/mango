@@ -37,8 +37,14 @@ struct ReadingStats: Equatable, Sendable {
     var topSeries: [Bucket] = []
     var localBytes: Int64 = 0
     var remoteBytes: Int64 = 0
+    /// Rated books, counted per star, index 0 = one star.
+    var ratingCounts: [Int] = [0, 0, 0, 0, 0]
+    var averageRating: Double?
+    /// Books logged by hand from outside the app, already folded into the counts above.
+    var loggedBooks = 0
 
-    var isEmpty: Bool { totalVolumes == 0 }
+    var isEmpty: Bool { totalVolumes == 0 && loggedBooks == 0 }
+    var ratedCount: Int { ratingCounts.reduce(0, +) }
     var hasReadAnything: Bool { finishedVolumes > 0 || pagesRead > 0 }
     var totalBytes: Int64 { localBytes + remoteBytes }
 
@@ -51,12 +57,14 @@ struct ReadingStats: Equatable, Sendable {
         var isRemote: Bool
         var pageCount: Int?
         var progress: ReadingProgress?
+        var rating: Int?
     }
 
-    static func build(_ items: [Item], now: Date = .now,
+    static func build(_ items: [Item], log: [ReadingLogEntry] = [], now: Date = .now,
                       calendar: Calendar = Calendar(identifier: .gregorian)) -> ReadingStats {
         var stats = ReadingStats()
         stats.totalVolumes = items.count
+        var ratings: [Int] = []
 
         var perSeries: [String: (name: String, total: Int, finished: Int, started: Int)] = [:]
         var formatCounts: [String: Int] = [:]
@@ -84,6 +92,7 @@ struct ReadingStats: Equatable, Sendable {
             }
 
             if finished, let date = progress?.updatedAt { finishDates.append(date) }
+            if let rating = item.rating, (1...5).contains(rating) { ratings.append(rating) }
 
             formatCounts[item.format, default: 0] += 1
             mediumCounts[item.isNovel ? "Novels" : "Manga", default: 0] += 1
@@ -96,6 +105,17 @@ struct ReadingStats: Equatable, Sendable {
             if finished || started { entry.started += 1 }
             perSeries[item.seriesKey] = entry
         }
+
+        for entry in log {
+            stats.loggedBooks += 1
+            stats.finishedVolumes += 1
+            stats.pagesRead += entry.pages ?? 0
+            finishDates.append(entry.finishedAt)
+            if let rating = entry.rating, (1...5).contains(rating) { ratings.append(rating) }
+            mediumCounts[entry.isNovel ? "Novels" : "Manga", default: 0] += 1
+        }
+        for rating in ratings { stats.ratingCounts[rating - 1] += 1 }
+        stats.averageRating = ratings.isEmpty ? nil : Double(ratings.reduce(0, +)) / Double(ratings.count)
 
         stats.totalSeries = perSeries.count
         stats.finishedSeries = perSeries.values.count { $0.total > 0 && $0.finished == $0.total }

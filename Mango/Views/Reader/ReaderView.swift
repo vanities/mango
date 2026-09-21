@@ -121,6 +121,13 @@ struct ReaderView: View {
                     .shadow(radius: 18, y: 8)
             }
 
+            VStack(spacing: 4) {
+                Text("How was it?")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                StarRating(rating: library.rating(for: openComic), size: 24) { library.setRating($0, for: openComic) }
+            }
+
             VStack(spacing: 6) {
                 Text("Finished \(openComic.numberLabel ?? openComic.title)")
                     .font(.headline)

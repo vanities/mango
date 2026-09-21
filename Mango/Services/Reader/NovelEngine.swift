@@ -108,18 +108,23 @@ final class NovelEngine {
             notifyReachedEnd()
             return
         }
+        // A bookmark jump's landing point applies to that one load only; turning the chapter
+        // afterwards must start at the top, not wherever the bookmark was.
+        pendingJumpFraction = 0
         scrollFraction = 0
         chapterIndex += 1
     }
 
     func previousChapter() {
         guard chapterIndex > 0 else { return }
+        pendingJumpFraction = 0
         scrollFraction = 0
         chapterIndex -= 1
     }
 
     func goToChapter(_ index: Int) {
         guard chapters.indices.contains(index), index != chapterIndex else { return }
+        pendingJumpFraction = 0
         scrollFraction = 0
         chapterIndex = index
     }
@@ -130,6 +135,40 @@ final class NovelEngine {
         reachedEnd = true
         onReachedEnd?()
     }
+
+    // MARK: Bookmarks
+
+    var bookmarks: [Bookmark] { library.bookmarks(for: comic) }
+
+    var isHereBookmarked: Bool {
+        bookmarks.contains { $0.page == chapterIndex && abs(($0.fraction ?? 0) - scrollFraction) < 0.02 }
+    }
+
+    func toggleBookmark() {
+        if let here = bookmarks.first(where: { $0.page == chapterIndex && abs(($0.fraction ?? 0) - scrollFraction) < 0.02 }) {
+            library.removeBookmark(here, from: comic)
+        } else {
+            library.addBookmark(page: chapterIndex, fraction: scrollFraction, to: comic)
+        }
+        keepControlsAwake()
+    }
+
+    func go(to bookmark: Bookmark) {
+        guard chapters.indices.contains(bookmark.page) else { return }
+        pendingJumpFraction = bookmark.fraction ?? 0
+        if chapterIndex == bookmark.page {
+            scrollFraction = pendingJumpFraction
+        } else {
+            chapterIndex = bookmark.page
+        }
+    }
+
+    func removeBookmark(_ bookmark: Bookmark) {
+        library.removeBookmark(bookmark, from: comic)
+    }
+
+    /// Where to land in a chapter being jumped to from a bookmark, handed to the web view once.
+    var pendingJumpFraction: Double = 0
 
     // MARK: Chrome
 
