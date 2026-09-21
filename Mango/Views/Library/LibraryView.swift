@@ -45,7 +45,9 @@ struct LibraryView: View {
             // Must sit outside the lazy containers below — SwiftUI doesn't register a
             // navigationDestination declared inside a LazyVStack, and the links go dead.
             .navigationDestination(for: String.self) { id in
-                if let shelf = library.shelf(id: id) {
+                if id.hasPrefix(SeriesGrouping.groupPrefix) {
+                    if let group = library.group(id: id) { GroupDetailView(groupID: id, fallback: group) }
+                } else if let shelf = library.shelf(id: id) {
                     SeriesDetailView(series: shelf)
                 }
             }
@@ -143,11 +145,19 @@ struct LibraryView: View {
         }
     }
 
+    /// Stacked when browsing; flat when searching, so a match is never hidden inside a stack.
+    private var items: [ShelfItem] {
+        query.isEmpty ? library.shelfItems(shelves) : shelves.map(ShelfItem.series)
+    }
+
     private var grid: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: coverWidth.min, maximum: coverWidth.max), spacing: 16)], spacing: 22) {
-            ForEach(shelves) { shelf in
-                NavigationLink(value: shelf.id) {
-                    SeriesCardView(series: shelf)
+            ForEach(items) { item in
+                NavigationLink(value: item.id) {
+                    switch item {
+                    case .series(let shelf): SeriesCardView(series: shelf)
+                    case .group(let group): GroupCardView(group: group)
+                    }
                 }
                 .buttonStyle(.plain)
             }
@@ -157,14 +167,25 @@ struct LibraryView: View {
 
     private var list: some View {
         LazyVStack(spacing: 0) {
-            ForEach(shelves) { shelf in
-                NavigationLink(value: shelf.id) {
+            ForEach(items) { item in
+                NavigationLink(value: item.id) {
                     HStack(spacing: 12) {
-                        CoverView(coverID: shelf.coverID, title: shelf.name)
-                            .frame(width: 50)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(shelf.name).font(.body).lineLimit(1)
-                            Text(shelf.subtitle).font(.caption).foregroundStyle(.secondary)
+                        switch item {
+                        case .series(let shelf):
+                            CoverView(coverID: shelf.coverID, title: shelf.name)
+                                .frame(width: 50)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(shelf.name).font(.body).lineLimit(1)
+                                Text(shelf.subtitle).font(.caption).foregroundStyle(.secondary)
+                            }
+                        case .group(let group):
+                            CoverView(coverID: group.members.first?.coverID, title: group.name)
+                                .frame(width: 50)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Label(group.name, systemImage: "square.stack").font(.body).lineLimit(1)
+                                Text("\(group.members.count) series · \(group.volumeCount) books")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -209,6 +230,8 @@ struct LibraryView: View {
 /// One shelf in the grid: the cover, the name, and how far through the run you are.
 struct SeriesCardView: View {
     let series: Series
+    /// Shown instead of the series name — inside a stack, without the stack's own name.
+    var title: String?
     @Environment(LibraryModel.self) private var library
 
     var body: some View {
@@ -224,7 +247,7 @@ struct SeriesCardView: View {
                         .padding(6)
                 }
             }
-            Text(series.name)
+            Text(title ?? series.name)
                 .font(.caption)
                 .lineLimit(2, reservesSpace: true)
             let finished = library.finishedCount(in: series)

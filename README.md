@@ -35,6 +35,10 @@ download queue with a progress bar in front of it — it just opens.
   MangaDex, AniList and Apple Books (or use your own image); Look Up Series finds a messy shelf
   ("Part 5 - Vento Aureo") on AniList and, once you pick the match, puts the proper name and author
   on every volume. Only the series name — and the volume number — is sent, and only then.
+- **Stacks what belongs together.** JoJo's parts sit under one *JoJo's Bizarre Adventure* stack in
+  part order — even the ones named only "Part 2 - Battle Tendency" — and novels that share a name
+  before " - " (Mushoku Tensei's *Jobless* and *Redundant Reincarnation*) stack too. Group With… /
+  Remove From… on any series when you know better.
 - **Remembers where you were**, per volume, and knows which volume comes next in a run.
 - Pinch zoom, double-tap zoom, tap-to-turn, keep-screen-awake, a page grid to jump anywhere,
   **crop margins** (cuts plain scan borders, never art), **sepia / dim / night** page tints, and

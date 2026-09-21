@@ -1,6 +1,44 @@
 import Foundation
 
 extension LibraryModel {
+    /// The library grid: shelves, with the ones that belong together stacked.
+    func shelfItems(_ shelves: [Series]) -> [ShelfItem] {
+        SeriesGrouping.arrange(shelves, manual: state.seriesGroups)
+    }
+
+    func group(id: String) -> SeriesGroup? {
+        let novels = id.hasPrefix(SeriesGrouping.groupPrefix + "novel|")
+        for item in shelfItems(series(for: novels ? .novels : .manga)) {
+            if case .group(let group) = item, group.id == id { return group }
+        }
+        return nil
+    }
+
+    /// Every stack's name, for Group With….
+    var groupNames: [String] {
+        let items = shelfItems(series(for: .manga)) + shelfItems(series(for: .novels))
+        let names = items.compactMap { item -> String? in
+            if case .group(let group) = item { return group.name }
+            return nil
+        } + state.seriesGroups.values.filter { !$0.isEmpty }
+        var seen = Set<String>()
+        return names.filter { seen.insert(SeriesGrouper.key(forName: $0)).inserted }
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    /// The stack a shelf is in, if any.
+    func group(containing shelf: Series) -> SeriesGroup? {
+        for item in shelfItems(series(for: shelf.isNovel ? .novels : .manga)) {
+            if case .group(let group) = item, group.members.contains(where: { $0.id == shelf.id }) { return group }
+        }
+        return nil
+    }
+
+    /// Puts a shelf in a stack (`nil` goes back to automatic, "" keeps it out of any).
+    func setGroup(_ name: String?, for shelf: Series) {
+        mutateState { state in state.seriesGroups[shelf.id] = name }
+    }
+
     /// A shelf by id, following renames — a shelf's id is its name, so a screen that's showing
     /// one when it's renamed would otherwise be left pointing at nothing.
     func shelf(id: String) -> Series? {

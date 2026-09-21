@@ -13,8 +13,10 @@
 		085FA984572CDBF0B855F4FF /* ZipReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E27F957B80DBF4AABBD2C6F /* ZipReaderTests.swift */; };
 		0A0E0CF6DB17F9B35E98EFAA /* RandomAccessReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2924E7D9DA58A7E2B49E2593 /* RandomAccessReader.swift */; };
 		0BAF908FCB6FB42BE1D48A97 /* LibraryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D51D5B1DE8F484A69F39007 /* LibraryState.swift */; };
+		0BEDD78A6A9331BA177FADD8 /* SeriesGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD101EBBCAB3F82E3801B42 /* SeriesGrouping.swift */; };
 		0CCAC2CE8AD4247739B359D5 /* MangoIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51A4C22B927834AC3B1622C /* MangoIntents.swift */; };
 		0E364AED4B40B9190BE38F3A /* ProgressSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC2EFD6C20BA6E555039AFAA /* ProgressSyncTests.swift */; };
+		0E54541EF5B1F8FEE3188963 /* SeriesGroupingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32BE28E382903FEDB78351D /* SeriesGroupingTests.swift */; };
 		11CCD056FD5F5373A1DBA305 /* ContinueReadingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214D4908892151334CD4F41C /* ContinueReadingWidget.swift */; };
 		12813B77331E752D003817E0 /* SeriesLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26C4AE90A771FAA6E3435BF /* SeriesLookupView.swift */; };
 		15513CB13312CF24252B7011 /* SpreadLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA84693BDBFE301D5B451EE1 /* SpreadLayout.swift */; };
@@ -61,6 +63,7 @@
 		87BA2CE3BF15595C2F851919 /* CoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E2977C1BEE925EC6FC8241 /* CoverView.swift */; };
 		87C662C9BFAFEBDD30275C67 /* ProgressSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A776A38F05557D1EB3700C43 /* ProgressSync.swift */; };
 		889BD5B174C47D732C9B7026 /* BookmarkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D772E5D3F7DA79781764CEB /* BookmarkStore.swift */; };
+		88CDB224BA09AC224C3395FA /* SeriesGroupViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02083CFB7F3AD3BA8B59208A /* SeriesGroupViews.swift */; };
 		8B7CBC744A124EB0B9F11CC5 /* ProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF622583A273B4A3A99D811 /* ProgressBar.swift */; };
 		8C01C798CEA90DED9A960C3E /* LibraryModel+Privacy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F5450C5A73CDBFBAA98F597 /* LibraryModel+Privacy.swift */; };
 		8D592FB8F2D37B319FFE0F28 /* NASServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838A6B43528DCECD9D9F0545 /* NASServer.swift */; };
@@ -166,6 +169,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		02083CFB7F3AD3BA8B59208A /* SeriesGroupViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesGroupViews.swift; sourceTree = "<group>"; };
 		02FBB3EBD95E817A4A91C379 /* Medium.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Medium.swift; sourceTree = "<group>"; };
 		05BC4E703948F090F1C873A8 /* NASClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASClient.swift; sourceTree = "<group>"; };
 		0674DA6233904BF286B3A1E2 /* NameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameParser.swift; sourceTree = "<group>"; };
@@ -257,6 +261,7 @@
 		BC2EFD6C20BA6E555039AFAA /* ProgressSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressSyncTests.swift; sourceTree = "<group>"; };
 		C1E84DFA84ABCFCD7B9EED53 /* ZipTestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipTestBuilder.swift; sourceTree = "<group>"; };
 		C70EF425E4FF75BB5101480D /* MangoWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MangoWidgets.entitlements; sourceTree = "<group>"; };
+		CAD101EBBCAB3F82E3801B42 /* SeriesGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesGrouping.swift; sourceTree = "<group>"; };
 		CDF73065EA58599FC6B69E2F /* LibraryModel+Outside.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Outside.swift"; sourceTree = "<group>"; };
 		CE47EE3C1EA02385C3A31110 /* ComicInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicInfoTests.swift; sourceTree = "<group>"; };
 		CE60B793852685818B543F0A /* EPUBPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBPackage.swift; sourceTree = "<group>"; };
@@ -274,6 +279,7 @@
 		ED7B90B431D4C975A4C010D5 /* ImageFileTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageFileTypes.swift; sourceTree = "<group>"; };
 		EF9F14A9B442ADB731EB1CB3 /* NovelEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelEngine.swift; sourceTree = "<group>"; };
 		F1FE7A94B46C464EFF6CC7AE /* ReadingSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingSnapshot.swift; sourceTree = "<group>"; };
+		F32BE28E382903FEDB78351D /* SeriesGroupingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesGroupingTests.swift; sourceTree = "<group>"; };
 		F341DFF93C61C4717B8FD196 /* MangoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MangoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F51A4C22B927834AC3B1622C /* MangoIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MangoIntents.swift; sourceTree = "<group>"; };
 		F52D0CAEDB8A0D5F8C47A96A /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -368,6 +374,7 @@
 				38F577D1086DFE59CA7E30B2 /* EditComicView.swift */,
 				B975EBDBB03B4433A8AC8B60 /* LibraryView.swift */,
 				5555D5C0EF09ED588A0B1735 /* SeriesDetailView.swift */,
+				02083CFB7F3AD3BA8B59208A /* SeriesGroupViews.swift */,
 				A26C4AE90A771FAA6E3435BF /* SeriesLookupView.swift */,
 			);
 			path = Library;
@@ -400,6 +407,7 @@
 				0674DA6233904BF286B3A1E2 /* NameParser.swift */,
 				A776A38F05557D1EB3700C43 /* ProgressSync.swift */,
 				945AA080C5059CBFA8EC193E /* SeriesGrouper.swift */,
+				CAD101EBBCAB3F82E3801B42 /* SeriesGrouping.swift */,
 				D0BCBE724BC92E84C93A4BEF /* SeriesLookup.swift */,
 			);
 			path = Library;
@@ -534,6 +542,7 @@
 				BC2EFD6C20BA6E555039AFAA /* ProgressSyncTests.swift */,
 				85921FD3FFCD762D8FA54844 /* ReadingProgressTests.swift */,
 				A37D48E73BCEFA724CD45ED4 /* SeriesGrouperTests.swift */,
+				F32BE28E382903FEDB78351D /* SeriesGroupingTests.swift */,
 				FCB12047A308E5CF1ED6CE8E /* SpreadLayoutTests.swift */,
 				A2B84550A723DC7845833093 /* TallPageTests.swift */,
 				3E27F957B80DBF4AABBD2C6F /* ZipReaderTests.swift */,
@@ -812,7 +821,9 @@
 				A516D8370CF24A0D3AA47F5D /* RootView.swift in Sources */,
 				9D23D4B2FFB7AF2FCE894069 /* Series.swift in Sources */,
 				BEAA40F2320606BB7576C613 /* SeriesDetailView.swift in Sources */,
+				88CDB224BA09AC224C3395FA /* SeriesGroupViews.swift in Sources */,
 				E7FF7F3B09A83CA8D98826BC /* SeriesGrouper.swift in Sources */,
+				0BEDD78A6A9331BA177FADD8 /* SeriesGrouping.swift in Sources */,
 				6411CD46D2EA2745797CAF7D /* SeriesLookup.swift in Sources */,
 				12813B77331E752D003817E0 /* SeriesLookupView.swift in Sources */,
 				C36DCC7FDCC629BE85F008AB /* SettingsView.swift in Sources */,
@@ -848,6 +859,7 @@
 				0E364AED4B40B9190BE38F3A /* ProgressSyncTests.swift in Sources */,
 				75AF01A0C58A179BDBAEB1C6 /* ReadingProgressTests.swift in Sources */,
 				F4658901017BF69227830D16 /* SeriesGrouperTests.swift in Sources */,
+				0E54541EF5B1F8FEE3188963 /* SeriesGroupingTests.swift in Sources */,
 				3BD93B099BCFED10C5E6A5D1 /* SpreadLayoutTests.swift in Sources */,
 				1F8B4C51525EF5A3EB6D199B /* TallPageTests.swift in Sources */,
 				085FA984572CDBF0B855F4FF /* ZipReaderTests.swift in Sources */,
