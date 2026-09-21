@@ -87,6 +87,18 @@ enum ImageDecoder {
         return image
     }
 
+    /// Longest edge of a page-grid thumbnail.
+    static let thumbnailPixels = 300
+
+    /// A page-grid thumbnail: the page shrunk whole, or for a long strip its top, cut to a
+    /// page's shape — a whole strip at thumbnail size is a sliver.
+    static func thumbnail(from data: Data) -> CGImage? {
+        guard let size = pixelSize(of: data), PageShape.isLongStrip(width: size.width, height: size.height),
+              let strip = decode(data, sizing: .fitWidth(pixels: thumbnailPixels * 2 / 3))
+        else { return downsample(data, maxPixel: thumbnailPixels) }
+        return strip.cropping(to: CGRect(x: 0, y: 0, width: strip.width, height: min(strip.height, strip.width * 3 / 2))) ?? strip
+    }
+
     /// Pixel dimensions from the header, without decoding a single pixel. Works on a file's first
     /// few KB as well as the whole thing — the header is all it needs.
     static func pixelSize(of data: Data) -> CGSize? {

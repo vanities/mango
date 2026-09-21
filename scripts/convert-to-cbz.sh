@@ -6,7 +6,8 @@
 #   scripts/convert-to-cbz.sh [--delete] <folder>...
 #
 # Needs `zip` and an extractor: `7zz` (brew install sevenzip) or `unar` (brew install unar)
-# handle everything; `unrar` handles RAR and `7z` (p7zip) handles 7z — p7zip has no RAR codec.
+# handle everything; `unrar` handles RAR (and is preferred for it — unar chokes on some RAR4
+# archives that unrar reads fine); `7z` (p7zip) handles 7z but has no RAR codec.
 # Point it at the share mounted in Finder (Go → Connect to Server) to convert a NAS in place.
 # Originals are kept unless --delete, and an existing .cbz is never overwritten. Pages are
 # stored, not compressed: JPEGs don't shrink, and a stored zip is the fastest thing to read
@@ -25,9 +26,11 @@ has() { command -v "$1" >/dev/null; }
 extract() {
   case "${1,,}" in
     *.cbr|*.rar)
-      if has 7zz; then 7zz x -y -bso0 -bsp0 -o"$2" "$1"
+      # RARLAB's own unrar first: it's the reference decoder, and unar fails partway through
+      # some intact RAR4 archives ("Attempted to read more data than was available").
+      if has unrar; then unrar x -o+ -inul "$1" "$2/"
+      elif has 7zz; then 7zz x -y -bso0 -bsp0 -o"$2" "$1"
       elif has unar; then unar -q -f -o "$2" "$1"
-      elif has unrar; then unrar x -o+ -inul "$1" "$2/"
       else log "no RAR extractor: brew install sevenzip (or unar)"; return 1; fi ;;
     *.cbt|*.tar)
       tar -xf "$1" -C "$2" ;;

@@ -44,6 +44,7 @@ struct LibraryScanner: Sendable {
         // Collected and parsed as a group, not one by one: files in a folder disambiguate each
         // other (see NameParser.parseGroup).
         var candidates: [Candidate] = []
+        var unreadable: [String] = []
 
         for url in entries {
             let name = url.lastPathComponent
@@ -57,7 +58,7 @@ struct LibraryScanner: Sendable {
             if ImageFileTypes.isPage(name) {
                 loosePages += 1
             } else if ImageFileTypes.isUnreadableArchive(name) {
-                result.unreadable[(name as NSString).pathExtension.lowercased(), default: 0] += 1
+                unreadable.append(name)
             } else if ImageFileTypes.isReadable(name) {
                 candidates.append(Candidate(
                     name: name,
@@ -68,6 +69,8 @@ struct LibraryScanner: Sendable {
                 ))
             }
         }
+
+        countUnreadable(unreadable, besides: candidates, into: &result)
 
         // A folder full of loose pages is an unzipped volume.
         if loosePages >= minLoosePages, directory != base {
@@ -120,6 +123,7 @@ struct LibraryScanner: Sendable {
         var loosePages = 0
         var looseBytes: Int64 = 0
         var candidates: [Candidate] = []
+        var unreadable: [String] = []
 
         for entry in entries {
             if ImageFileTypes.isJunk(entry.name) { continue }
@@ -132,7 +136,7 @@ struct LibraryScanner: Sendable {
                 loosePages += 1
                 looseBytes += entry.size
             } else if ImageFileTypes.isUnreadableArchive(entry.name) {
-                result.unreadable[(entry.name as NSString).pathExtension.lowercased(), default: 0] += 1
+                unreadable.append(entry.name)
             } else if ImageFileTypes.isReadable(entry.name) {
                 candidates.append(Candidate(
                     name: entry.name,
@@ -143,6 +147,8 @@ struct LibraryScanner: Sendable {
                 ))
             }
         }
+
+        countUnreadable(unreadable, besides: candidates, into: &result)
 
         if loosePages >= minLoosePages, !path.isEmpty {
             let parent = (path as NSString).deletingLastPathComponent
@@ -162,6 +168,16 @@ struct LibraryScanner: Sendable {
     }
 
     // MARK: Shared
+
+    /// RAR and 7z files the reader can't open — minus any with a readable twin beside them
+    /// ("Akira v01.rar" next to its converted "Akira v01.cbz"), which isn't missing anything.
+    private static func countUnreadable(_ names: [String], besides candidates: [Candidate], into result: inout Result) {
+        guard !names.isEmpty else { return }
+        let converted = Set(candidates.map { ($0.name as NSString).deletingPathExtension.lowercased() })
+        for name in names where !converted.contains((name as NSString).deletingPathExtension.lowercased()) {
+            result.unreadable[(name as NSString).pathExtension.lowercased(), default: 0] += 1
+        }
+    }
 
     /// One comic-shaped thing found in a directory, before its name has been interpreted.
     private struct Candidate {
