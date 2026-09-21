@@ -6,8 +6,16 @@ struct LibraryView: View {
     @Environment(LibraryModel.self) private var library
     @Environment(AppSettings.self) private var settings
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     @State private var query = ""
     @State private var readingComic: Comic?
+
+    /// Covers should be about the same physical size on both devices, not the same point size —
+    /// phone-sized cards on a 13" iPad leave a sea of white and make the shelf look empty.
+    private var coverWidth: (min: CGFloat, max: CGFloat) {
+        sizeClass == .regular ? (170, 230) : (110, 180)
+    }
 
     private var shelves: [Series] { library.search(query) }
 
@@ -91,7 +99,7 @@ struct LibraryView: View {
                         ForEach(inProgress.prefix(12)) { comic in
                             Button { readingComic = comic } label: {
                                 ComicThumbnail(comic: comic)
-                                    .frame(width: 110)
+                                    .frame(width: sizeClass == .regular ? 150 : 110)
                             }
                             .buttonStyle(.plain)
                         }
@@ -104,7 +112,7 @@ struct LibraryView: View {
     }
 
     private var grid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110, maximum: 180), spacing: 14)], spacing: 18) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: coverWidth.min, maximum: coverWidth.max), spacing: 16)], spacing: 22) {
             ForEach(shelves) { shelf in
                 NavigationLink(value: shelf.id) {
                     SeriesCardView(series: shelf)
@@ -158,7 +166,7 @@ struct LibraryView: View {
         ContentUnavailableView {
             Label("No comics yet", systemImage: "books.vertical")
         } description: {
-            Text("Add a folder or a NAS share in Sources, or drop .cbz files into \"On My iPhone › Mango\" in the Files app.")
+            Text("Add a folder or a NAS share in Sources, or drop .cbz files into Mango's folder in the Files app.")
         } actions: {
             NavigationLink("Add a source") { SourcesView() }
                 .buttonStyle(.glassProminent)

@@ -39,7 +39,7 @@ final class LibraryModel {
 
     // MARK: Sources
 
-    /// "On My iPhone › Mango" — always present, never removable.
+    /// "Mango's folder in Files" — always present, never removable.
     private func ensureDocumentsSource() {
         guard !state.sources.contains(where: { $0.kind == .appDocuments }) else { return }
         state.sources.insert(LibrarySource(id: UUID(), kind: .appDocuments, displayName: "On My Device",

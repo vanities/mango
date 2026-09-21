@@ -2,7 +2,7 @@ import Foundation
 
 /// A place Mango reads comics from. Files are never copied: a source is a
 /// security-scoped bookmark to a folder (or single file) the user picked, or the
-/// app's own Documents folder ("On My iPhone › Mango" in the Files app).
+/// app's own Documents folder ("Mango's folder in Files" in the Files app).
 struct LibrarySource: Identifiable, Codable, Hashable, Sendable {
     enum Kind: String, Codable, Sendable {
         /// A folder picked in the Files browser (iCloud Drive, On My iPhone, SMB share, other apps).
