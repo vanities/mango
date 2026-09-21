@@ -194,6 +194,12 @@ final class LibraryModel {
                 merged.coverID = old.coverID
                 merged.addedAt = old.addedAt
             }
+            // Precedence: filename guess < what the archive says about itself < what the user
+            // typed. ComicInfo is only known once an archive has been opened, so it's kept in
+            // the state and reapplied here, since a scan never opens anything.
+            if let info = state.comicInfo[comic.id] {
+                merged = info.applied(to: merged)
+            }
             if let override = state.overrides[comic.id] {
                 merged = override.applied(to: merged)
             }
@@ -296,8 +302,24 @@ final class LibraryModel {
         }
         let archive = try await ArchiveOpener.open(comic, at: location)
         noteOpened(comic, pageCount: archive.pageCount)
+        await absorbComicInfo(for: comic, from: archive)
         await ensureCover(for: comic, using: archive)
         return archive
+    }
+
+    /// Reads the archive's ComicInfo.xml the first time it's opened and folds it in. Rescans
+    /// never open archives, so it's kept in the state and reapplied from there.
+    private func absorbComicInfo(for comic: Comic, from archive: any ComicArchive) async {
+        guard state.comicInfo[comic.id] == nil, let info = await archive.comicInfo() else { return }
+        state.comicInfo[comic.id] = info
+        if let index = state.comics.firstIndex(where: { $0.id == comic.id }) {
+            var updated = info.applied(to: state.comics[index])
+            if let override = state.overrides[comic.id] { updated = override.applied(to: updated) }
+            state.comics[index] = updated
+        }
+        Logger.archive.info("[comicinfo] \(comic.title, privacy: .public): series=\(info.series ?? "-", privacy: .public) vol=\(info.volume.map { Formatting.number($0) } ?? "-", privacy: .public) manga=\(info.manga?.rawValue ?? "-", privacy: .public)")
+        save()
+        rebuildSeries()
     }
 
     /// First open is when we learn how many pages a comic actually has.
@@ -374,6 +396,7 @@ final class LibraryModel {
                     continue
                 }
                 noteOpened(comic, pageCount: archive.pageCount)
+                await absorbComicInfo(for: comic, from: archive)
                 await ensureCover(for: comic, using: archive)
                 if state.comics.first(where: { $0.id == comic.id })?.coverID == nil {
                     markCoverAttempted(comic)
@@ -438,6 +461,8 @@ final class LibraryModel {
         if let key = comic.series.map({ SeriesGrouper.key(forName: $0) }), let shelf = state.seriesDirection[key] {
             return shelf
         }
+        // The archive saying "YesAndRightToLeft" beats a global default someone set once.
+        if let fromFile = state.comicInfo[comic.id]?.manga?.direction { return fromFile }
         return settings.defaultDirection
     }
 

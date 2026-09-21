@@ -20,6 +20,7 @@
 		1E1FB06091ED33989CC94ED2 /* Comic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CE48B6D8D5E95D44165066 /* Comic.swift */; };
 		237B506B1A4AEAF1A8AFA169 /* EditComicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F577D1086DFE59CA7E30B2 /* EditComicView.swift */; };
 		24BCF8D5ABAD435C12411166 /* NASSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E57AF5756D814DC395CD5C15 /* NASSetupView.swift */; };
+		28040003F9A50C9E397B03FA /* ComicInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850C21986BD7FEAF69E55374 /* ComicInfo.swift */; };
 		28209DC6B56A22C1B4231B43 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3EED7A5A833B0ECB7558CAD1 /* Assets.xcassets */; };
 		3BD93B099BCFED10C5E6A5D1 /* SpreadLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCB12047A308E5CF1ED6CE8E /* SpreadLayoutTests.swift */; };
 		3DD745B2E76FC82D077E37A5 /* ZipReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8F0D00CBE3A4C34A9C6523 /* ZipReader.swift */; };
@@ -28,6 +29,7 @@
 		43D2A2DF52A19D167DBED746 /* Logger+Mango.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42485FBA788C6193A9316BE4 /* Logger+Mango.swift */; };
 		49BA93688AE2702B1FC6CD70 /* ReaderRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A997DD640808822EC0749B /* ReaderRouter.swift */; };
 		49D051D28B4D6DAA63DFEAFA /* LibraryStateCompatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E6E70FA8B2118AFE3D7C496 /* LibraryStateCompatTests.swift */; };
+		4D47F7CA28C8818537885221 /* ComicInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE47EE3C1EA02385C3A31110 /* ComicInfoTests.swift */; };
 		549F9E59882E0B54AE4FB7FD /* ReaderEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59DED834948B52DAB8B08E36 /* ReaderEngine.swift */; };
 		5548CAC19C29E6F0452FA475 /* ImageDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3651C7A2C034113FC75C60B6 /* ImageDecoder.swift */; };
 		55E4642406338C126D773EDA /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92EAE70E7EBF6C31A130572A /* AppEnvironment.swift */; };
@@ -159,6 +161,7 @@
 		8199D18DD8F5F1A7499262DE /* ArchiveOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveOpener.swift; sourceTree = "<group>"; };
 		831192869B849F61B5BBA974 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		838A6B43528DCECD9D9F0545 /* NASServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASServer.swift; sourceTree = "<group>"; };
+		850C21986BD7FEAF69E55374 /* ComicInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicInfo.swift; sourceTree = "<group>"; };
 		85921FD3FFCD762D8FA54844 /* ReadingProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingProgressTests.swift; sourceTree = "<group>"; };
 		8D3284629D6CAAA335706A95 /* FolderComicArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComicArchive.swift; sourceTree = "<group>"; };
 		91901981DD7DA76063F12867 /* Series.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Series.swift; sourceTree = "<group>"; };
@@ -181,6 +184,7 @@
 		BC2AC268EA1C8E1CF75CA368 /* MangoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MangoApp.swift; sourceTree = "<group>"; };
 		BC2EFD6C20BA6E555039AFAA /* ProgressSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressSyncTests.swift; sourceTree = "<group>"; };
 		C1E84DFA84ABCFCD7B9EED53 /* ZipTestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipTestBuilder.swift; sourceTree = "<group>"; };
+		CE47EE3C1EA02385C3A31110 /* ComicInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicInfoTests.swift; sourceTree = "<group>"; };
 		CE60B793852685818B543F0A /* EPUBPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBPackage.swift; sourceTree = "<group>"; };
 		DA84693BDBFE301D5B451EE1 /* SpreadLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpreadLayout.swift; sourceTree = "<group>"; };
 		DDE48EA773EFDE05BA86EDBA /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
@@ -401,6 +405,7 @@
 		9C8024C72D85BB132CBE0262 /* MangoTests */ = {
 			isa = PBXGroup;
 			children = (
+				CE47EE3C1EA02385C3A31110 /* ComicInfoTests.swift */,
 				78276097E6A829F0AC4CD49D /* EPUBParserTests.swift */,
 				EB90731D0ADEC569ABD5A528 /* FormattingTests.swift */,
 				3A85E21BB8D5171D55FE9A20 /* LibraryDedupeTests.swift */,
@@ -448,6 +453,7 @@
 			children = (
 				8199D18DD8F5F1A7499262DE /* ArchiveOpener.swift */,
 				9274137EF5F45522B05449F0 /* ComicArchive.swift */,
+				850C21986BD7FEAF69E55374 /* ComicInfo.swift */,
 				A8390791BBCCC9E5AF85AA31 /* EPUBDocument.swift */,
 				CE60B793852685818B543F0A /* EPUBPackage.swift */,
 				8D3284629D6CAAA335706A95 /* FolderComicArchive.swift */,
@@ -579,6 +585,7 @@
 				F86266D17CFBADAF76695AFD /* CloudSync.swift in Sources */,
 				1E1FB06091ED33989CC94ED2 /* Comic.swift in Sources */,
 				D508B82A18D2E1905472B7AF /* ComicArchive.swift in Sources */,
+				28040003F9A50C9E397B03FA /* ComicInfo.swift in Sources */,
 				874606504A3DDCB19829040C /* ComicOverride.swift in Sources */,
 				D1D822EED879532B3C216B32 /* ContinuousReader.swift in Sources */,
 				B999A41796CEB6EAEAFF2B8C /* CoverStore.swift in Sources */,
@@ -644,6 +651,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4D47F7CA28C8818537885221 /* ComicInfoTests.swift in Sources */,
 				AB28A5731170DC087470C2F0 /* EPUBParserTests.swift in Sources */,
 				595E16DCFBDC9F0F39DE7608 /* FormattingTests.swift in Sources */,
 				E49A315243AB05D42E84C95F /* LibraryDedupeTests.swift in Sources */,

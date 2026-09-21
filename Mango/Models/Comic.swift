@@ -33,6 +33,8 @@ struct Comic: Identifiable, Codable, Hashable, Sendable {
     /// Episode or volume title, when the filename carried one beyond the series and the number.
     /// Optional, so older library files still decode.
     var subtitle: String?
+    /// Blurb from the archive's ComicInfo.xml, when it has one.
+    var summary: String?
 
     /// Filled in the first time the archive is opened — cracking every archive during a scan
     /// would make scanning a 2,000-file share unbearable, so this stays nil until then.

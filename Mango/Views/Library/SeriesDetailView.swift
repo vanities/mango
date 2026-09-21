@@ -8,6 +8,7 @@ struct SeriesDetailView: View {
     @Environment(TransferManager.self) private var transfers
     @State private var readingComic: Comic?
     @State private var editing: Comic?
+    @State private var summaryExpanded = false
 
     private var shelf: Series { library.series.first(where: { $0.id == series.id }) ?? series }
 
@@ -18,6 +19,20 @@ struct SeriesDetailView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
+            if let summary = shelf.comics.lazy.compactMap(\.summary).first {
+                Section {
+                    Text(summary)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(summaryExpanded ? nil : 4)
+                        .onTapGesture { withAnimation(.snappy) { summaryExpanded.toggle() } }
+                } header: {
+                    Text("About")
+                } footer: {
+                    Text("From the archive's own ComicInfo.xml.")
+                }
+            }
+
             Section("Volumes") {
                 ForEach(shelf.comics) { comic in
                     Button { readingComic = comic } label: {

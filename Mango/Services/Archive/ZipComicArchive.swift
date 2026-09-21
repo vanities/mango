@@ -10,6 +10,9 @@ import os
 struct ZipComicArchive: ComicArchive {
     private let reader: any RandomAccessReader
     private let entries: [ZipEntry]
+    /// ComicInfo.xml, when the archive carries one. Found while reading the index anyway, so
+    /// knowing it's there costs nothing; reading it is one more small ranged read.
+    private let comicInfoEntry: ZipEntry?
     let displayName: String
 
     var pageCount: Int { entries.count }
@@ -28,8 +31,9 @@ struct ZipComicArchive: ComicArchive {
             Logger.archive.error("[zip] \(displayName, privacy: .public) has \(all.count) entries but no images")
             throw ArchiveError.noPages(displayName)
         }
-        Logger.archive.info("[zip] opened \(displayName, privacy: .public) pages=\(pages.count)")
-        return ZipComicArchive(reader: reader, entries: pages, displayName: displayName)
+        let info = all.first { !$0.isDirectory && ComicInfoParser.isComicInfo($0.name) }
+        Logger.archive.info("[zip] opened \(displayName, privacy: .public) pages=\(pages.count) comicInfo=\(info != nil)")
+        return ZipComicArchive(reader: reader, entries: pages, comicInfoEntry: info, displayName: displayName)
     }
 
     func pageData(at index: Int) async throws -> Data {
@@ -37,6 +41,11 @@ struct ZipComicArchive: ComicArchive {
             throw ArchiveError.pageOutOfRange(index, count: entries.count)
         }
         return try await ZipReader.read(entries[index], from: reader)
+    }
+
+    func comicInfo() async -> ComicInfo? {
+        guard let comicInfoEntry, let data = try? await ZipReader.read(comicInfoEntry, from: reader) else { return nil }
+        return ComicInfoParser.parse(data)
     }
 
     func page(at index: Int, maxPixel: Int) async throws -> CGImage {
