@@ -1,0 +1,29 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+.swiftpm/
+
+# Personal signing (see Config/Signing.xcconfig.example)
+Config/Signing.xcconfig
+
+# Generated sample comics
+fixtures/
+
+# macOS
+.DS_Store
+
+# App Store Connect credentials
+.env.appstore-connect
+*.p8
+
+# Python bytecode from the release scripts
+__pycache__/
