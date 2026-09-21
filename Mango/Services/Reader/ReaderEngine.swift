@@ -133,6 +133,33 @@ final class ReaderEngine {
         }
     }
 
+    // MARK: Bookmarks
+
+    var bookmarks: [Bookmark] { library.bookmarks(for: comic) }
+
+    var isCurrentPageBookmarked: Bool {
+        guard groups.indices.contains(groupIndex) else { return false }
+        let visible = Set(groups[groupIndex])
+        return bookmarks.contains { visible.contains($0.page) }
+    }
+
+    /// Marks the page on screen, or unmarks it if it's already marked. With a spread showing,
+    /// either page counts as "this spot".
+    func toggleBookmark() {
+        guard groups.indices.contains(groupIndex) else { return }
+        let visible = Set(groups[groupIndex])
+        if let existing = bookmarks.first(where: { visible.contains($0.page) }) {
+            library.removeBookmark(existing, from: comic)
+        } else {
+            library.addBookmark(page: currentPage, to: comic)
+        }
+        keepControlsAwake()
+    }
+
+    func removeBookmark(_ bookmark: Bookmark) {
+        library.removeBookmark(bookmark, from: comic)
+    }
+
     /// The page's name inside the container, for the "this page wouldn't open" message.
     func pageName(at index: Int) -> String {
         loader?.pageName(at: index) ?? "page \(index + 1)"

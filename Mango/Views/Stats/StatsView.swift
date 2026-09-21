@@ -5,6 +5,7 @@ import SwiftUI
 /// records nothing extra to produce this — there is no analytics, here or anywhere else.
 struct StatsView: View {
     @Environment(LibraryModel.self) private var library
+    @State private var logging = false
 
     private var stats: ReadingStats { library.stats }
 
@@ -20,7 +21,9 @@ struct StatsView: View {
                             headline
                             if stats.hasReadAnything { monthsChart }
                             breakdown
+                            if stats.ratedCount > 0 { ratingsCard }
                             if !stats.topSeries.isEmpty { topSeriesCard }
+                            loggedCard
                             storageCard
                             footnote
                         }
@@ -29,6 +32,70 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("Stats")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { logging = true } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("Log a book read elsewhere")
+                }
+            }
+            .sheet(isPresented: $logging) { LogBookView() }
+        }
+    }
+
+    // MARK: Ratings and the log
+
+    private var ratingsCard: some View {
+        card("Ratings") {
+            if let average = stats.averageRating {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(average, format: .number.precision(.fractionLength(1)))
+                        .font(.title.weight(.semibold)).monospacedDigit()
+                    Text("average across \(stats.ratedCount) rated")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Chart {
+                ForEach(Array(stats.ratingCounts.enumerated()), id: \.offset) { index, count in
+                    BarMark(x: .value("Books", count), y: .value("Stars", "\(index + 1)★"))
+                        .foregroundStyle(Color.yellow.gradient)
+                        .cornerRadius(3)
+                        .annotation(position: .trailing) {
+                            if count > 0 { Text("\(count)").font(.caption2).foregroundStyle(.secondary) }
+                        }
+                }
+            }
+            .chartYScale(domain: ["5★", "4★", "3★", "2★", "1★"])
+            .chartXAxis(.hidden)
+            .frame(height: 150)
+        }
+    }
+
+    @ViewBuilder
+    private var loggedCard: some View {
+        card("Read elsewhere") {
+            if library.state.readingLog.isEmpty {
+                Text("Books you finished before Mango, or outside it, can be logged here so they count.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(library.state.readingLog.prefix(8)) { entry in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.title).font(.subheadline).lineLimit(1)
+                            Text(entry.finishedAt, format: .dateTime.year().month().day())
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if let rating = entry.rating { StarsView(rating: rating) }
+                    }
+                    .contextMenu {
+                        Button("Remove", systemImage: "trash", role: .destructive) { library.removeLogEntry(entry) }
+                    }
+                }
+            }
+            Button { logging = true } label: {
+                Label("Log a book", systemImage: "plus.circle")
+            }
+            .padding(.top, 2)
         }
     }
 

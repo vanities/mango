@@ -37,7 +37,7 @@ struct NovelReaderView: View {
                         chapterPath: chapter.path,
                         fontScale: settings.novelFontScale,
                         dark: dark,
-                        restoreFraction: engine.scrollFraction,
+                        restoreFraction: engine.pendingJumpFraction > 0 ? engine.pendingJumpFraction : engine.scrollFraction,
                         onScroll: { engine.scrollFraction = $0 },
                         onTapMiddle: { engine.toggleControls() },
                         onReachedBottom: {
@@ -111,6 +111,13 @@ struct NovelReaderView: View {
                     .frame(width: 150)
                     .shadow(radius: 18, y: 8)
             }
+            VStack(spacing: 4) {
+                Text("How was it?")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                StarRating(rating: library.rating(for: openComic), size: 24) { library.setRating($0, for: openComic) }
+            }
+
             VStack(spacing: 6) {
                 Text("Finished \(openComic.numberLabel ?? openComic.title)")
                     .font(.headline)
@@ -184,6 +191,10 @@ struct NovelControls: View {
                     settings.novelFontScale = min(2.0, settings.novelFontScale + 0.1)
                     engine.keepControlsAwake()
                 }
+                button(engine.isHereBookmarked ? "bookmark.fill" : "bookmark",
+                       label: engine.isHereBookmarked ? "Remove bookmark" : "Bookmark this spot") {
+                    engine.toggleBookmark()
+                }
                 button("list.bullet", label: "Chapters") {
                     showingChapters = true
                     engine.keepControlsAwake()
@@ -239,6 +250,25 @@ struct ChapterListView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !engine.bookmarks.isEmpty {
+                    Section("Bookmarks") {
+                        ForEach(engine.bookmarks) { mark in
+                            Button {
+                                engine.go(to: mark)
+                                dismiss()
+                            } label: {
+                                HStack {
+                                    Label(mark.label(isNovel: true), systemImage: "bookmark.fill")
+                                    Spacer()
+                                    Text("\(Int((mark.fraction ?? 0) * 100))% in")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .swipeActions { Button("Delete", role: .destructive) { engine.removeBookmark(mark) } }
+                        }
+                    }
+                }
+                Section("Chapters") {
                 ForEach(Array(engine.chapters.enumerated()), id: \.offset) { index, chapter in
                     Button {
                         engine.goToChapter(index)
@@ -253,6 +283,7 @@ struct ChapterListView: View {
                             }
                         }
                     }
+                }
                 }
             }
             .navigationTitle("Chapters")

@@ -95,10 +95,11 @@ extension LibraryModel {
                 bytes: comic.totalBytes,
                 isRemote: remoteSources.contains(comic.sourceID),
                 pageCount: comic.pageCount,
-                progress: state.progress[comic.id]
+                progress: state.progress[comic.id],
+                rating: state.ratings[comic.id]
             )
         }
-        return ReadingStats.build(items)
+        return ReadingStats.build(items, log: state.readingLog)
     }
 
     var totalComics: Int { visibleComics.count }

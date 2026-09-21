@@ -51,6 +51,12 @@ extension LibraryState {
             if customCovers[local.id] == nil, let cover = customCovers[twin.id] {
                 customCovers[local.id] = cover
             }
+            if ratings[local.id] == nil, let rating = ratings[twin.id] {
+                ratings[local.id] = rating
+            }
+            if bookmarks[local.id] == nil, let marks = bookmarks[twin.id] {
+                bookmarks[local.id] = marks
+            }
             // Hiding a remote twin must hide its download too, or it reappears.
             if hiddenComicIDs.contains(twin.id) { hiddenComicIDs.insert(local.id) }
             // Continue Reading has to follow the copy that's actually on screen.

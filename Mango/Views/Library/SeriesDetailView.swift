@@ -61,6 +61,16 @@ struct SeriesDetailView: View {
                                 transfers.upload(comic, to: server.id)
                             }
                         }
+                        Menu {
+                            ForEach((1...5).reversed(), id: \.self) { stars in
+                                Button(String(repeating: "★", count: stars)) { library.setRating(stars, for: comic) }
+                            }
+                            if library.rating(for: comic) != nil {
+                                Button("Clear rating", role: .destructive) { library.setRating(nil, for: comic) }
+                            }
+                        } label: {
+                            Label("Rate", systemImage: "star")
+                        }
                         Button("Reset progress", systemImage: "arrow.counterclockwise") {
                             library.resetProgress(for: comic)
                         }
@@ -147,6 +157,9 @@ struct VolumeRow: View {
                 if let progress = library.progress(for: comic), progress.isStarted {
                     ProgressBar(fraction: progress.fraction)
                         .frame(maxWidth: 160)
+                }
+                if let rating = library.rating(for: comic) {
+                    StarsView(rating: rating)
                 }
             }
             Spacer()

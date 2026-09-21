@@ -44,6 +44,10 @@ struct ReaderControls: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            button(engine.isCurrentPageBookmarked ? "bookmark.fill" : "bookmark",
+                   label: engine.isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page") {
+                engine.toggleBookmark()
+            }
             button(engine.direction.systemImage, label: "Reading direction: \(engine.direction.label)") {
                 engine.direction = engine.direction == .rightToLeft ? .leftToRight : .rightToLeft
                 engine.keepControlsAwake()
@@ -116,6 +120,24 @@ struct ReaderSettingsSheet: View {
         @Bindable var settings = settings
         NavigationStack {
             Form {
+                if !engine.bookmarks.isEmpty {
+                    Section("Bookmarks") {
+                        ForEach(engine.bookmarks) { mark in
+                            Button {
+                                engine.goToPage(mark.page)
+                                dismiss()
+                            } label: {
+                                HStack {
+                                    Label(mark.label(isNovel: false), systemImage: "bookmark.fill")
+                                    Spacer()
+                                    Text(mark.createdAt, format: .dateTime.month().day())
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .swipeActions { Button("Delete", role: .destructive) { engine.removeBookmark(mark) } }
+                        }
+                    }
+                }
                 Section("This comic") {
                     Picker("Direction", selection: $engine.direction) {
                         ForEach(ReadingDirection.allCases, id: \.self) { Text($0.label).tag($0) }
