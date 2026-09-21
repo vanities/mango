@@ -15,7 +15,11 @@ struct SourcesView: View {
             List {
                 Section {
                     ForEach(library.state.sources) { source in
-                        SourceRow(source: source)
+                        NavigationLink {
+                            SourceBrowserView(source: source)
+                        } label: {
+                            SourceRow(source: source)
+                        }
                     }
                     .onDelete(perform: delete)
                 } header: {

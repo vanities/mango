@@ -45,6 +45,7 @@
 		4D47F7CA28C8818537885221 /* ComicInfoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE47EE3C1EA02385C3A31110 /* ComicInfoTests.swift */; };
 		549F9E59882E0B54AE4FB7FD /* ReaderEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59DED834948B52DAB8B08E36 /* ReaderEngine.swift */; };
 		54DB0AF044D206102BB4AD16 /* LibraryModel+Outside.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDF73065EA58599FC6B69E2F /* LibraryModel+Outside.swift */; };
+		55018B1621546BC9B20091B8 /* SourceBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85896BCF84AE73C557A0C71E /* SourceBrowserView.swift */; };
 		5548CAC19C29E6F0452FA475 /* ImageDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3651C7A2C034113FC75C60B6 /* ImageDecoder.swift */; };
 		55E4642406338C126D773EDA /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92EAE70E7EBF6C31A130572A /* AppEnvironment.swift */; };
 		5902EF8B53805DA0DDD96143 /* Medium.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02FBB3EBD95E817A4A91C379 /* Medium.swift */; };
@@ -242,6 +243,7 @@
 		8323EA12C42BC791D2DA5AE2 /* LibraryModel+Downloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Downloads.swift"; sourceTree = "<group>"; };
 		838A6B43528DCECD9D9F0545 /* NASServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASServer.swift; sourceTree = "<group>"; };
 		850C21986BD7FEAF69E55374 /* ComicInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicInfo.swift; sourceTree = "<group>"; };
+		85896BCF84AE73C557A0C71E /* SourceBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceBrowserView.swift; sourceTree = "<group>"; };
 		85921FD3FFCD762D8FA54844 /* ReadingProgressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingProgressTests.swift; sourceTree = "<group>"; };
 		8D3284629D6CAAA335706A95 /* FolderComicArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComicArchive.swift; sourceTree = "<group>"; };
 		91901981DD7DA76063F12867 /* Series.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Series.swift; sourceTree = "<group>"; };
@@ -444,6 +446,7 @@
 			isa = PBXGroup;
 			children = (
 				E57AF5756D814DC395CD5C15 /* NASSetupView.swift */,
+				85896BCF84AE73C557A0C71E /* SourceBrowserView.swift */,
 				7BBDDA3F144FE3640DA2D963 /* SourcesView.swift */,
 			);
 			path = Sources;
@@ -853,6 +856,7 @@
 				6411CD46D2EA2745797CAF7D /* SeriesLookup.swift in Sources */,
 				12813B77331E752D003817E0 /* SeriesLookupView.swift in Sources */,
 				C36DCC7FDCC629BE85F008AB /* SettingsView.swift in Sources */,
+				55018B1621546BC9B20091B8 /* SourceBrowserView.swift in Sources */,
 				C5DE93A3C24FA96049EB9991 /* SourcesView.swift in Sources */,
 				15513CB13312CF24252B7011 /* SpreadLayout.swift in Sources */,
 				D7B44E7622448145958BC5EF /* StarRating.swift in Sources */,
