@@ -26,6 +26,7 @@ final class LibraryModel {
     @ObservationIgnored private var scopedURLs: [UUID: URL] = [:]
     @ObservationIgnored private var clients: [UUID: NASClient] = [:]
     @ObservationIgnored private var coverTask: Task<Void, Never>?
+    @ObservationIgnored private let cloud = CloudSync()
 
     init(store: LibraryStore = LibraryStore(), covers: CoverStore = CoverStore(), settings: AppSettings) {
         self.store = store
@@ -33,6 +34,9 @@ final class LibraryModel {
         self.settings = settings
         self.state = store.loadLibrary()
         ensureDocumentsSource()
+        cloud.onExternalChange = { [weak self] in self?.mergeFromCloud() }
+        cloud.start()
+        mergeFromCloud()
         rebuildSeries()
         Logger.library.info("[library] loaded sources=\(self.state.sources.count) comics=\(self.state.comics.count) progress=\(self.state.progress.count)")
     }
@@ -199,6 +203,7 @@ final class LibraryModel {
             return merged
         }
         adoptStateFromRemoteTwins()
+        mergeFromCloud()
         save()
         rebuildSeries()
         Logger.library.info("[library] scan complete: \(self.state.comics.count) comics, \(self.series.count) series in \(sw.seconds, format: .fixed(precision: 2))s")
@@ -487,5 +492,27 @@ final class LibraryModel {
             Logger.store.error("[store] save failed: \(error.localizedDescription, privacy: .public)")
             lastError = error.localizedDescription
         }
+        pushToCloud()
+    }
+
+    // MARK: iCloud
+
+    /// Folds in anything another device wrote more recently. Positions are matched by relative
+    /// path, so a book only syncs to devices that have the same file in the same place.
+    private func mergeFromCloud() {
+        guard let remote = cloud.load([String: ReadingProgress].self, .progress), !remote.isEmpty else { return }
+        let merged = ProgressSync.merged(local: state.progress, comics: state.comics, cloud: remote)
+        guard merged != state.progress else { return }
+        let changed = merged.filter { state.progress[$0.key] != $0.value }.count
+        state.progress = merged
+        try? store.saveLibrary(state)
+        rebuildSeries()
+        Logger.store.info("[cloud] took \(changed) newer position(s) from another device")
+    }
+
+    private func pushToCloud() {
+        let existing = cloud.load([String: ReadingProgress].self, .progress) ?? [:]
+        let snapshot = ProgressSync.cloudSnapshot(local: state.progress, comics: state.comics, existingCloud: existing)
+        cloud.save(snapshot, .progress)
     }
 }
