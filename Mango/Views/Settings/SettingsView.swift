@@ -43,6 +43,12 @@ struct SettingsView: View {
                     Text("Loading more pages ahead makes turns instant and uses more memory. Over a network, three is about right.")
                 }
 
+                Section {
+                    Toggle("Demo library", isOn: $settings.demoMode)
+                } footer: {
+                    Text("Shows only what's in Mango's own folder and ignores every NAS share and added folder — for screenshots, so a real library never ends up in one. Your sources are left exactly as they are.")
+                }
+
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.shortVersion)
                     Link("Source code", destination: URL(string: "https://github.com/vanities/mango")!)

@@ -30,3 +30,6 @@ __pycache__/
 
 # Downloaded sample comics (Pepper&Carrot, CC-BY) — fetched, not committed
 fixtures-real/
+
+# Generated demo library for screenshots — rebuilt by `make demo-library`
+demo-library/

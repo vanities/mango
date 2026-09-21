@@ -33,6 +33,20 @@ fixtures:       ## Generate sample comics (CBZ, PDF, loose pages) into ./fixture
 install-fixtures: ## Copy fixtures into the booted simulator's "On My iPhone > Mango"
 	scripts/install-fixtures.sh
 
+demo-library:   ## Generate ./demo-library: invented series, for App Store screenshots
+	uv run --script scripts/make-demo-library.py
+
+demo: demo-library gen  ## Build, install the demo library, and launch in demo mode
+	@test -n "$(SIMID)" || (echo "usage: make demo SIMID=<simulator udid>" && exit 1)
+	xcodebuildmcp simulator build-and-run --project-path $(PROJECT) --scheme $(SCHEME) --simulator-id $(SIMID)
+	@sleep 6
+	@C=$$(xcrun simctl get_app_container $(SIMID) com.vanities.mango data) && \
+	  rm -rf "$$C/Documents"/* && cp -R demo-library/. "$$C/Documents/" && \
+	  echo "installed demo library"
+	xcrun simctl terminate $(SIMID) com.vanities.mango || true
+	xcrun simctl launch $(SIMID) com.vanities.mango -MangoDemoMode YES
+	@echo "Launched in demo mode. Real sources are untouched; turn it off in Settings."
+
 icon:           ## Re-render the app icon
 	swift scripts/render-icon.swift Mango/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 

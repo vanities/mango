@@ -52,6 +52,11 @@ final class AppSettings {
     var librarySort: LibrarySort { didSet { defaults.set(librarySort.rawValue, forKey: Key.sort) } }
     var libraryLayout: LibraryLayout { didSet { defaults.set(libraryLayout.rawValue, forKey: Key.layout) } }
     var showFinished: Bool { didSet { defaults.set(showFinished, forKey: Key.showFinished) } }
+    /// Scan only the app's own folder and ignore every share and picked folder, so the app can
+    /// be photographed with a generated library instead of someone's real one. Set it here or
+    /// pass `-MangoDemoMode YES` at launch; either way the user's sources are left untouched,
+    /// just unscanned.
+    var demoMode: Bool { didSet { defaults.set(demoMode, forKey: Key.demoMode) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -71,6 +76,8 @@ final class AppSettings {
         librarySort = LibrarySort(rawValue: defaults.string(forKey: Key.sort) ?? "") ?? .recent
         libraryLayout = LibraryLayout(rawValue: defaults.string(forKey: Key.layout) ?? "") ?? .grid
         showFinished = defaults.object(forKey: Key.showFinished) as? Bool ?? true
+        // A launch argument writes straight into UserDefaults, so this covers both routes.
+        demoMode = defaults.object(forKey: Key.demoMode) as? Bool ?? false
     }
 
     private enum Key {
@@ -88,5 +95,6 @@ final class AppSettings {
         static let sort = "library.sort"
         static let layout = "library.layout"
         static let showFinished = "library.showFinished"
+        static let demoMode = "MangoDemoMode"
     }
 }
