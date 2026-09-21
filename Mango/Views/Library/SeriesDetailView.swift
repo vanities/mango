@@ -48,7 +48,7 @@ struct SeriesDetailView: View {
         }
         .navigationTitle(shelf.name)
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(item: $readingComic) { ReaderView(comic: $0) }
+        .fullScreenCover(item: $readingComic) { ReaderRouter(comic: $0) }
         .sheet(item: $editing) { EditComicView(comic: $0) }
     }
 

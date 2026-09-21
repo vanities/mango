@@ -42,6 +42,10 @@ enum ArchiveOpener {
 
         case (.folder, .remote(let client, let path, _)):
             archive = try await FolderComicArchive.openRemote(client: client, relativePath: path, displayName: name)
+
+        case (.epub, _):
+            // A novel isn't a sequence of page images; LibraryModel.openNovel handles it.
+            throw ArchiveError.notAComic(name)
         }
 
         Logger.archive.info("[open] \(name, privacy: .public) kind=\(comic.kind.rawValue, privacy: .public) pages=\(archive.pageCount) in \(sw.ms, format: .fixed(precision: 0))ms")

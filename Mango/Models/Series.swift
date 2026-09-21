@@ -9,6 +9,10 @@ struct Series: Identifiable, Hashable, Sendable {
     var author: String?
     var comics: [Comic]
 
+    /// A shelf is all one medium — `SeriesGrouper` keys on it, so manga and light novels of
+    /// the same series never land together.
+    var isNovel: Bool { comics.first?.isNovel ?? false }
+
     var coverID: String? { comics.first(where: { $0.coverID != nil })?.coverID }
     var volumeCount: Int { comics.count }
     var totalBytes: Int64 { comics.reduce(0) { $0 + $1.totalBytes } }

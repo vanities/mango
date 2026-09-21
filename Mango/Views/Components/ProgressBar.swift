@@ -39,7 +39,7 @@ struct ComicThumbnail: View {
                 .font(.caption)
                 .lineLimit(1)
             if let progress = library.progress(for: comic), progress.isStarted {
-                Text(progress.label)
+                Text(comic.isNovel ? progress.novelLabel : progress.label)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

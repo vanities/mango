@@ -48,6 +48,8 @@ final class AppSettings {
     var keepScreenAwake: Bool { didSet { defaults.set(keepScreenAwake, forKey: Key.keepAwake) } }
     /// Black background behind pages instead of the system one — less halo in the dark.
     var blackBackground: Bool { didSet { defaults.set(blackBackground, forKey: Key.blackBg) } }
+    /// Body text size in the novel reader, as a multiplier on the book's own size.
+    var novelFontScale: Double { didSet { defaults.set(novelFontScale, forKey: Key.novelFontScale) } }
     var librarySort: LibrarySort { didSet { defaults.set(librarySort.rawValue, forKey: Key.sort) } }
     var libraryLayout: LibraryLayout { didSet { defaults.set(libraryLayout.rawValue, forKey: Key.layout) } }
     var showFinished: Bool { didSet { defaults.set(showFinished, forKey: Key.showFinished) } }
@@ -63,6 +65,7 @@ final class AppSettings {
         tapToTurn = defaults.object(forKey: Key.tapToTurn) as? Bool ?? true
         keepScreenAwake = defaults.object(forKey: Key.keepAwake) as? Bool ?? true
         blackBackground = defaults.object(forKey: Key.blackBg) as? Bool ?? true
+        novelFontScale = defaults.object(forKey: Key.novelFontScale) as? Double ?? 1.0
         librarySort = LibrarySort(rawValue: defaults.string(forKey: Key.sort) ?? "") ?? .recent
         libraryLayout = LibraryLayout(rawValue: defaults.string(forKey: Key.layout) ?? "") ?? .grid
         showFinished = defaults.object(forKey: Key.showFinished) as? Bool ?? true
@@ -78,6 +81,7 @@ final class AppSettings {
         static let tapToTurn = "reader.tapToTurn"
         static let keepAwake = "reader.keepScreenAwake"
         static let blackBg = "reader.blackBackground"
+        static let novelFontScale = "reader.novelFontScale"
         static let sort = "library.sort"
         static let layout = "library.layout"
         static let showFinished = "library.showFinished"

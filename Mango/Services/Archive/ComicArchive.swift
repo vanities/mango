@@ -21,6 +21,7 @@ enum ArchiveError: LocalizedError {
     case pageOutOfRange(Int, count: Int)
     case undecodable(page: String)
     case tooLargeToStream(name: String, bytes: Int64)
+    case notAComic(String)
 
     var errorDescription: String? {
         switch self {
@@ -29,6 +30,7 @@ enum ArchiveError: LocalizedError {
         case .undecodable(let page): "Couldn't decode \(page)."
         case .tooLargeToStream(let name, let bytes):
             "\(name) is \(Formatting.bytes(bytes)) — download it before reading, PDFs can't be read a page at a time over the network."
+        case .notAComic(let name): "\(name) is a book, not a comic — it opens in the novel reader."
         }
     }
 }

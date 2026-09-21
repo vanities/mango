@@ -12,12 +12,33 @@ enum ImageFileTypes {
     /// app. Convert those to `.cbz` (`scripts/cbr-to-cbz.sh` on the NAS side).
     static let comicExtensions: Set<String> = ["cbz", "zip", "pdf"]
 
+    /// Reflowable books. An EPUB is a zip too, so the same reader opens it — but it's read as
+    /// text, so it gets its own kind and its own shelf.
+    static let novelExtensions: Set<String> = ["epub"]
+
     static func isPage(_ name: String) -> Bool {
         pageExtensions.contains((name as NSString).pathExtension.lowercased())
     }
 
     static func isComic(_ name: String) -> Bool {
         comicExtensions.contains((name as NSString).pathExtension.lowercased())
+    }
+
+    static func isNovel(_ name: String) -> Bool {
+        novelExtensions.contains((name as NSString).pathExtension.lowercased())
+    }
+
+    /// Anything Mango can open.
+    static func isReadable(_ name: String) -> Bool {
+        isComic(name) || isNovel(name)
+    }
+
+    static func kind(for name: String) -> Comic.Kind {
+        switch (name as NSString).pathExtension.lowercased() {
+        case "epub": .epub
+        case "pdf": .pdf
+        default: .archive
+        }
     }
 
     /// Junk that shows up inside comic archives and would otherwise be read as blank pages:

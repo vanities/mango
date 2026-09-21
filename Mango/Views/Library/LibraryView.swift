@@ -10,6 +10,7 @@ struct LibraryView: View {
 
     @State private var query = ""
     @State private var readingComic: Comic?
+    @State private var medium: Medium = .manga
 
     /// Covers should be about the same physical size on both devices, not the same point size —
     /// phone-sized cards on a 13" iPad leave a sea of white and make the shelf look empty.
@@ -17,7 +18,9 @@ struct LibraryView: View {
         sizeClass == .regular ? (170, 230) : (110, 180)
     }
 
-    private var shelves: [Series] { library.search(query) }
+    private var shelves: [Series] { library.search(query, in: medium) }
+    /// Only worth showing the switch once there's something on both shelves.
+    private var showsMediumPicker: Bool { library.hasNovels && library.hasComics }
 
     var body: some View {
         @Bindable var settings = settings
@@ -25,8 +28,15 @@ struct LibraryView: View {
             Group {
                 if library.state.comics.isEmpty {
                     emptyState
-                } else if shelves.isEmpty {
+                } else if shelves.isEmpty, !query.isEmpty {
                     ContentUnavailableView.search(text: query)
+                } else if shelves.isEmpty {
+                    VStack(spacing: 16) {
+                        mediumPicker
+                        ContentUnavailableView(medium == .novels ? "No novels yet" : "No manga yet",
+                                               systemImage: medium.systemImage,
+                                               description: Text(medium.emptyMessage))
+                    }
                 } else {
                     shelfList
                 }
@@ -68,7 +78,7 @@ struct LibraryView: View {
                 await library.scan()
             }
             .fullScreenCover(item: $readingComic) { comic in
-                ReaderView(comic: comic)
+                ReaderRouter(comic: comic)
             }
         }
     }
@@ -76,9 +86,21 @@ struct LibraryView: View {
     // MARK: Pieces
 
     @ViewBuilder
+    private var mediumPicker: some View {
+        if showsMediumPicker {
+            Picker("Medium", selection: $medium) {
+                ForEach(Medium.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+        }
+    }
+
+    @ViewBuilder
     private var shelfList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
+                mediumPicker
                 continueRow
                 if settings.libraryLayout == .grid { grid } else { list }
             }
@@ -88,7 +110,7 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var continueRow: some View {
-        let inProgress = library.continueReading
+        let inProgress = library.continueReading.filter { $0.isNovel == (medium == .novels) }
         if !inProgress.isEmpty, query.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Continue Reading")

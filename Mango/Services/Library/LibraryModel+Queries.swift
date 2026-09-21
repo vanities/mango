@@ -44,6 +44,14 @@ extension LibraryModel {
         series.comics.count { state.progress[$0.id]?.finished == true }
     }
 
+    /// Manga and light novels are separate shelves and separate tabs.
+    func series(for medium: Medium) -> [Series] {
+        sortedSeries.filter { medium == .novels ? $0.isNovel : !$0.isNovel }
+    }
+
+    var hasNovels: Bool { series.contains(where: \.isNovel) }
+    var hasComics: Bool { series.contains { !$0.isNovel } }
+
     var sortedSeries: [Series] {
         let shelves = settings.showFinished ? series : series.filter { !isFinished($0) }
         switch settings.librarySort {
@@ -66,10 +74,11 @@ extension LibraryModel {
         series.comics.compactMap { state.progress[$0.id]?.updatedAt }.max() ?? .distantPast
     }
 
-    func search(_ query: String) -> [Series] {
+    func search(_ query: String, in medium: Medium) -> [Series] {
         let needle = query.normalizedForMatching
-        guard !needle.isEmpty else { return sortedSeries }
-        return sortedSeries.filter { shelf in
+        let shelves = series(for: medium)
+        guard !needle.isEmpty else { return shelves }
+        return shelves.filter { shelf in
             shelf.name.normalizedForMatching.contains(needle)
                 || shelf.comics.contains { $0.title.normalizedForMatching.contains(needle) }
         }

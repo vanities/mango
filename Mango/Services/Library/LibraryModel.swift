@@ -222,6 +222,44 @@ final class LibraryModel {
         }
     }
 
+    /// Opens a reflowable book. Same zip machinery as a comic, different reader on top.
+    func openNovel(_ comic: Comic) async throws -> EPUBDocument {
+        guard let location = location(for: comic) else { throw ArchiveError.noPages(comic.title) }
+        let reader: any RandomAccessReader
+        switch location {
+        case .local(let url):
+            reader = LocalFileReader(url: url)
+        case .remote(let client, let path, let size):
+            reader = RemoteFileReader(client: client, relativePath: path, knownLength: size)
+        }
+        let document = try await EPUBDocument.open(reader: reader, displayName: comic.title)
+        noteOpened(comic, pageCount: document.chapterCount)
+        await ensureNovelCover(for: comic, using: document)
+        return document
+    }
+
+    private func ensureNovelCover(for comic: Comic, using document: EPUBDocument) async {
+        let coverID = state.customCovers[comic.id] ?? CoverStore.coverID(for: comic)
+        guard !covers.exists(coverID) else {
+            setCoverID(coverID, for: comic)
+            return
+        }
+        guard let image = await document.coverImage(maxPixel: CoverStore.maxPixel) else { return }
+        if covers.store(image, as: coverID) { setCoverID(coverID, for: comic) }
+    }
+
+    func recordNovelProgress(chapter: Int, chapterCount: Int, fraction: Double, for comic: Comic) {
+        var entry = state.progress[comic.id] ?? ReadingProgress()
+        guard entry.page != chapter || abs(entry.fractionInChapter - fraction) > 0.005 else { return }
+        entry.page = chapter
+        entry.pageCount = chapterCount
+        entry.fractionInChapter = fraction
+        entry.updatedAt = Date()
+        state.progress[comic.id] = entry
+        state.lastComicID = comic.id
+        save()
+    }
+
     func openArchive(_ comic: Comic) async throws -> any ComicArchive {
         guard let location = location(for: comic) else {
             throw ArchiveError.noPages(comic.title)
@@ -286,6 +324,18 @@ final class LibraryModel {
                 guard let location = location(for: comic) else {
                     // Nothing to read it from — mark it so the loop doesn't spin on it forever.
                     markCoverAttempted(comic)
+                    continue
+                }
+                if comic.isNovel {
+                    guard let document = try? await openNovel(comic) else {
+                        markCoverAttempted(comic)
+                        continue
+                    }
+                    _ = document
+                    if state.comics.first(where: { $0.id == comic.id })?.coverID == nil {
+                        markCoverAttempted(comic)
+                    }
+                    done += 1
                     continue
                 }
                 guard let archive = try? await ArchiveOpener.open(comic, at: location) else {
