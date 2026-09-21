@@ -110,6 +110,7 @@ final class ReaderEngine {
         saveTask?.cancel()
         hideControlsTask?.cancel()
         persistProgress()
+        library.publishWidgetSnapshot()
         let loader = self.loader
         Task { await loader?.cancelAll() }
         Logger.reader.info("[reader] closed \(self.comic.title, privacy: .public) at page \(self.currentPage + 1)")

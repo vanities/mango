@@ -80,6 +80,16 @@ struct LibraryView: View {
             .fullScreenCover(item: $readingComic) { comic in
                 ReaderRouter(comic: comic)
             }
+            // Siri, Shortcuts and the widget ask the library to open something; do it here.
+            .onChange(of: library.requestedComic) { _, requested in
+                guard let requested else { return }
+                readingComic = nil
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(150))
+                    readingComic = requested
+                    library.requestedComic = nil
+                }
+            }
         }
     }
 
