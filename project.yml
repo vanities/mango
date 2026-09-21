@@ -1,0 +1,99 @@
+name: Mango
+options:
+  bundleIdPrefix: com.vanities
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  developmentLanguage: en
+
+packages:
+  AMSMB2:
+    url: https://github.com/amosavian/AMSMB2.git
+    from: 4.0.3
+
+settings:
+  base:
+    # Default team for automatic signing (Xcode Cloud needs one). Forks override it in
+    # Config/Signing.xcconfig without touching this file.
+    DEVELOPMENT_TEAM: 8Q3RG3ULSU
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    CODE_SIGN_STYLE: Automatic
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      ONLY_ACTIVE_ARCH: YES
+
+targets:
+  Mango:
+    type: application
+    platform: iOS
+    sources:
+      - path: Mango
+        excludes:
+          - "Resources/Info.plist"
+    configFiles:
+      Debug: Config/Debug.xcconfig
+      Release: Config/Release.xcconfig
+    dependencies:
+      # AMSMB2 ships as a dynamic framework: it must be embedded or the app dies at launch on
+      # device with "Library not loaded: @rpath/AMSMB2.framework/AMSMB2" (the simulator masks this).
+      - package: AMSMB2
+        embed: true
+    settings:
+      base:
+        PRODUCT_NAME: Mango
+        PRODUCT_BUNDLE_IDENTIFIER: com.vanities.mango
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Mango/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Mango/Resources/Mango.entitlements
+        # 1,2 = iPhone and iPad. Reading a two-page spread on an iPad is the point.
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        ENABLE_PREVIEWS: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+
+  MangoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MangoTests
+    dependencies:
+      - target: Mango
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vanities.mangoTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Mango.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Mango"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  Mango:
+    build:
+      targets:
+        Mango: all
+        MangoTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - MangoTests
+    profile:
+      config: Release
+    archive:
+      config: Release
