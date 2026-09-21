@@ -146,6 +146,11 @@ struct VolumeRow: View {
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .accessibilityLabel("On the NAS")
+            } else if library.isDownloadedCopy(comic) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Downloaded to this device")
             }
             if library.progress(for: comic)?.finished == true {
                 Image(systemName: "checkmark.circle.fill")

@@ -87,7 +87,7 @@ struct ReaderView: View {
         switch engine.mode {
         case .paged:
             PagedReader(engine: engine, fit: settings.pageFit, tapToTurn: settings.tapToTurn,
-                        dragMovesPage: settings.dragMovesPage)
+                        panDirection: settings.panDirection)
         case .continuous:
             ContinuousReader(engine: engine)
         }

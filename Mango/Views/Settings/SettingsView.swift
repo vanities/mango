@@ -23,8 +23,15 @@ struct SettingsView: View {
                     }
                 }
                 Section {
+                    Picker("Dragging a zoomed page", selection: $settings.panDirection) {
+                        ForEach(PanDirection.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                } footer: {
+                    Text(settings.panDirection.explanation)
+                }
+
+                Section {
                     Toggle("Tap edges to turn", isOn: $settings.tapToTurn)
-                    Toggle("Drag moves the page", isOn: $settings.dragMovesPage)
                     Toggle("Keep screen awake", isOn: $settings.keepScreenAwake)
                     Toggle("Black background", isOn: $settings.blackBackground)
                     Picker("Pages to load ahead", selection: $settings.prefetchCount) {
