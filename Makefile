@@ -55,10 +55,18 @@ archive: gen    ## Release archive for iOS devices
 	  -destination 'generic/platform=iOS' -archivePath $(ARCHIVE) \
 	  -allowProvisioningUpdates $(ASC_AUTH) | tail -20
 
-# System PATH only: Xcode's IPA step runs Apple's rsync with -E, which breaks if Homebrew's rsync is found first.
+# Two things bite here:
+#   1. System PATH only: Xcode's IPA step runs Apple's rsync with -E, which breaks if
+#      Homebrew's rsync is found first.
+#   2. NO $(ASC_AUTH). Passing the API key makes export use cloud signing, which this key
+#      isn't permitted for ("Cloud signing permission error / No profiles were found"), and
+#      there is no local Apple Distribution certificate to fall back on. Without the key,
+#      xcodebuild uses the Apple ID signed into Xcode, which can mint the profile and upload.
+#      The key is still right for `archive` and for every scripts/*.py call.
 upload:         ## Sign for App Store Connect and upload the archive (TestFlight)
-	PATH=/usr/bin:/bin:/usr/sbin:/sbin xcodebuild -exportArchive -archivePath $(ARCHIVE) -exportOptionsPlist ExportOptions.plist \
-	  -exportPath build/export -allowProvisioningUpdates $(ASC_AUTH) | tail -20
+	env -u APPSTORE_CONNECT_KEY_ID -u APPSTORE_CONNECT_ISSUER_ID -u APPSTORE_CONNECT_KEY_FILE \
+	  PATH=/usr/bin:/bin:/usr/sbin:/sbin xcodebuild -exportArchive -archivePath $(ARCHIVE) \
+	  -exportOptionsPlist ExportOptions.plist -exportPath build/export -allowProvisioningUpdates | tail -20
 
 testflight: archive upload ## Archive + upload in one go
 	@echo "Uploaded. Processing takes a few minutes; then: uv run --script scripts/testflight.py status"

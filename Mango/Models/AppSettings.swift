@@ -1,5 +1,28 @@
 import Foundation
 import Observation
+import SwiftUI
+
+/// Force an appearance regardless of the phone's. Reading at night with the system in light
+/// mode is a real thing, so this is worth having rather than deferring to iOS.
+enum AppearanceMode: String, CaseIterable, Codable, Sendable {
+    case system, light, dark
+
+    var title: String {
+        switch self {
+        case .system: "Match system"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
 
 enum LibrarySort: String, CaseIterable, Codable, Sendable {
     case recent, title, lastRead
@@ -48,6 +71,7 @@ final class AppSettings {
     var librarySort: LibrarySort { didSet { defaults.set(librarySort.rawValue, forKey: Key.sort) } }
     var libraryLayout: LibraryLayout { didSet { defaults.set(libraryLayout.rawValue, forKey: Key.layout) } }
     var showFinished: Bool { didSet { defaults.set(showFinished, forKey: Key.showFinished) } }
+    var appearance: AppearanceMode { didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -62,6 +86,7 @@ final class AppSettings {
         librarySort = LibrarySort(rawValue: defaults.string(forKey: Key.sort) ?? "") ?? .recent
         libraryLayout = LibraryLayout(rawValue: defaults.string(forKey: Key.layout) ?? "") ?? .grid
         showFinished = defaults.object(forKey: Key.showFinished) as? Bool ?? true
+        appearance = AppearanceMode(rawValue: defaults.string(forKey: Key.appearance) ?? "") ?? .system
     }
 
     private enum Key {
@@ -76,5 +101,6 @@ final class AppSettings {
         static let sort = "library.sort"
         static let layout = "library.layout"
         static let showFinished = "library.showFinished"
+        static let appearance = "appearance.mode"
     }
 }

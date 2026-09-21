@@ -38,23 +38,60 @@ API_URL = "https://api.openai.com/v1/images/generations"
 # "sunburst" is tuned for multi-turn editing, which an icon generated from a prompt doesn't need.
 DEFAULT_MODEL = "gpt-image-2.5-flare"
 
-SHARED = (
+BASE = (
     "App icon for iOS, square, 1024x1024, no text, no letters, no words anywhere. "
-    "A single bold flat vector glyph centred in the frame, filling about 70% of it, "
-    "with a soft subtle drop shadow beneath it. The glyph is a ripe mango seen from the "
-    "side — the classic lopsided teardrop silhouette with a short stem and one small leaf "
-    "at the top — and the mango has been cut open down the middle so its face reads "
-    "unmistakably as an open book: two curved pages meeting at a centre gutter, the page "
-    "edges fanning slightly. Fruit and open book resolve as one clean shape. "
-    "Flat modern iconography, generous even margins, crisp edges, perfectly centred, no "
-    "outline stroke, no gloss, no 3D render, no photorealism, no rounded-rectangle frame "
-    "or border drawn inside the image. The background is a smooth two-colour diagonal "
-    "gradient, completely plain with no pattern or texture."
+    "A single bold flat vector glyph centred in the frame, filling about 68% of it, with a "
+    "soft subtle drop shadow beneath it. Flat modern iconography, generous even margins, "
+    "crisp clean edges, perfectly centred, no gloss, no 3D render, no photorealism, no "
+    "rounded-rectangle frame or border drawn inside the image. The background is a smooth "
+    "two-colour diagonal gradient, completely plain with no pattern or texture."
 )
 
-# Earmark already owns warm orange, so Mango needs its own colour. Each palette is
-# (light-glyph, light-background, dark-glyph, dark-background).
+# Different ideas, not different colours. Adam picks one, then it gets the full light/dark set.
+CONCEPTS = {
+    # The fruit, confidently drawn and nothing else. Hardest to get wrong at 60px.
+    "fruit": (
+        "The glyph is a single ripe mango seen from the side: the classic lopsided teardrop "
+        "silhouette, fuller and rounder at the bottom, tapering to a soft point, with a short "
+        "stem and one simple leaf at the top. One clean solid silhouette, no interior detail, "
+        "no cutouts."
+    ),
+    # A bookmark ribbon trailing out of the fruit — the reading cue without cutting the shape up.
+    "ribbon": (
+        "The glyph is a single ripe mango seen from the side, a clean lopsided teardrop "
+        "silhouette with a short stem at the top, and a flat ribbon bookmark emerging from "
+        "behind the top of the mango and hanging down across its face, ending in a notched "
+        "V-cut tail like a bookmark ribbon in a book. The ribbon is a clearly separate solid "
+        "shape in a contrasting colour, laid over the fruit."
+    ),
+    # The inverse of the current one: the book is the subject, the mango is the read.
+    "book": (
+        "The glyph is an open book seen straight on, two pages fanning up and outward from a "
+        "central spine, drawn as one bold symmetrical shape, and resting in the cradle of the "
+        "open pages is a small simple mango with a short stem and one leaf. Book and fruit are "
+        "clearly separate solid shapes."
+    ),
+    # A cut mango where the flesh reads as stacked pages seen edge-on.
+    "slice": (
+        "The glyph is a mango cut cleanly in half and seen face on: the outer skin as a bold "
+        "solid teardrop outline, and inside it the flesh drawn as a neat stack of horizontal "
+        "lines like the page edges of a closed book seen from the side, with a simple oval pit "
+        "at the centre. Geometric and graphic, not botanical."
+    ),
+}
+
+
+def prompt(concept: str, glyph_colour: str, background: str) -> str:
+    return f"{BASE} {CONCEPTS[concept]} The glyph is {glyph_colour}. The background gradient runs from {background}."
+
+
 PALETTES = {
+    "orange": (
+        "very dark charcoal, almost black",
+        "warm golden mango yellow in the top-left to deep ripe mango red-orange in the bottom-right",
+        "warm golden mango yellow fading to mango orange",
+        "very dark warm brown-black in the top-left to near-black in the bottom-right",
+    ),
     "green": (
         "very dark charcoal, almost black",
         "fresh unripe-mango green in the top-left to deep leaf green in the bottom-right",
@@ -82,11 +119,11 @@ PALETTES = {
 }
 
 
-def variants(palette: str) -> dict[str, str]:
+def variants(palette: str, concept: str) -> dict[str, str]:
     light_glyph, light_bg, dark_glyph, dark_bg = PALETTES[palette]
     return {
-        "AppIcon.png": SHARED + f" The glyph is {light_glyph}. The background gradient runs from {light_bg}.",
-        "AppIcon-Dark.png": SHARED + f" The glyph is {dark_glyph}. The background gradient runs from {dark_bg}.",
+        "AppIcon.png": prompt(concept, light_glyph, light_bg),
+        "AppIcon-Dark.png": prompt(concept, dark_glyph, dark_bg),
     }
 
 
@@ -152,13 +189,14 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--quality", default="high")
     parser.add_argument("--size", default="1024x1024")
-    parser.add_argument("--palette", default="green", choices=sorted(PALETTES))
+    parser.add_argument("--palette", default="orange", choices=sorted(PALETTES))
+    parser.add_argument("--concept", default="fruit", choices=sorted(CONCEPTS))
     parser.add_argument("--only-light", action="store_true", help="just the light variant, for comparing palettes")
     parser.add_argument("--out", type=Path, default=None, help="write here instead of the iconset")
     parser.add_argument("--dry-run", action="store_true", help="print the prompts and stop")
     args = parser.parse_args()
 
-    chosen = variants(args.palette)
+    chosen = variants(args.palette, args.concept)
     if args.only_light:
         chosen = {"AppIcon.png": chosen["AppIcon.png"]}
     destination = args.out or ICONSET
@@ -169,7 +207,7 @@ def main() -> None:
         return
 
     token, source = bearer_token()
-    print(f"Using {source} · model {args.model} · quality {args.quality} · palette {args.palette}")
+    print(f"Using {source} · {args.model} · {args.quality} · {args.concept}/{args.palette}")
     destination.mkdir(parents=True, exist_ok=True)
 
     dark_png = b""
