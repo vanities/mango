@@ -315,7 +315,7 @@ final class LibraryModel {
         entry.pageCount = chapterCount
         entry.fractionInChapter = fraction
         entry.updatedAt = Date()
-        state.progress[comic.id] = entry
+        state.setProgress(entry, forCopiesOf: comic)
         state.lastComicID = comic.id
         save()
     }
@@ -463,7 +463,7 @@ final class LibraryModel {
         entry.pageCount = pageCount
         entry.updatedAt = Date()
         if page >= pageCount - 1, pageCount > 0 { entry.finished = true }
-        state.progress[comic.id] = entry
+        state.setProgress(entry, forCopiesOf: comic)
         state.lastComicID = comic.id
         save()
     }
@@ -474,12 +474,12 @@ final class LibraryModel {
         entry.updatedAt = Date()
         if finished, entry.pageCount > 0 { entry.page = entry.pageCount - 1 }
         if !finished { entry.page = 0 }
-        state.progress[comic.id] = entry
+        state.setProgress(entry, forCopiesOf: comic)
         save()
     }
 
     func resetProgress(for comic: Comic) {
-        state.progress[comic.id] = nil
+        state.setProgress(nil, forCopiesOf: comic)
         save()
     }
 

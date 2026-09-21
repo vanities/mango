@@ -66,7 +66,11 @@ struct SeriesDetailView: View {
                                 library.useOriginalCover(for: comic)
                             }
                         }
-                        if comic.isRemote(in: library) {
+                        if let copy = library.downloadedCopy(of: comic) {
+                            Button("Remove Download (\(Formatting.bytes(copy.totalBytes)))", systemImage: "trash") {
+                                library.removeDownload(of: comic)
+                            }
+                        } else if comic.isRemote(in: library) {
                             Button("Download to device", systemImage: "arrow.down.circle") {
                                 transfers.download(comic)
                             }
@@ -108,6 +112,20 @@ struct SeriesDetailView: View {
                             }
                         }
                     }
+                    let downloaded = shelf.comics.compactMap { library.downloadedCopy(of: $0) }
+                    let onlyOnNAS = shelf.comics.filter { $0.isRemote(in: library) && library.downloadedCopy(of: $0) == nil }
+                    if !onlyOnNAS.isEmpty {
+                        Button("Download All (\(onlyOnNAS.count))", systemImage: "arrow.down.circle") {
+                            onlyOnNAS.forEach(transfers.download)
+                        }
+                    }
+                    if !downloaded.isEmpty {
+                        Button("Remove Downloads (\(Formatting.bytes(downloaded.reduce(0) { $0 + $1.totalBytes })))",
+                               systemImage: "trash") {
+                            library.removeDownloads(downloaded)
+                        }
+                    }
+                    Divider()
                     Button("Look Up Series…", systemImage: "text.magnifyingglass") { lookingUp = true }
                     Divider()
                     Button("Hide Series", systemImage: "eye.slash", role: .destructive) {

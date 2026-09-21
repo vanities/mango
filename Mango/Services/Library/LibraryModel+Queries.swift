@@ -39,8 +39,10 @@ extension LibraryModel {
     /// one — which is exactly when the reader should stop rather than wrap around.
     func nextInSeries(after comic: Comic) -> Comic? {
         let key = SeriesGrouper.key(for: comic)
+        // By id, or by file — the copy on the shelf may be the other one (a download just removed).
         guard let shelf = series.first(where: { $0.id == key }),
-              let index = shelf.comics.firstIndex(where: { $0.id == comic.id }),
+              let index = shelf.comics.firstIndex(where: { $0.id == comic.id })
+                ?? shelf.comics.firstIndex(where: { $0.syncKey == comic.syncKey }),
               index + 1 < shelf.comics.count
         else { return nil }
         return shelf.comics[index + 1]

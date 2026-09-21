@@ -425,4 +425,3 @@ final class SeriesSubtitleParsingTests: XCTestCase {
         XCTAssertEqual(manual.volume, 1)
     }
 }
-

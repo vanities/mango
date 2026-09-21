@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(LibraryModel.self) private var library
     @Environment(AppLock.self) private var lock
+    @State private var confirmingRemoveAll = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -50,6 +51,20 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    LabeledContent("On this device",
+                                   value: "\(library.downloads.count) · \(Formatting.bytes(library.downloadedBytes))")
+                    Toggle("Remove when finished", isOn: $settings.removeFinishedDownloads)
+                    Button("Remove Finished Downloads") { library.removeDownloads(library.finishedDownloads) }
+                        .disabled(library.finishedDownloads.isEmpty)
+                    Button("Remove All Downloads", role: .destructive) { confirmingRemoveAll = true }
+                        .disabled(library.downloads.isEmpty)
+                } header: {
+                    Text("Downloads")
+                } footer: {
+                    Text("A removed download goes back to being read from your NAS — your place, bookmarks and rating stay. Only copies that are still on the NAS are listed here.")
+                }
+
+                Section {
                     Picker("Lock with Face ID", selection: Binding(
                         get: { settings.lockMode },
                         set: { mode in
@@ -93,6 +108,14 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .confirmationDialog("Remove all \(library.downloads.count) downloads?", isPresented: $confirmingRemoveAll,
+                                titleVisibility: .visible) {
+                Button("Remove \(Formatting.bytes(library.downloadedBytes))", role: .destructive) {
+                    library.removeDownloads(library.downloads)
+                }
+            } message: {
+                Text("They stay on your NAS, and Mango reads them from there again.")
+            }
         }
     }
 }

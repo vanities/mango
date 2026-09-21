@@ -21,6 +21,8 @@ struct ReaderView: View {
     @State private var showingPages = false
     /// Shown after the last page: finished this one, what now?
     @State private var atEnd = false
+    /// Space freed by removing this volume's download at the end, to say so.
+    @State private var freed: Int64?
 
     private var openComic: Comic { current ?? comic }
 
@@ -123,8 +125,16 @@ struct ReaderView: View {
         guard let engine else { return }
         library.setFinished(true, for: engine.comic)
         engine.close()
+        freed = nil
+        if settings.removeFinishedDownloads, library.downloadedCopy(of: engine.comic) != nil {
+            freed = library.removeDownload(of: engine.comic)
+        }
         withAnimation(.smooth(duration: 0.25)) { atEnd = true }
     }
+
+    /// The volume the end card is about: after its download is removed, the NAS copy (which now
+    /// holds its rating and progress).
+    private var endComic: Comic { library.nasCopy(of: openComic).flatMap { freed != nil ? $0 : nil } ?? openComic }
 
     private func readNext(_ next: Comic) {
         Logger.reader.info("[reader] continuing to \(next.title, privacy: .public)")
@@ -134,7 +144,7 @@ struct ReaderView: View {
 
     @ViewBuilder
     private var endCard: some View {
-        let next = library.nextInSeries(after: openComic)
+        let next = library.nextInSeries(after: endComic)
         VStack(spacing: 22) {
             if let next {
                 CoverView(coverID: next.coverID, title: next.title, cornerRadius: 10)
@@ -146,7 +156,7 @@ struct ReaderView: View {
                 Text("How was it?")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                StarRating(rating: library.rating(for: openComic), size: 24) { library.setRating($0, for: openComic) }
+                StarRating(rating: library.rating(for: endComic), size: 24) { library.setRating($0, for: endComic) }
             }
 
             VStack(spacing: 6) {
@@ -179,6 +189,20 @@ struct ReaderView: View {
                 Button("Back to library") { close() }
                     .buttonStyle(.glass)
                     .frame(maxWidth: .infinity)
+                if let freed, freed > 0 {
+                    Label("Download removed — \(Formatting.bytes(freed)) freed", systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if let copy = library.downloadedCopy(of: openComic) {
+                    // Read it, done with it: give the space back and keep it on the NAS.
+                    Button("Remove download (\(Formatting.bytes(copy.totalBytes)))", systemImage: "trash") {
+                        withAnimation { freed = library.removeDownload(of: openComic) }
+                    }
+                    .font(.footnote)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+                }
             }
             .frame(maxWidth: 280)
         }
