@@ -13,6 +13,7 @@ struct SeriesDetailView: View {
     /// Find Cover: for the shelf (true) or for one volume (false).
     @State private var coverTarget: (comic: Comic, forSeries: Bool)?
     @State private var lookingUp = false
+    @State private var grouping = false
 
     private var shelf: Series { library.shelf(id: series.id) ?? series }
 
@@ -127,6 +128,13 @@ struct SeriesDetailView: View {
                     }
                     Divider()
                     Button("Look Up Series…", systemImage: "text.magnifyingglass") { lookingUp = true }
+                    if let stack = library.group(containing: shelf) {
+                        Button("Remove From \(stack.name)", systemImage: "square.stack.3d.up.slash") {
+                            library.setGroup("", for: shelf)
+                        }
+                    } else {
+                        Button("Group With…", systemImage: "square.stack") { grouping = true }
+                    }
                     Divider()
                     Button("Hide Series", systemImage: "eye.slash", role: .destructive) {
                         library.setSeriesHidden(true, shelf)
@@ -143,6 +151,7 @@ struct SeriesDetailView: View {
             if let target = coverTarget { CoverPickerView(comic: target.comic, forSeries: target.forSeries) }
         }
         .sheet(isPresented: $lookingUp) { SeriesLookupView(series: shelf) }
+        .sheet(isPresented: $grouping) { GroupPickerView(shelf: shelf) }
     }
 
     private var header: some View {

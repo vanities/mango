@@ -15,6 +15,8 @@ struct LibraryState: Codable, Sendable {
     /// Whole shelves the user hid, by shelf id (`SeriesGrouper.key`) — so a volume that arrives
     /// later is hidden too.
     var hiddenSeries: Set<String> = []
+    /// Stacks the user chose: shelf id → group name, or "" to keep a shelf out of any stack.
+    var seriesGroups: [String: String] = [:]
     var lastComicID: String?
     var nasServers: [NASServer] = []
     /// Comic ID → cover ID chosen by the user. Survives rescans.
@@ -93,6 +95,7 @@ struct LibraryState: Codable, Sendable {
         sessions.append(contentsOf: old.sessions.filter { !sessionIDs.contains($0.id) })
         hiddenComicIDs.formUnion(old.hiddenComicIDs)
         hiddenSeries.formUnion(old.hiddenSeries)
+        for (key, value) in old.seriesGroups where seriesGroups[key] == nil { seriesGroups[key] = value }
         longStripComicIDs.formUnion(old.longStripComicIDs)
         for (key, value) in old.seriesMode where seriesMode[key] == nil { seriesMode[key] = value }
         if lastComicID == nil { lastComicID = old.lastComicID }
@@ -101,7 +104,7 @@ struct LibraryState: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
              customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog, sessions,
-             longStripComicIDs, seriesMode, hiddenSeries
+             longStripComicIDs, seriesMode, hiddenSeries, seriesGroups
     }
 
     init(from decoder: any Decoder) throws {
@@ -124,6 +127,7 @@ struct LibraryState: Codable, Sendable {
         longStripComicIDs = try c.decodeIfPresent(Set<String>.self, forKey: .longStripComicIDs) ?? []
         seriesMode = try c.decodeIfPresent([String: ReaderMode].self, forKey: .seriesMode) ?? [:]
         hiddenSeries = try c.decodeIfPresent(Set<String>.self, forKey: .hiddenSeries) ?? []
+        seriesGroups = try c.decodeIfPresent([String: String].self, forKey: .seriesGroups) ?? [:]
     }
 }
 
@@ -206,6 +210,9 @@ extension LibraryState {
                 seriesDirection[newKey] = direction
             }
             if let mode = seriesMode.removeValue(forKey: oldKey), seriesMode[newKey] == nil { seriesMode[newKey] = mode }
+            for medium in ["comic|", "novel|"] {
+                if let group = seriesGroups.removeValue(forKey: medium + oldKey) { seriesGroups[medium + newKey] = group }
+            }
         }
     }
 }
