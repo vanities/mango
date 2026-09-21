@@ -20,8 +20,8 @@ struct Series: Identifiable, Hashable, Sendable {
 
     /// "12 volumes", "201 chapters", "21 volumes, 34 chapters", "1 book".
     var subtitle: String {
-        let volumes = comics.count { $0.volume != nil }
-        let chapters = comics.count { $0.volume == nil && $0.chapter != nil }
+        let chapters = comics.count { $0.chapter != nil }
+        let volumes = comics.count { $0.volume != nil && $0.chapter == nil }
         guard volumes + chapters > 0 else { return comics.count == 1 ? "1 book" : "\(comics.count) books" }
         let parts = [(volumes, "volume"), (chapters, "chapter")]
             .filter { $0.0 > 0 }

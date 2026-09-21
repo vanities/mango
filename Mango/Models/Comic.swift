@@ -57,9 +57,10 @@ struct Comic: Identifiable, Codable, Hashable, Sendable {
     var displaySeries: String { series ?? title }
 
     /// "Vol. 3", "Ch. 12.5", or nil for a standalone.
+    /// A chapter number is the file's identity even when it names its volume too.
     var numberLabel: String? {
-        if let volume { return "Vol. \(Formatting.number(volume))" }
         if let chapter { return "Ch. \(Formatting.number(chapter))" }
+        if let volume { return "Vol. \(Formatting.number(volume))" }
         return nil
     }
 
