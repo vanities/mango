@@ -7,10 +7,13 @@ import Observation
 final class AppEnvironment {
     let settings: AppSettings
     let library: LibraryModel
+    let transfers: TransferManager
 
     init() {
         let settings = AppSettings()
+        let library = LibraryModel(settings: settings)
         self.settings = settings
-        self.library = LibraryModel(settings: settings)
+        self.library = library
+        self.transfers = TransferManager(library: library)
     }
 }

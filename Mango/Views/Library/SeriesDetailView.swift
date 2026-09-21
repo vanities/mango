@@ -5,6 +5,7 @@ struct SeriesDetailView: View {
     let series: Series
 
     @Environment(LibraryModel.self) private var library
+    @Environment(TransferManager.self) private var transfers
     @State private var readingComic: Comic?
     @State private var editing: Comic?
 
@@ -36,6 +37,15 @@ struct SeriesDetailView: View {
                         .tint(.orange)
                     }
                     .contextMenu {
+                        if comic.isRemote(in: library) {
+                            Button("Download to device", systemImage: "arrow.down.circle") {
+                                transfers.download(comic)
+                            }
+                        } else if let server = library.state.nasServers.first {
+                            Button("Upload to \(server.name)", systemImage: "arrow.up.circle") {
+                                transfers.upload(comic, to: server.id)
+                            }
+                        }
                         Button("Reset progress", systemImage: "arrow.counterclockwise") {
                             library.resetProgress(for: comic)
                         }
@@ -93,6 +103,7 @@ struct SeriesDetailView: View {
 struct VolumeRow: View {
     let comic: Comic
     @Environment(LibraryModel.self) private var library
+    @Environment(TransferManager.self) private var transfers
 
     var body: some View {
         HStack(spacing: 12) {
@@ -124,6 +135,18 @@ struct VolumeRow: View {
                 }
             }
             Spacer()
+            if let job = transfers.job(for: comic.id), job.isActive {
+                VStack(spacing: 3) {
+                    ProgressView(value: job.fraction).frame(width: 46)
+                    Text(job.kind == .download ? "Downloading" : "Uploading")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            } else if comic.isRemote(in: library) {
+                Image(systemName: "externaldrive.connected.to.line.below")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityLabel("On the NAS")
+            }
             if library.progress(for: comic)?.finished == true {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)

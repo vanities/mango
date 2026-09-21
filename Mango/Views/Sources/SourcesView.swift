@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 /// security-scoped bookmark to a folder, or SMB credentials for a share.
 struct SourcesView: View {
     @Environment(LibraryModel.self) private var library
+    @Environment(TransferManager.self) private var transfers
 
     @State private var showingPicker = false
     @State private var showingNASSetup = false
@@ -52,6 +53,43 @@ struct SourcesView: View {
                     }
                 }
 
+                if !transfers.jobs.isEmpty {
+                    Section {
+                        ForEach(transfers.jobs) { job in
+                            TransferRow(job: job)
+                        }
+                    } header: {
+                        Text("Transfers")
+                    } footer: {
+                        Text("One at a time, and only while Mango is open — SMB has no background transfer. A half-finished file resumes rather than starting over.")
+                    }
+                    Section {
+                        if transfers.isTransferring {
+                            Button("Stop all", role: .destructive) { transfers.cancelAll() }
+                        }
+                        Button("Clear finished") { transfers.clearFinished() }
+                    }
+                }
+
+                Section("Sync") {
+                    ForEach(library.state.sources.filter(\.isRemote)) { source in
+                        Button {
+                            let count = transfers.downloadAll(from: source)
+                            if count == 0 { library.lastError = "Everything on \(source.displayName) is already here." }
+                        } label: {
+                            Label("Download everything from \(source.displayName)", systemImage: "arrow.down.circle")
+                        }
+                    }
+                    ForEach(library.state.nasServers) { server in
+                        Button {
+                            let count = transfers.uploadAll(to: server.id)
+                            if count == 0 { library.lastError = "\(server.name) already has everything on this device." }
+                        } label: {
+                            Label("Upload everything to \(server.name)", systemImage: "arrow.up.circle")
+                        }
+                    }
+                }
+
                 Section("Library") {
                     LabeledContent("Comics", value: "\(library.totalComics)")
                     LabeledContent("Series", value: "\(library.series.count)")
@@ -79,6 +117,46 @@ struct SourcesView: View {
     private func delete(_ offsets: IndexSet) {
         for index in offsets {
             library.removeSource(library.state.sources[index])
+        }
+    }
+}
+
+struct TransferRow: View {
+    let job: TransferManager.Job
+    @Environment(TransferManager.self) private var transfers
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: job.kind == .download ? "arrow.down.circle" : "arrow.up.circle")
+                    .foregroundStyle(job.state == .failed ? Color.red : Color.accentColor)
+                Text(job.title).font(.subheadline).lineLimit(1)
+                Spacer()
+                Text(label).font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+            }
+            if job.isActive {
+                ProgressView(value: job.fraction)
+            }
+            if let error = job.error {
+                Text(error).font(.caption2).foregroundStyle(.red).lineLimit(2)
+            }
+        }
+        .swipeActions {
+            if job.isActive {
+                Button("Cancel", role: .destructive) { transfers.cancel(job.id) }
+            } else if job.state == .failed {
+                Button("Retry") { transfers.retry(job.id) }.tint(.blue)
+            }
+        }
+    }
+
+    private var label: String {
+        switch job.state {
+        case .queued: "Waiting"
+        case .running: "\(Int(job.fraction * 100))% of \(Formatting.bytes(job.totalBytes))"
+        case .done: "Done"
+        case .failed: "Failed"
+        case .cancelled: "Cancelled"
         }
     }
 }

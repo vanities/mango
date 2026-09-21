@@ -84,6 +84,24 @@ extension LibraryModel {
         }
     }
 
+    /// Built fresh from the library and progress — nothing extra is recorded to produce it.
+    var stats: ReadingStats {
+        let remoteSources = Set(state.sources.filter(\.isRemote).map(\.id))
+        let items = state.comics.map { comic in
+            ReadingStats.Item(
+                seriesKey: SeriesGrouper.key(for: comic),
+                seriesName: comic.series ?? comic.title,
+                isNovel: comic.isNovel,
+                format: comic.kind == .archive ? "CBZ" : comic.kind.rawValue.uppercased(),
+                bytes: comic.totalBytes,
+                isRemote: remoteSources.contains(comic.sourceID),
+                pageCount: comic.pageCount,
+                progress: state.progress[comic.id]
+            )
+        }
+        return ReadingStats.build(items)
+    }
+
     var totalComics: Int { state.comics.count }
     var totalBytes: Int64 { state.comics.reduce(0) { $0 + $1.totalBytes } }
     var remoteSourceCount: Int { state.sources.count { $0.isRemote } }

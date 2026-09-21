@@ -8,6 +8,9 @@ struct RootView: View {
             Tab("Library", systemImage: "books.vertical") {
                 LibraryView()
             }
+            Tab("Stats", systemImage: "chart.bar") {
+                StatsView()
+            }
             Tab("Sources", systemImage: "folder") {
                 SourcesView()
             }
