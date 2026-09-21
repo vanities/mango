@@ -34,6 +34,10 @@ enum NameParser {
     static func parse(fileName: String, folderName: String? = nil) -> ParsedName {
         let base = (fileName as NSString).deletingPathExtension
         var working = base.replacingOccurrences(of: "_", with: " ")
+        // "30v2", "c030v2": the release's second version, glued to the number. "4400h", "1080p":
+        // the scan's resolution. Neither is a volume, a chapter or a title.
+        working = working.replacingOccurrences(of: #"(?<=\d)v\d{1,2}\b"#, with: "", options: .regularExpression)
+        working = working.replacingOccurrences(of: #"(?i)\b\d{3,5}(?:h|p|px)\b"#, with: " ", options: .regularExpression)
 
         let year = firstYear(in: working)
 
@@ -45,7 +49,16 @@ enum NameParser {
         // A range ("v01-02", "c00-02") is one token; its end would otherwise be left behind as a
         // stray "02" subtitle. The volume is where the range starts.
         (volume, working) = extract(pattern: #"(?:\b|(?<=[\-–\.\(\[]))(?:v|vol|volume)\.?\s*(\d{1,4}(?:\.\d+)?)(?:\s*[-–]\s*(?:v|vol|volume)?\.?\s*\d{1,4}(?:\.\d+)?)?\b"#, from: working)
-        (chapter, working) = extract(pattern: #"(?:\b|(?<=[\-–\.\(\[]))(?:c|ch|chap|chapter)\.?\s*(\d{1,5}(?:\.\d+)?)(?:\s*[-–]\s*(?:c|ch|chap|chapter)?\.?\s*\d{1,5}(?:\.\d+)?)?\b"#, from: working)
+        let chapterPattern = #"(?:\b|(?<=[\-–\.\(\[]))(?:c|ch|chap|chapter)\.?\s*(\d{1,5}(?:\.\d+)?)(\s*[-–]\s*(?:c|ch|chap|chapter)?\.?\s*\d{1,5}(?:\.\d+)?)?\b"#
+        let chapterIsRange = firstMatch(pattern: chapterPattern, in: working, options: [.caseInsensitive])
+            .map { $0.range(at: 2).location != NSNotFound } ?? false
+        (chapter, working) = extract(pattern: chapterPattern, from: working)
+        // "c00-02 (v01)": a run of chapters with its volume number is that volume.
+        if chapterIsRange, volume != nil { chapter = nil }
+        // A second "v2" once the volume is known is the release's version: "Volume 05 - v2".
+        if volume != nil {
+            working = working.replacingOccurrences(of: #"(?i)(?<![A-Za-z0-9])v\d{1,2}(?![\d.])"#, with: " ", options: .regularExpression)
+        }
         if volume == nil {
             let (issue, rest) = extract(pattern: ##"#\s*(\d{1,5}(?:\.\d+)?)"##, from: working)
             if let issue { volume = issue; working = rest }
@@ -69,7 +82,7 @@ enum NameParser {
         // but only when the file didn't already say something longer and more specific.
         // Folder names carry the same release junk filenames do — "Tower Dungeon (Digital)"
         // should shelve as "Tower Dungeon".
-        let folder = folderName.map { tidy(stripBracketed($0)) }.flatMap { $0.nilIfEmpty }
+        let folder = folderName.map { tidy(stripLanguage(stripBracketed($0))) }.flatMap { $0.nilIfEmpty }
         if series.isEmpty, let folder { series = folder }
         // Same name, the folder's capitals: "the voynich hotel" → "The Voynich Hotel".
         if let folder, folder.normalizedForMatching == series.normalizedForMatching { series = folder }
@@ -138,11 +151,18 @@ enum NameParser {
 
     // MARK: Pieces
 
+    /// A chapter number is the file's identity even with its volume beside it ("v01_ch03" is
+    /// chapter 3); otherwise the volume.
     private static func displayTitle(series: String, volume: Double?, chapter: Double?, fallback: String) -> String {
         guard !series.isEmpty else { return fallback.nilIfEmpty ?? "Untitled" }
-        if let volume { return "\(series) Vol. \(Formatting.number(volume))" }
         if let chapter { return "\(series) Ch. \(Formatting.number(chapter))" }
+        if let volume { return "\(series) Vol. \(Formatting.number(volume))" }
         return series
+    }
+
+    /// "Stone Ocean English" → "Stone Ocean": a language tag on a folder isn't part of the name.
+    private static func stripLanguage(_ text: String) -> String {
+        text.replacingOccurrences(of: #"(?i)\s+(?:english|eng)\s*$"#, with: "", options: .regularExpression)
     }
 
     /// "Akira 001" or "Solo Leveling 180 - Epilogue 01": a bare number after the series,
@@ -151,7 +171,7 @@ enum NameParser {
     private static func bareNumber(in text: String) -> (series: String, number: Double, title: String?)? {
         let patterns = [
             #"^(.*?)[\s\-–]+(\d{1,4}(?:\.\d+)?)\s+[-–]\s+(\S.*)$"#,
-            #"^(.*?)[\s\-–]+(\d{1,4}(?:\.\d+)?)$"#,
+            #"^(.*?)[\s\-–]+(\d{1,4}(?:\.\d+)?)(?:\s*[-–]\s*\d{1,4})?$"#,
         ]
         for pattern in patterns {
             guard let match = firstMatch(pattern: pattern, in: text),
@@ -169,7 +189,7 @@ enum NameParser {
 
     /// Scan-quality tags aren't titles: "GTO Volume 01 HQ" has no subtitle.
     private static func meaningfulSubtitle(_ text: String) -> String? {
-        let noise = #"^(?:HQ|LQ|HD|SD|Hi-?Res|High Quality|Digital)$"#
+        let noise = #"^(?:HQ|LQ|HD|SD|Hi-?Res|High Quality|Digital|English|Eng)$"#
         return text.range(of: noise, options: [.regularExpression, .caseInsensitive]) == nil ? text.nilIfEmpty : nil
     }
 

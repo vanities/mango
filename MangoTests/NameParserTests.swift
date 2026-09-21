@@ -347,9 +347,10 @@ final class SeriesSubtitleParsingTests: XCTestCase {
         let tasogare = parse("Tasogare Otome x Amnesia - c00-02 (v01) [DBR-Scans, Meow Scans, Maigo].cbz",
                              folder: "Tasogare Otome x Amnesia")
         XCTAssertEqual(tasogare.series, "Tasogare Otome x Amnesia")
-        XCTAssertEqual(tasogare.chapter, 0)
+        XCTAssertNil(tasogare.chapter, "a range of chapters with a volume is that volume")
         XCTAssertEqual(tasogare.volume, 1)
         XCTAssertNil(tasogare.subtitle)
+        XCTAssertEqual(tasogare.title, "Tasogare Otome x Amnesia Vol. 1")
     }
 
     func testQualityTagsAreNotSubtitles() {
@@ -381,4 +382,47 @@ final class SeriesSubtitleParsingTests: XCTestCase {
         XCTAssertNil(result.volume)
         XCTAssertEqual(result.series, "JoJo's Bizarre Adventure Part 4 - Diamond is Unbreakable")
     }
+
+    // MARK: The NAS after converting its RAR/7z (2026-09-21)
+
+    /// "v01_ch03" is chapter 3 of volume 1 — a chapter. Three of them all titled "Vol. 1" is
+    /// what the shelf showed. The volume is kept, for order.
+    func testAChapterThatNamesItsVolumeIsAChapter() {
+        let names = ["[Hidoi]_Onani_Master_Kurosawa_v01_ch03.cbz", "[Hidoi]_Onani_Master_Kurosawa_v01_ch04.cbz",
+                     "[Hidoi]_Onani_Master_Kurosawa_v02_ch11.cbz", "[EE]-Onani Master Kurosawa 28.cbz",
+                     "[EE]-Onani Master Kurosawa 30v2.cbz"]
+        let results = NameParser.parseGroup(names.map { ($0, "Onani Master Kurosawa") })
+        XCTAssertTrue(results.allSatisfy { $0.series == "Onani Master Kurosawa" }, "\(results.map(\.series))")
+        XCTAssertEqual(results.map(\.chapter), [3, 4, 11, 28, 30])
+        XCTAssertEqual(results[0].volume, 1)
+        XCTAssertEqual(results[0].title, "Onani Master Kurosawa Ch. 3")
+    }
+
+    /// "30v2" and "- v2" are the release's second version, not numbers or titles.
+    func testVersionSuffixesAreDropped() {
+        let akira = parse("Akira - Volume 05 [B&W] [MangaReactor] - v2.cbz", folder: "Akira")
+        XCTAssertEqual(akira.series, "Akira")
+        XCTAssertEqual(akira.volume, 5)
+        XCTAssertNil(akira.subtitle)
+        XCTAssertEqual(parse("Tower Dungeon - c030v2.cbz").chapter, 30)
+    }
+
+    func testResolutionAndLanguageTagsAreNotTitles() {
+        let yotsuba = parse("Yotsuba&!_v01[senfgurke2]4400h.cbz", folder: "Yotsuba&! [Scans]")
+        XCTAssertEqual(yotsuba.series, "Yotsuba&!")
+        XCTAssertEqual(yotsuba.volume, 1)
+        XCTAssertNil(yotsuba.subtitle)
+        let stone = parse("Stone Ocean Volume 01 English (Official color manga).cbz",
+                          folder: "Stone Ocean English (Official color manga)")
+        XCTAssertEqual(stone.series, "Stone Ocean", "the folder's language tag doesn't win either")
+        XCTAssertEqual(stone.volume, 1)
+        XCTAssertNil(stone.subtitle)
+    }
+
+    func testABareRangeIsOneNumber() {
+        let manual = parse("GantZ_Manual_1-31.cbz", folder: "Part 1")
+        XCTAssertEqual(manual.series, "GantZ Manual")
+        XCTAssertEqual(manual.volume, 1)
+    }
 }
+

@@ -108,6 +108,7 @@ final class SeriesGrouperTests: XCTestCase {
         XCTAssertEqual(Series(id: "b", name: "S", comics: [comic(nil, 1), comic(nil, 2), comic(nil, 3)]).subtitle, "3 chapters")
         XCTAssertEqual(Series(id: "c", name: "S", comics: [comic(1, nil), comic(nil, 199)]).subtitle, "1 volume, 1 chapter")
         XCTAssertEqual(Series(id: "d", name: "S", comics: [comic(nil, nil)]).subtitle, "1 book")
-        XCTAssertEqual(Series(id: "e", name: "S", comics: [comic(1, 4)]).subtitle, "1 volume", "a volume that names its chapter is a volume")
+        XCTAssertEqual(Series(id: "e", name: "S", comics: [comic(1, 3), comic(1, 4)]).subtitle, "2 chapters",
+                       "chapters that name their volume are chapters")
     }
 }
