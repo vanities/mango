@@ -51,6 +51,10 @@ final class AppSettings {
     var keepScreenAwake: Bool { didSet { defaults.set(keepScreenAwake, forKey: Key.keepAwake) } }
     /// Black background behind pages instead of the system one — less halo in the dark.
     var blackBackground: Bool { didSet { defaults.set(blackBackground, forKey: Key.blackBg) } }
+    /// Volumes a year to aim for, drawn as a ring on Stats. 0 hides it.
+    var yearlyGoal: Int { didSet { defaults.set(yearlyGoal, forKey: Key.yearlyGoal) } }
+    /// Identifies this device's slot in the synced activity totals. Stable across launches.
+    @ObservationIgnored let deviceID: String
     /// Body text size in the novel reader, as a multiplier on the book's own size.
     var novelFontScale: Double { didSet { defaults.set(novelFontScale, forKey: Key.novelFontScale) } }
     var librarySort: LibrarySort { didSet { defaults.set(librarySort.rawValue, forKey: Key.sort) } }
@@ -83,6 +87,14 @@ final class AppSettings {
         keepScreenAwake = defaults.object(forKey: Key.keepAwake) as? Bool ?? true
         blackBackground = defaults.object(forKey: Key.blackBg) as? Bool ?? true
         novelFontScale = defaults.object(forKey: Key.novelFontScale) as? Double ?? 1.0
+        yearlyGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 50
+        if let existing = defaults.string(forKey: Key.deviceID) {
+            deviceID = existing
+        } else {
+            let fresh = UUID().uuidString
+            defaults.set(fresh, forKey: Key.deviceID)
+            deviceID = fresh
+        }
         librarySort = LibrarySort(rawValue: defaults.string(forKey: Key.sort) ?? "") ?? .recent
         libraryLayout = LibraryLayout(rawValue: defaults.string(forKey: Key.layout) ?? "") ?? .grid
         showFinished = defaults.object(forKey: Key.showFinished) as? Bool ?? true
@@ -104,6 +116,8 @@ final class AppSettings {
         static let keepAwake = "reader.keepScreenAwake"
         static let blackBg = "reader.blackBackground"
         static let novelFontScale = "reader.novelFontScale"
+        static let yearlyGoal = "stats.yearlyGoal"
+        static let deviceID = "sync.deviceID"
         static let sort = "library.sort"
         static let layout = "library.layout"
         static let showFinished = "library.showFinished"

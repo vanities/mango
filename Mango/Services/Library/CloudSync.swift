@@ -14,6 +14,9 @@ final class CloudSync {
         case ratings = "ratings.v1"
         case bookmarks = "bookmarks.v1"
         case readingLog = "readinglog.v1"
+        /// Device ID → that device's day totals. Each device writes only its own slot, so
+        /// adding them up never double-counts.
+        case activity = "activity.v1"
     }
 
     private let store = NSUbiquitousKeyValueStore.default

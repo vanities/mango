@@ -31,6 +31,8 @@ struct LibraryState: Codable, Sendable {
     var ratings: [String: Int] = [:]
     /// Books read outside the app, so Stats can count them.
     var readingLog: [ReadingLogEntry] = []
+    /// This device's reading sessions. Local detail; only day totals travel to other devices.
+    var sessions: [ReadingSession] = []
 
     init(sources: [LibrarySource] = [], comics: [Comic] = [], progress: [String: ReadingProgress] = [:],
          hiddenComicIDs: Set<String> = [], lastComicID: String? = nil, nasServers: [NASServer] = [],
@@ -78,13 +80,15 @@ struct LibraryState: Codable, Sendable {
         }
         let logIDs = Set(readingLog.map(\.id))
         readingLog.append(contentsOf: old.readingLog.filter { !logIDs.contains($0.id) })
+        let sessionIDs = Set(sessions.map(\.id))
+        sessions.append(contentsOf: old.sessions.filter { !sessionIDs.contains($0.id) })
         hiddenComicIDs.formUnion(old.hiddenComicIDs)
         if lastComicID == nil { lastComicID = old.lastComicID }
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
-             customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog
+             customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog, sessions
     }
 
     init(from decoder: any Decoder) throws {
@@ -103,5 +107,6 @@ struct LibraryState: Codable, Sendable {
         bookmarks = try c.decodeIfPresent([String: [Bookmark]].self, forKey: .bookmarks) ?? [:]
         ratings = try c.decodeIfPresent([String: Int].self, forKey: .ratings) ?? [:]
         readingLog = try c.decodeIfPresent([ReadingLogEntry].self, forKey: .readingLog) ?? []
+        sessions = try c.decodeIfPresent([ReadingSession].self, forKey: .sessions) ?? []
     }
 }

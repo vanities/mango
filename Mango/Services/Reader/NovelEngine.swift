@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import UIKit
 import os
 
 /// Drives one light-novel reading session.
@@ -21,7 +22,13 @@ final class NovelEngine {
 
     var chapterIndex = 0 { didSet { onChapterChanged() } }
     /// 0...1 down the current chapter, reported by the web view as it scrolls.
-    var scrollFraction: Double = 0 { didSet { scheduleSave() } }
+    var scrollFraction: Double = 0 {
+        didSet {
+            // Scrolling is the novel equivalent of turning a page: it's what proves you're reading.
+            recorder?.tick(page: chapterIndex)
+            scheduleSave()
+        }
+    }
     var showsControls = true
     private(set) var reachedEnd = false
     @ObservationIgnored var onReachedEnd: (@MainActor () -> Void)?
@@ -32,6 +39,9 @@ final class NovelEngine {
     @ObservationIgnored private let settings: AppSettings
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var hideTask: Task<Void, Never>?
+    @ObservationIgnored private var recorder: SessionRecorder?
+    @ObservationIgnored private var lifecycleObservers: [any NSObjectProtocol] = []
+    @ObservationIgnored private var sessionClosed = false
 
     init(comic: Comic, library: LibraryModel, settings: AppSettings) {
         self.comic = comic
@@ -87,6 +97,7 @@ final class NovelEngine {
             isOpening = false
             Logger.reader.info("[novel] opened \(self.comic.title, privacy: .public) chapters=\(self.chapters.count) in \(sw.ms, format: .fixed(precision: 0))ms")
             keepControlsAwake()
+            beginSession(at: chapterIndex)
         } catch {
             isOpening = false
             openError = error.localizedDescription
@@ -97,6 +108,7 @@ final class NovelEngine {
     func close() {
         saveTask?.cancel()
         hideTask?.cancel()
+        endSession()
         persist()
         library.publishWidgetSnapshot()
         Logger.reader.info("[novel] closed \(self.comic.title, privacy: .public) at chapter \(self.chapterIndex + 1)")
@@ -190,6 +202,49 @@ final class NovelEngine {
         } else {
             keepControlsAwake()
         }
+    }
+
+
+    // MARK: Session timing
+
+    /// Starts timing a session. Leaving the app commits what's accrued rather than just pausing:
+    /// on iOS people rarely tap Close — they swipe home, and the system may kill the app before
+    /// they're back, which would otherwise lose the whole session.
+    private func beginSession(at page: Int) {
+        recorder = SessionRecorder(startingAt: page)
+        guard lifecycleObservers.isEmpty else { return }
+        lifecycleObservers = [
+            NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification,
+                                                   object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.commitSession() }
+            },
+            NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
+                                                   object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.restartSession() }
+            },
+        ]
+    }
+
+    /// Records whatever this sitting amounts to and stops timing.
+    private func commitSession() {
+        guard var recorder else { return }
+        self.recorder = nil
+        if let session = recorder.finish(comic: comic, seriesKey: SeriesGrouper.key(for: comic)) {
+            library.recordSession(session)
+        }
+    }
+
+    /// Back in the app with the book still open: a new sitting starts now.
+    private func restartSession() {
+        guard recorder == nil, !sessionClosed else { return }
+        recorder = SessionRecorder(startingAt: chapterIndex)
+    }
+
+    private func endSession() {
+        sessionClosed = true
+        lifecycleObservers.forEach(NotificationCenter.default.removeObserver)
+        lifecycleObservers = []
+        commitSession()
     }
 
     // MARK: Internals

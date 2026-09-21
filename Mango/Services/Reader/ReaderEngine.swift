@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import Observation
 import SwiftUI
+import UIKit
 import os
 
 /// Drives one reading session: opens the archive, hands pages to the view, remembers where you
@@ -32,6 +33,9 @@ final class ReaderEngine {
     @ObservationIgnored private var loader: PageLoader?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var hideControlsTask: Task<Void, Never>?
+    @ObservationIgnored private var recorder: SessionRecorder?
+    @ObservationIgnored private var lifecycleObservers: [any NSObjectProtocol] = []
+    @ObservationIgnored private var sessionClosed = false
 
     init(comic: Comic, library: LibraryModel, settings: AppSettings) {
         self.comic = comic
@@ -99,6 +103,7 @@ final class ReaderEngine {
             Logger.reader.info("[reader] opened \(self.comic.title, privacy: .public) pages=\(self.pageCount) in \(sw.ms, format: .fixed(precision: 0))ms")
             prefetchAround()
             keepControlsAwake()
+            beginSession(at: currentPage)
         } catch {
             isOpening = false
             openError = error.localizedDescription
@@ -109,6 +114,7 @@ final class ReaderEngine {
     func close() {
         saveTask?.cancel()
         hideControlsTask?.cancel()
+        endSession()
         persistProgress()
         library.publishWidgetSnapshot()
         let loader = self.loader
@@ -212,6 +218,49 @@ final class ReaderEngine {
     var isAtStart: Bool { groupIndex <= 0 }
     var isAtEnd: Bool { groupIndex >= groups.count - 1 }
 
+
+    // MARK: Session timing
+
+    /// Starts timing a session. Leaving the app commits what's accrued rather than just pausing:
+    /// on iOS people rarely tap Close — they swipe home, and the system may kill the app before
+    /// they're back, which would otherwise lose the whole session.
+    private func beginSession(at page: Int) {
+        recorder = SessionRecorder(startingAt: page)
+        guard lifecycleObservers.isEmpty else { return }
+        lifecycleObservers = [
+            NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification,
+                                                   object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.commitSession() }
+            },
+            NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
+                                                   object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.restartSession() }
+            },
+        ]
+    }
+
+    /// Records whatever this sitting amounts to and stops timing.
+    private func commitSession() {
+        guard var recorder else { return }
+        self.recorder = nil
+        if let session = recorder.finish(comic: comic, seriesKey: SeriesGrouper.key(for: comic)) {
+            library.recordSession(session)
+        }
+    }
+
+    /// Back in the app with the book still open: a new sitting starts now.
+    private func restartSession() {
+        guard recorder == nil, !sessionClosed else { return }
+        recorder = SessionRecorder(startingAt: currentPage)
+    }
+
+    private func endSession() {
+        sessionClosed = true
+        lifecycleObservers.forEach(NotificationCenter.default.removeObserver)
+        lifecycleObservers = []
+        commitSession()
+    }
+
     // MARK: Internals
 
     private func rebuildGroups() {
@@ -234,6 +283,7 @@ final class ReaderEngine {
     }
 
     private func onGroupChanged() {
+        recorder?.tick(page: currentPage)
         prefetchAround()
         scheduleSave()
         if showsControls { keepControlsAwake() }
