@@ -17,6 +17,8 @@ struct LibraryState: Codable, Sendable {
     var hiddenSeries: Set<String> = []
     /// Stacks the user chose: shelf id → group name, or "" to keep a shelf out of any stack.
     var seriesGroups: [String: String] = [:]
+    /// Lists of your own across the library.
+    var readingLists: [ReadingList] = []
     var lastComicID: String?
     var nasServers: [NASServer] = []
     /// Comic ID → cover ID chosen by the user. Survives rescans.
@@ -96,6 +98,8 @@ struct LibraryState: Codable, Sendable {
         hiddenComicIDs.formUnion(old.hiddenComicIDs)
         hiddenSeries.formUnion(old.hiddenSeries)
         for (key, value) in old.seriesGroups where seriesGroups[key] == nil { seriesGroups[key] = value }
+        let listIDs = Set(readingLists.map(\.id))
+        readingLists.append(contentsOf: old.readingLists.filter { !listIDs.contains($0.id) })
         longStripComicIDs.formUnion(old.longStripComicIDs)
         for (key, value) in old.seriesMode where seriesMode[key] == nil { seriesMode[key] = value }
         if lastComicID == nil { lastComicID = old.lastComicID }
@@ -104,7 +108,7 @@ struct LibraryState: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
              customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog, sessions,
-             longStripComicIDs, seriesMode, hiddenSeries, seriesGroups
+             longStripComicIDs, seriesMode, hiddenSeries, seriesGroups, readingLists
     }
 
     init(from decoder: any Decoder) throws {
@@ -128,6 +132,7 @@ struct LibraryState: Codable, Sendable {
         seriesMode = try c.decodeIfPresent([String: ReaderMode].self, forKey: .seriesMode) ?? [:]
         hiddenSeries = try c.decodeIfPresent(Set<String>.self, forKey: .hiddenSeries) ?? []
         seriesGroups = try c.decodeIfPresent([String: String].self, forKey: .seriesGroups) ?? [:]
+        readingLists = try c.decodeIfPresent([ReadingList].self, forKey: .readingLists) ?? []
     }
 }
 
