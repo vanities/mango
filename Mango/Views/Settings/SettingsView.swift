@@ -8,12 +8,6 @@ struct SettingsView: View {
         @Bindable var settings = settings
         NavigationStack {
             Form {
-                Section("Appearance") {
-                    Picker("Theme", selection: $settings.appearance) {
-                        ForEach(AppearanceMode.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                }
-
                 Section("Reading") {
                     Picker("Default direction", selection: $settings.defaultDirection) {
                         ForEach(ReadingDirection.allCases, id: \.self) { Text($0.label).tag($0) }
@@ -30,6 +24,7 @@ struct SettingsView: View {
                 }
                 Section {
                     Toggle("Tap edges to turn", isOn: $settings.tapToTurn)
+                    Toggle("Drag moves the page", isOn: $settings.dragMovesPage)
                     Toggle("Keep screen awake", isOn: $settings.keepScreenAwake)
                     Toggle("Black background", isOn: $settings.blackBackground)
                     Picker("Pages to load ahead", selection: $settings.prefetchCount) {

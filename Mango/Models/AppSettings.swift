@@ -1,28 +1,5 @@
 import Foundation
 import Observation
-import SwiftUI
-
-/// Force an appearance regardless of the phone's. Reading at night with the system in light
-/// mode is a real thing, so this is worth having rather than deferring to iOS.
-enum AppearanceMode: String, CaseIterable, Codable, Sendable {
-    case system, light, dark
-
-    var title: String {
-        switch self {
-        case .system: "Match system"
-        case .light: "Light"
-        case .dark: "Dark"
-        }
-    }
-
-    var colorScheme: ColorScheme? {
-        switch self {
-        case .system: nil
-        case .light: .light
-        case .dark: .dark
-        }
-    }
-}
 
 enum LibrarySort: String, CaseIterable, Codable, Sendable {
     case recent, title, lastRead
@@ -62,6 +39,9 @@ final class AppSettings {
     var spreadMode: SpreadMode { didSet { defaults.set(spreadMode.rawValue, forKey: Key.spread) } }
     /// How many pages to decode ahead of the one on screen. Costs memory, buys instant turns.
     var prefetchCount: Int { didSet { defaults.set(prefetchCount, forKey: Key.prefetch) } }
+    /// Which way a zoomed page moves under your finger. Off (the default) drags the *view*
+    /// across the page, like panning a map; on drags the page itself, like moving a photo.
+    var dragMovesPage: Bool { didSet { defaults.set(dragMovesPage, forKey: Key.dragMovesPage) } }
     /// Tapping the left/right thirds of the screen turns the page.
     var tapToTurn: Bool { didSet { defaults.set(tapToTurn, forKey: Key.tapToTurn) } }
     /// Keep the screen on while reading. People read slower than the 30s auto-lock.
@@ -71,7 +51,6 @@ final class AppSettings {
     var librarySort: LibrarySort { didSet { defaults.set(librarySort.rawValue, forKey: Key.sort) } }
     var libraryLayout: LibraryLayout { didSet { defaults.set(libraryLayout.rawValue, forKey: Key.layout) } }
     var showFinished: Bool { didSet { defaults.set(showFinished, forKey: Key.showFinished) } }
-    var appearance: AppearanceMode { didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -80,13 +59,13 @@ final class AppSettings {
         pageFit = PageFit(rawValue: defaults.string(forKey: Key.fit) ?? "") ?? .screen
         spreadMode = SpreadMode(rawValue: defaults.string(forKey: Key.spread) ?? "") ?? .auto
         prefetchCount = defaults.object(forKey: Key.prefetch) as? Int ?? 3
+        dragMovesPage = defaults.object(forKey: Key.dragMovesPage) as? Bool ?? false
         tapToTurn = defaults.object(forKey: Key.tapToTurn) as? Bool ?? true
         keepScreenAwake = defaults.object(forKey: Key.keepAwake) as? Bool ?? true
         blackBackground = defaults.object(forKey: Key.blackBg) as? Bool ?? true
         librarySort = LibrarySort(rawValue: defaults.string(forKey: Key.sort) ?? "") ?? .recent
         libraryLayout = LibraryLayout(rawValue: defaults.string(forKey: Key.layout) ?? "") ?? .grid
         showFinished = defaults.object(forKey: Key.showFinished) as? Bool ?? true
-        appearance = AppearanceMode(rawValue: defaults.string(forKey: Key.appearance) ?? "") ?? .system
     }
 
     private enum Key {
@@ -95,12 +74,12 @@ final class AppSettings {
         static let fit = "reader.pageFit"
         static let spread = "reader.spreadMode"
         static let prefetch = "reader.prefetchCount"
+        static let dragMovesPage = "reader.dragMovesPage"
         static let tapToTurn = "reader.tapToTurn"
         static let keepAwake = "reader.keepScreenAwake"
         static let blackBg = "reader.blackBackground"
         static let sort = "library.sort"
         static let layout = "library.layout"
         static let showFinished = "library.showFinished"
-        static let appearance = "appearance.mode"
     }
 }

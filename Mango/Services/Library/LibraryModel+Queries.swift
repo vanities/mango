@@ -24,6 +24,17 @@ extension LibraryModel {
         SeriesGrouper.nextUp(in: series, progress: state.progress)
     }
 
+    /// The volume after this one in its own series, in reading order. Nil when it's the last
+    /// one — which is exactly when the reader should stop rather than wrap around.
+    func nextInSeries(after comic: Comic) -> Comic? {
+        let key = SeriesGrouper.key(for: comic)
+        guard let shelf = series.first(where: { $0.id == key }),
+              let index = shelf.comics.firstIndex(where: { $0.id == comic.id }),
+              index + 1 < shelf.comics.count
+        else { return nil }
+        return shelf.comics[index + 1]
+    }
+
     func isFinished(_ series: Series) -> Bool {
         !series.comics.isEmpty && series.comics.allSatisfy { state.progress[$0.id]?.finished == true }
     }

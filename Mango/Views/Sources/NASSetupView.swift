@@ -24,9 +24,9 @@ struct NASSetupView: View {
         NavigationStack {
             Form {
                 Section("Server") {
-                    LabeledContent("Name") { TextField("NAS", text: $name).multilineTextAlignment(.trailing) }
+                    LabeledContent("Name") { TextField("My NAS", text: $name).multilineTextAlignment(.trailing) }
                     LabeledContent("Host") {
-                        TextField("192.168.1.3", text: $host)
+                        TextField("nas.local", text: $host)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .multilineTextAlignment(.trailing)
@@ -39,13 +39,13 @@ struct NASSetupView: View {
                 }
                 Section {
                     LabeledContent("Share") {
-                        TextField("all", text: $share)
+                        TextField("media", text: $share)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .multilineTextAlignment(.trailing)
                     }
                     LabeledContent("Folder") {
-                        TextField("downloads/complete/manga", text: $path)
+                        TextField("comics", text: $path)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .multilineTextAlignment(.trailing)
@@ -53,11 +53,11 @@ struct NASSetupView: View {
                 } header: {
                     Text("Library")
                 } footer: {
-                    Text("Folder is optional — the path inside the share to treat as the top of the library.")
+                    Text("Folder is optional — the path inside the share to treat as the top of the library, like \"comics\" or \"media/manga\".")
                 }
                 Section("Credentials") {
                     LabeledContent("Username") {
-                        TextField("guest", text: $username)
+                        TextField("username", text: $username)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .multilineTextAlignment(.trailing)

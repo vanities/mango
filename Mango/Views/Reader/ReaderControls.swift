@@ -132,6 +132,7 @@ struct ReaderSettingsSheet: View {
                         ForEach(SpreadMode.allCases, id: \.self) { Text($0.label).tag($0) }
                     }
                     Toggle("Tap edges to turn", isOn: $settings.tapToTurn)
+                    Toggle("Drag moves the page", isOn: $settings.dragMovesPage)
                     Toggle("Keep screen awake", isOn: $settings.keepScreenAwake)
                     Toggle("Black background", isOn: $settings.blackBackground)
                 }
