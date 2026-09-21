@@ -68,9 +68,13 @@ struct ReadingStats: Equatable, Sendable {
             let finished = progress?.finished == true
             let started = progress?.isStarted == true && !finished
 
-            if finished { stats.finishedVolumes += 1 }
-            else if started { stats.inProgressVolumes += 1 }
-            else { stats.unreadVolumes += 1 }
+            if finished {
+                stats.finishedVolumes += 1
+            } else if started {
+                stats.inProgressVolumes += 1
+            } else {
+                stats.unreadVolumes += 1
+            }
 
             // A finished comic counts every page; an open one counts as far as you've got.
             if finished {

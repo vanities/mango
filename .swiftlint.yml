@@ -1,4 +1,6 @@
 disabled_rules:
+  # Job.State / Job.Kind read better nested inside the job they describe.
+  - nesting
   - shorthand_operator
   - type_body_length
   - large_tuple

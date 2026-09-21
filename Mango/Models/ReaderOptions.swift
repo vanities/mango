@@ -81,7 +81,6 @@ enum SpreadMode: String, Codable, CaseIterable, Sendable {
     }
 }
 
-
 /// Which way a zoomed page moves under your finger.
 ///
 /// There is no right answer — a map pans one way, a photo drags the other — so it's a choice
