@@ -17,6 +17,8 @@ final class CloudSync {
         /// Device ID → that device's day totals. Each device writes only its own slot, so
         /// adding them up never double-counts.
         case activity = "activity.v1"
+        /// syncKey → the newest cover choice for that file (a Find Cover URL, or back to page one).
+        case covers = "covers.v1"
     }
 
     private let store = NSUbiquitousKeyValueStore.default

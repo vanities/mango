@@ -12,7 +12,9 @@ extension LibraryModel {
 
     /// Applies a picked image to a comic and its other copies. `origin` identifies the picture
     /// (the URL it came from, or a fingerprint of a photo) so a new pick gets a new id.
-    func setCustomCover(_ data: Data, origin: String, for comic: Comic) async -> Bool {
+    /// `choice` is given when the pick came from another device (keeping its time, so it isn't
+    /// sent back as new); otherwise this device's pick is recorded now.
+    func setCustomCover(_ data: Data, origin: String, for comic: Comic, choice: CoverChoice? = nil) async -> Bool {
         let sw = Stopwatch()
         let store = covers
         var installed: [(comicID: String, coverID: String)] = []
@@ -26,18 +28,21 @@ extension LibraryModel {
             return false
         }
         var replaced: [String] = []
+        let record = choice ?? (origin.hasPrefix("http") ? .online(origin) : .device())
         mutateState { state in
             for (comicID, coverID) in installed {
                 if let old = state.installCustomCover(coverID, for: comicID) { replaced.append(old) }
             }
+            state.coverChoices[comic.syncKey] = record
         }
+        if choice == nil { pushToCloud() }
         for old in replaced { store.delete(old) }
         Logger.cover.info("[covers] picked cover for \(comic.title, privacy: .public) copies=\(installed.count) replaced=\(replaced.count) in \(sw.ms, format: .fixed(precision: 0))ms")
         return true
     }
 
     /// Drops a comic's picked cover (on every copy) and goes back to its page one.
-    func useOriginalCover(for comic: Comic) {
+    func useOriginalCover(for comic: Comic, choice: CoverChoice? = nil) {
         let store = covers
         var removed: [String] = []
         mutateState { state in
@@ -47,7 +52,9 @@ extension LibraryModel {
                     removed.append(old)
                 }
             }
+            state.coverChoices[comic.syncKey] = choice ?? .original()
         }
+        if choice == nil { pushToCloud() }
         for old in removed { store.delete(old) }
         Logger.cover.info("[covers] back to the original cover for \(comic.title, privacy: .public) removed=\(removed.count)")
         // A copy whose page-one cover was never made gets it from the backfill.

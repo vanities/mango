@@ -30,7 +30,7 @@ final class LibraryModel {
     @ObservationIgnored private var scopedURLs: [UUID: URL] = [:]
     @ObservationIgnored private var clients: [UUID: NASClient] = [:]
     @ObservationIgnored private var coverTask: Task<Void, Never>?
-    @ObservationIgnored private let cloud = CloudSync()
+    @ObservationIgnored let cloud = CloudSync()
 
     init(store: LibraryStore = LibraryStore(), covers: CoverStore = CoverStore(), settings: AppSettings) {
         self.store = store
@@ -570,50 +570,6 @@ final class LibraryModel {
         pushToCloud()
     }
 
-    // MARK: iCloud
-
-    /// Folds in anything another device wrote more recently. Positions are matched by relative
-    /// path, so a book only syncs to devices that have the same file in the same place.
-    private func mergeFromCloud() {
-        var changed = false
-        if let remote = cloud.load([String: ReadingProgress].self, .progress), !remote.isEmpty {
-            let merged = ProgressSync.merged(local: state.progress, comics: state.comics, cloud: remote)
-            if merged != state.progress {
-                let count = merged.filter { state.progress[$0.key] != $0.value }.count
-                state.progress = merged
-                changed = true
-                Logger.store.info("[cloud] took \(count) newer position(s) from another device")
-            }
-        }
-        if let remote = cloud.load([String: Int].self, .ratings) {
-            let merged = CollectionSync.mergedRatings(local: state.ratings, comics: state.comics, cloud: remote)
-            if merged != state.ratings { state.ratings = merged; changed = true }
-        }
-        if let remote = cloud.load([String: [Bookmark]].self, .bookmarks) {
-            let merged = CollectionSync.mergedBookmarks(local: state.bookmarks, comics: state.comics, cloud: remote)
-            if merged != state.bookmarks { state.bookmarks = merged; changed = true }
-        }
-        if let remote = cloud.load([ReadingLogEntry].self, .readingLog) {
-            let merged = CollectionSync.mergedLog(local: state.readingLog, cloud: remote)
-            if merged != state.readingLog { state.readingLog = merged; changed = true }
-        }
-        guard changed else { return }
-        try? store.saveLibrary(state)
-        rebuildSeries()
-    }
-
-    private func pushToCloud() {
-        let progress = cloud.load([String: ReadingProgress].self, .progress) ?? [:]
-        cloud.save(ProgressSync.cloudSnapshot(local: state.progress, comics: state.comics, existingCloud: progress), .progress)
-        let ratings = cloud.load([String: Int].self, .ratings) ?? [:]
-        cloud.save(CollectionSync.ratingsSnapshot(local: state.ratings, comics: state.comics, existingCloud: ratings), .ratings)
-        let marks = cloud.load([String: [Bookmark]].self, .bookmarks) ?? [:]
-        cloud.save(CollectionSync.bookmarksSnapshot(local: state.bookmarks, comics: state.comics, existingCloud: marks), .bookmarks)
-        let log = cloud.load([ReadingLogEntry].self, .readingLog) ?? []
-        cloud.save(CollectionSync.mergedLog(local: state.readingLog, cloud: log), .readingLog)
-        pushActivity()
-    }
-
     // MARK: Reading activity
 
     /// Keeps the session log bounded: two years of detail is plenty for Stats, and the file
@@ -648,7 +604,7 @@ final class LibraryModel {
         ActivityStats.build(days: allDayActivity, sessions: state.sessions)
     }
 
-    private func pushActivity() {
+    func pushActivity() {
         var all = cloud.load([String: [String: DayActivity]].self, .activity) ?? [:]
         let cutoff = DayKey.string(for: Date().addingTimeInterval(-Self.sessionRetention))
         all[settings.deviceID] = DayKey.rollUp(state.sessions).filter { $0.key >= cutoff }
