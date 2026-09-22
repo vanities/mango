@@ -72,14 +72,3 @@ enum DuplicateFinder {
         digest.map { String(format: "%02x", $0) }.joined()
     }
 }
-
-extension URL {
-    /// Whether this file is somewhere inside `folder` (not the folder itself). A directory URL's
-    /// path can end in "/" or not; comparing with one added unconditionally refused every file.
-    func isInside(_ folder: URL) -> Bool {
-        var base = folder.standardizedFileURL.path(percentEncoded: false)
-        if !base.hasSuffix("/") { base += "/" }
-        let path = standardizedFileURL.path(percentEncoded: false)
-        return path.hasPrefix(base) && path.count > base.count
-    }
-}

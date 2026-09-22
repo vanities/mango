@@ -1,4 +1,5 @@
 import XCTest
+import ShelfKit
 @testable import Mango
 
 /// A comic on this device twice is found by what's in it, not what it's called.

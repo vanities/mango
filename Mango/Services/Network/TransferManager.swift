@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import UIKit
 import os
+import ShelfKit
 
 /// Moves comics between the NAS and this device, one at a time.
 ///
@@ -364,20 +365,21 @@ final class TransferManager {
         }
         update(job.id) { $0.totalBytes = max(1, files.reduce(0) { $0 + $1.size }) }
         let jobID = job.id, cancelled = self.cancelled
-        let emptied = comic.kind == .folder ? url : nil
+        // Folders the move empties go too, up to — never including — the folder the user picked.
+        let pickedRoot = library.state.sources.first { $0.id == comic.sourceID }.flatMap { library.root(for: $0) }
         let outcome: Result<Void, any Error> = await Task.detached(priority: .userInitiated) {
             Result {
-                try LocalMove.run(files, emptiedFolder: emptied, progress: { bytes in
+                try LocalMove.run(files, into: "Mango", pruningUpTo: pickedRoot, progress: { bytes in
                     Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = bytes } }
                 }, isCancelled: { cancelled.withLock { $0.contains(jobID) } })
             }
         }.value
-        var leftOriginals = false
+        var originalsNote: String?
         switch outcome {
         case .success:
             break
-        case .failure(LocalMove.Failure.originalsLeft):
-            leftOriginals = true
+        case .failure(LocalMove.Failure.originalsLeft(let count, let app)):
+            originalsNote = LocalMove.Failure.originalsLeft(count, app: app).errorDescription
         case .failure(LocalMove.Failure.cancelled):
             finishCancelled(job, comic)
             return
@@ -386,19 +388,14 @@ final class TransferManager {
             update(job.id) { $0.state = .failed; $0.error = error.localizedDescription }
             return
         }
-        // A folder inside the picked one that the move left empty goes too — never the picked folder.
-        if comic.kind != .folder, let source = library.state.sources.first(where: { $0.id == comic.sourceID }),
-           let pickedRoot = library.root(for: source) {
-            library.removeEmptyFolders(from: url.deletingLastPathComponent(), downTo: pickedRoot)
-        }
         let movedID = Comic.makeID(sourceID: documentsSource.id, relativePath: comic.relativePath)
         library.mutateState { $0.returnState(from: comic.id, to: movedID) }
         update(job.id) {
             $0.state = .done
             $0.doneBytes = $0.totalBytes
-            if leftOriginals { $0.error = LocalMove.Failure.originalsLeft(1).errorDescription }
+            if let originalsNote { $0.error = originalsNote }
         }
-        Logger.downloads.info("[move] \(comic.title, privacy: .public) files=\(files.count) into Mango's folder in \(sw.seconds, format: .fixed(precision: 1))s\(leftOriginals ? " (some originals left)" : "", privacy: .public)")
+        Logger.downloads.info("[move] \(comic.title, privacy: .public) files=\(files.count) into Mango's folder in \(sw.seconds, format: .fixed(precision: 1))s\(originalsNote == nil ? "" : " (some originals left)", privacy: .public)")
         await library.scan()
     }
 
