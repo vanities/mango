@@ -18,6 +18,9 @@ struct SourceBrowserView: View {
     @State private var reading: Comic?
     /// A move asks first: the originals leave the folder the user picked.
     @State private var confirmingMove: [Comic]?
+    /// So does everything at once from the ••• menu, with its count and size.
+    @State private var confirmingDownload: [Comic]?
+    @State private var confirmingUpload: [Comic]?
 
     var body: some View {
         let shelves = shelves
@@ -56,6 +59,24 @@ struct SourceBrowserView: View {
         } message: { _ in
             Text("Each is copied into Mango's own folder, checked, and only then removed from \(source.displayName). Your place, bookmarks and ratings go with them. A different file already in Mango's folder is never replaced.")
         }
+        .confirmationDialog(
+            "Download \(confirmingDownload?.count ?? 0) to this device?",
+            isPresented: Binding(get: { confirmingDownload != nil }, set: { if !$0 { confirmingDownload = nil } }),
+            titleVisibility: .visible, presenting: confirmingDownload
+        ) { comics in
+            Button("Download \(comics.count) (\(Self.bytes(comics)))") { download(comics) }
+        } message: { _ in
+            Text("Copies go into Mango's folder with the same layout, one at a time, while Mango is open. Files already here are skipped.")
+        }
+        .confirmationDialog(
+            "Upload \(confirmingUpload?.count ?? 0) to \(uploadServer?.name ?? "the NAS")?",
+            isPresented: Binding(get: { confirmingUpload != nil }, set: { if !$0 { confirmingUpload = nil } }),
+            titleVisibility: .visible, presenting: confirmingUpload
+        ) { comics in
+            Button("Upload \(comics.count) (\(Self.bytes(comics)))") { upload(comics) }
+        } message: { _ in
+            Text("Each is uploaded to \(uploadServer?.name ?? "the NAS"), one at a time, while Mango is open. Your copies stay on this device; ones already on the NAS are skipped.")
+        }
         .task {
             // A source with a series or two opens with its volumes showing.
             if expanded.isEmpty, shelves.count <= 2 { expanded = Set(shelves.map(\.id)) }
@@ -72,6 +93,12 @@ struct SourceBrowserView: View {
     /// Where this device's comics can go: the first NAS, as elsewhere in the app.
     private var uploadServer: NASServer? {
         source.isRemote ? nil : library.state.nasServers.first
+    }
+
+    /// Where this source lives: a NAS share, or the folder on this device.
+    private var location: String? {
+        if let server = source.serverID.flatMap({ id in library.state.nasServers.first { $0.id == id } }) { return server.displayLocation }
+        return library.root(for: source)?.path(percentEncoded: false)
     }
 
     // MARK: Stacks
@@ -134,7 +161,7 @@ struct SourceBrowserView: View {
 
     private enum Action { case download, upload, remove }
 
-    private func state(of comic: Comic, _ status: Status) -> TileState {
+    private func state(of comic: Comic, _ status: Status) -> CopyPlace {
         if let job = status.jobs[comic.id] { return .transferring(job.fraction) }
         if source.isRemote { return status.downloads[comic.syncKey] != nil ? .both : .remote }
         return status.onNAS.contains(comic.syncKey) ? .both : .deviceOnly
@@ -142,7 +169,7 @@ struct SourceBrowserView: View {
 
     /// What Download, Upload or Remove would do to a comic, if anything. A folder you picked
     /// is yours: its comics can go up to the NAS, but Mango never deletes them.
-    private func action(for state: TileState) -> Action? {
+    private func action(for state: CopyPlace) -> Action? {
         switch state {
         case .remote: .download
         case .both: source.isRemote || source.kind == .appDocuments ? .remove : nil
@@ -206,22 +233,19 @@ struct SourceBrowserView: View {
             if tracksNAS {
                 StorageBar(fraction: bothFraction(comics, status))
                 HStack(spacing: 14) {
-                    legend(.both, source.isRemote ? "On this device" : "Also on the NAS")
-                    legend(source.isRemote ? .remote : .deviceOnly, source.isRemote ? "Only on the NAS" : "Only on this device")
+                    PlaceLegend(.both, source.isRemote ? "On this device" : "Also on the NAS")
+                    PlaceLegend(source.isRemote ? .remote : .deviceOnly, source.isRemote ? "Only on the NAS" : "Only on this device")
                 }
+            }
+            if let location {
+                Text(location)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(2)
+                    .textSelection(.enabled)
             }
         }
         .padding(.vertical, 2)
-    }
-
-    private func legend(_ state: TileState, _ text: String) -> some View {
-        HStack(spacing: 5) {
-            TileBackground(state: state).frame(width: 14, height: 10)
-            Text(text)
-        }
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-        .accessibilityElement(children: .combine)
     }
 
     // MARK: Series
@@ -291,7 +315,7 @@ struct SourceBrowserView: View {
                     if canMove, uploadServer == nil, !moving {
                         Image(systemName: "arrow.right.circle").font(.title3).foregroundStyle(Color.accentColor)
                     } else {
-                        SeriesRing(fraction: bothFraction(shelf.comics, status), upward: !source.isRemote, isMoving: moving,
+                        TransferRing(fraction: bothFraction(shelf.comics, status), upward: !source.isRemote, isMoving: moving,
                                    isComplete: !moving && !states.contains { $0 == .remote || $0 == .deviceOnly })
                     }
                 }
@@ -396,10 +420,10 @@ struct SourceBrowserView: View {
                 .foregroundStyle(state == .remote ? Color.primary : state == .deviceOnly ? Color.secondary : Color.accentColor)
                 .frame(maxWidth: .infinity, minHeight: 32)
                 .padding(.horizontal, 2)
-                .background { TileBackground(state: state) }
+                .background { PlaceBackground(state) }
                 .overlay {
                     if picked {
-                        RoundedRectangle(cornerRadius: TileBackground.radius, style: .continuous)
+                        RoundedRectangle(cornerRadius: PlaceBackground.radius, style: .continuous)
                             .strokeBorder(Color.accentColor, lineWidth: 2)
                     }
                 }
@@ -420,7 +444,7 @@ struct SourceBrowserView: View {
     }
 
     @ViewBuilder
-    private func tileActions(_ comic: Comic, _ state: TileState, _ status: Status) -> some View {
+    private func tileActions(_ comic: Comic, _ state: CopyPlace, _ status: Status) -> some View {
         Button("Read", systemImage: "book") { reading = status.downloads[comic.syncKey] ?? comic }
         switch action(for: state) {
         case .download:
@@ -438,7 +462,7 @@ struct SourceBrowserView: View {
         }
     }
 
-    private func accessibilityLabel(_ comic: Comic, _ state: TileState) -> String {
+    private func accessibilityLabel(_ comic: Comic, _ state: CopyPlace) -> String {
         let name = comic.numberLabel ?? comic.title
         switch state {
         case .remote: return "\(name), only on the NAS"
@@ -453,6 +477,9 @@ struct SourceBrowserView: View {
     @ToolbarContentBuilder
     private func toolbar(_ comics: [Comic], _ status: Status) -> some ToolbarContent {
         let actionable = Set(comics.filter { isSelectable($0, status) }.map(\.id))
+        if !selecting {
+            ToolbarItem(placement: .primaryAction) { moreMenu(comics, status) }
+        }
         if selecting || !actionable.isEmpty {
             ToolbarItem(placement: .primaryAction) {
                 Button(selecting ? "Done" : "Select") {
@@ -505,6 +532,34 @@ struct SourceBrowserView: View {
         }
     }
 
+    /// What can be done to the whole source at once, each with its count and size — as on
+    /// Earmark's source pages.
+    private func moreMenu(_ comics: [Comic], _ status: Status) -> some View {
+        let downloads = self.comics(comics, for: .download, status)
+        let uploads = self.comics(comics, for: .upload, status)
+        let moves = movable(comics, status)
+        return Menu {
+            Button("Rescan", systemImage: "arrow.clockwise") { Task { await library.scan() } }
+            if source.isRemote {
+                Button(downloads.isEmpty ? "Everything Is on This Device" : "Download \(downloads.count) Missing (\(Self.bytes(downloads)))",
+                       systemImage: "arrow.down.circle") { confirmingDownload = downloads }
+                    .disabled(downloads.isEmpty)
+            }
+            if let server = uploadServer {
+                Button(uploads.isEmpty ? "All Backed Up to \(server.name)" : "Upload \(uploads.count) to \(server.name) (\(Self.bytes(uploads)))",
+                       systemImage: "arrow.up.circle") { confirmingUpload = uploads }
+                    .disabled(uploads.isEmpty)
+            }
+            if canMove {
+                Button(moves.isEmpty ? "Nothing Left to Move" : "Move All \(moves.count) into Mango (\(Self.bytes(moves)))",
+                       systemImage: "arrow.right.circle") { confirmingMove = moves }
+                    .disabled(moves.isEmpty)
+            }
+        } label: {
+            Label("More", systemImage: "ellipsis")
+        }
+    }
+
     private func download(_ comics: [Comic]) {
         comics.forEach(transfers.download)
         Logger.downloads.info("[sources] queued \(comics.count) download(s) from \(source.displayName, privacy: .public)")
@@ -536,98 +591,5 @@ struct SourceBrowserView: View {
             selecting = false
             selection.removeAll()
         }
-    }
-}
-
-/// Where one comic stands, as its tile shows it.
-private enum TileState: Equatable {
-    /// Only on the NAS.
-    case remote
-    /// Coming down or going up, this far along.
-    case transferring(Double)
-    /// On this device and on the NAS.
-    case both
-    /// Only on this device.
-    case deviceOnly
-}
-
-/// A volume tile's look: filled when it's in both places, outlined when it's only on the NAS,
-/// grey when it's only on this device, filling up while it moves.
-private struct TileBackground: View {
-    static let radius: CGFloat = 7
-    let state: TileState
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
-        switch state {
-        case .remote:
-            shape.strokeBorder(Color.secondary.opacity(0.45), lineWidth: 1)
-        case .both:
-            shape.fill(Color.accentColor.opacity(0.2))
-        case .deviceOnly:
-            shape.fill(Color.secondary.opacity(0.15))
-        case .transferring(let fraction):
-            shape.strokeBorder(Color.accentColor.opacity(0.5), lineWidth: 1)
-                .background(alignment: .leading) {
-                    GeometryReader { proxy in
-                        Rectangle()
-                            .fill(Color.accentColor.opacity(0.2))
-                            .frame(width: proxy.size.width * fraction)
-                    }
-                }
-                .clipShape(shape)
-        }
-    }
-}
-
-/// How much of a source is in both places, as a thin bar.
-private struct StorageBar: View {
-    let fraction: Double
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color.secondary.opacity(0.18))
-                Capsule()
-                    .fill(Color.accentColor)
-                    .frame(width: max(fraction > 0 ? 6 : 0, proxy.size.width * min(1, fraction)))
-            }
-        }
-        .frame(height: 6)
-        .accessibilityElement()
-        .accessibilityLabel("\(Int((fraction * 100).rounded())) percent")
-    }
-}
-
-/// A series' share of both places, App Store style: an arrow while there's more to move, a
-/// stop square while it's moving, a check once it's all in both places.
-private struct SeriesRing: View {
-    let fraction: Double
-    /// Up for this device's comics going to the NAS, down for the NAS's coming here.
-    let upward: Bool
-    let isMoving: Bool
-    let isComplete: Bool
-
-    var body: some View {
-        Group {
-            if isComplete {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.green)
-            } else {
-                ZStack {
-                    Circle().stroke(Color.secondary.opacity(0.25), lineWidth: 2.5)
-                    Circle()
-                        .trim(from: 0, to: fraction)
-                        .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    Image(systemName: isMoving ? "stop.fill" : upward ? "arrow.up" : "arrow.down")
-                        .font(.system(size: isMoving ? 8 : 10, weight: .bold))
-                        .foregroundStyle(Color.accentColor)
-                }
-                .frame(width: 22, height: 22)
-            }
-        }
-        .animation(.easeOut(duration: 0.25), value: fraction)
     }
 }
