@@ -44,31 +44,6 @@ struct ActivityHeatmap: View {
     }
 }
 
-/// The yearly goal as a ring: volumes finished this year against what you're aiming for.
-struct GoalRing: View {
-    let done: Int
-    let goal: Int
-
-    private var fraction: Double { goal > 0 ? min(1, Double(done) / Double(goal)) : 0 }
-
-    var body: some View {
-        ZStack {
-            Circle().stroke(Color.orange.opacity(0.18), lineWidth: 12)
-            Circle()
-                .trim(from: 0, to: fraction)
-                .stroke(Color.orange.gradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            VStack(spacing: 0) {
-                Text("\(done)").font(.title2.weight(.bold)).monospacedDigit()
-                Text("of \(goal)").font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-        .frame(width: 96, height: 96)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(done) of \(goal) volumes this year")
-    }
-}
-
 struct TimeOfDayChart: View {
     let buckets: [ActivityStats.Bucket]
 

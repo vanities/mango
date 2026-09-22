@@ -1,5 +1,6 @@
 import Charts
 import SwiftUI
+import ShelfKit
 
 /// What you've actually read, built from the library and your reading positions. Mango
 /// records nothing extra to produce this — there is no analytics, here or anywhere else.
@@ -41,49 +42,45 @@ struct StatsView: View {
                 }
             }
             .navigationTitle("Stats")
+            // The same ••• menu as Earmark's Stats.
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { logging = true } label: { Image(systemName: "plus") }
-                        .accessibilityLabel("Log a book read elsewhere")
+                    Menu {
+                        Button("Log a Book Read Elsewhere", systemImage: "plus") { logging = true }
+                        Button("Change Yearly Goal…", systemImage: "target") { editingGoal = true }
+                    } label: {
+                        Label("More", systemImage: "ellipsis")
+                    }
                 }
             }
             .sheet(isPresented: $logging) { LogBookView() }
+            // Here rather than on the goal card, so the menu can open it with nothing to count yet.
+            .sheet(isPresented: $editingGoal) { GoalEditor() }
         }
     }
 
     // MARK: Activity
 
     private var goalCard: some View {
-        card("\(Calendar.current.component(.year, from: .now)) goal") {
+        StatCard("\(Calendar.current.component(.year, from: .now)) goal") {
             HStack(spacing: 18) {
-                GoalRing(done: stats.thisYear, goal: max(1, settings.yearlyGoal))
+                GoalRing(done: stats.thisYear, goal: max(1, settings.yearlyGoal), noun: "volumes")
                 VStack(alignment: .leading, spacing: 6) {
                     let left = max(0, settings.yearlyGoal - stats.thisYear)
                     Text(left == 0 ? "Goal reached." : "\(left) to go")
                         .font(.headline)
-                    Text(pace)
+                    Text(GoalRing.pace(done: stats.thisYear, goal: settings.yearlyGoal))
                         .font(.caption).foregroundStyle(.secondary)
                     Button("Change goal") { editingGoal = true }
                         .font(.caption)
                 }
             }
         }
-        .sheet(isPresented: $editingGoal) { GoalEditor() }
-    }
 
-    /// Whether you're on track, from the share of the year gone.
-    private var pace: String {
-        let calendar = Calendar.current
-        let day = Double(calendar.ordinality(of: .day, in: .year, for: .now) ?? 1)
-        let days = Double(calendar.range(of: .day, in: .year, for: .now)?.count ?? 365)
-        let expected = Double(settings.yearlyGoal) * day / days
-        let delta = Double(stats.thisYear) - expected
-        if abs(delta) < 1 { return "Right on pace." }
-        return delta > 0 ? "\(Int(delta.rounded())) ahead of pace." : "\(Int((-delta).rounded())) behind pace."
     }
 
     private var timeCard: some View {
-        card("Time reading") {
+        StatCard("Time reading") {
             HStack(spacing: 12) {
                 timeStat(Durations.short(activity.thisWeekSeconds), "This week")
                 timeStat(Durations.short(activity.thisMonthSeconds), "This month")
@@ -110,13 +107,13 @@ struct StatsView: View {
     }
 
     private var heatmapCard: some View {
-        card("Last \(ActivityStats.heatmapWeeks) weeks") {
+        StatCard("Last \(ActivityStats.heatmapWeeks) weeks") {
             ActivityHeatmap(days: activity.heatmap)
         }
     }
 
     private var habitsCard: some View {
-        card("When you read") {
+        StatCard("When you read") {
             TimeOfDayChart(buckets: activity.timeOfDay)
             if !activity.topSeriesByTime.isEmpty {
                 Divider().padding(.vertical, 4)
@@ -136,7 +133,7 @@ struct StatsView: View {
     // MARK: Ratings and the log
 
     private var ratingsCard: some View {
-        card("Ratings") {
+        StatCard("Ratings") {
             if let average = stats.averageRating {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(average, format: .number.precision(.fractionLength(1)))
@@ -163,7 +160,7 @@ struct StatsView: View {
 
     @ViewBuilder
     private var loggedCard: some View {
-        card("Read elsewhere") {
+        StatCard("Read elsewhere") {
             if library.state.readingLog.isEmpty {
                 Text("Books you finished before Mango, or outside it, can be logged here so they count.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -194,30 +191,19 @@ struct StatsView: View {
 
     private var headline: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
-            tile("\(stats.finishedVolumes)", "Volumes finished", "checkmark.circle.fill", .green)
-            tile(stats.pagesRead.formatted(), "Pages read", "doc.text.fill", .accentColor)
-            tile(Durations.short(activity.totalSeconds), "Time reading", "clock.fill", .blue)
-            tile("\(activity.currentStreak) day\(activity.currentStreak == 1 ? "" : "s")", "Current streak", "flame.fill", .red)
-            tile("\(stats.finishedSeries)", "Series completed", "books.vertical.fill", .purple)
-            tile("\(activity.daysRead)", "Days read", "calendar", .orange)
+            StatTile("\(stats.finishedVolumes)", "Volumes finished", systemImage: "checkmark.circle.fill", tint: .green)
+            StatTile(stats.pagesRead.formatted(), "Pages read", systemImage: "doc.text.fill", tint: .accentColor)
+            StatTile(Durations.short(activity.totalSeconds), "Time reading", systemImage: "clock.fill", tint: .blue)
+            StatTile("\(activity.currentStreak) day\(activity.currentStreak == 1 ? "" : "s")", "Current streak", systemImage: "flame.fill", tint: .red)
+            StatTile("\(stats.finishedSeries)", "Series completed", systemImage: "books.vertical.fill", tint: .purple)
+            StatTile("\(activity.daysRead)", "Days read", systemImage: "calendar", tint: .orange)
         }
-    }
-
-    private func tile(_ value: String, _ label: String, _ icon: String, _ tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: icon).foregroundStyle(tint)
-            Text(value).font(.title2.weight(.semibold)).monospacedDigit()
-            Text(label).font(.caption).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 14))
     }
 
     // MARK: Charts
 
     private var monthsChart: some View {
-        card("Finished per month") {
+        StatCard("Finished per month") {
             Chart(stats.months) { month in
                 BarMark(
                     x: .value("Month", month.label),
@@ -237,7 +223,7 @@ struct StatsView: View {
 
     private var breakdown: some View {
         VStack(spacing: 12) {
-            card("Library") {
+            StatCard("Library") {
                 Chart {
                     SectorMark(angle: .value("Finished", stats.finishedVolumes), innerRadius: .ratio(0.6), angularInset: 1.5)
                         .foregroundStyle(by: .value("State", "Finished"))
@@ -249,7 +235,7 @@ struct StatsView: View {
                 .chartLegend(position: .bottom, spacing: 8)
                 .frame(height: 180)
             }
-            card("By format") {
+            StatCard("By format") {
                 Chart(stats.byFormat) { bucket in
                     BarMark(
                         x: .value("Count", bucket.count),
@@ -268,7 +254,7 @@ struct StatsView: View {
     }
 
     private var topSeriesCard: some View {
-        card("Most read") {
+        StatCard("Most read") {
             ForEach(stats.topSeries) { bucket in
                 HStack {
                     Text(bucket.name).font(.subheadline).lineLimit(1)
@@ -284,7 +270,7 @@ struct StatsView: View {
     }
 
     private var storageCard: some View {
-        card("Where it lives") {
+        StatCard("Where it lives") {
             HStack(spacing: 16) {
                 storageStat("On device", stats.localBytes, "iphone")
                 storageStat("On the NAS", stats.remoteBytes, "externaldrive.connected.to.line.below")
@@ -320,14 +306,4 @@ struct StatsView: View {
             .foregroundStyle(.tertiary)
     }
 
-    @ViewBuilder
-    private func card(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.headline)
-            content()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.quaternary.opacity(0.4), in: .rect(cornerRadius: 14))
-    }
 }
