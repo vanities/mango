@@ -107,6 +107,10 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - Shelf identity uses `normalizedForIdentity` (punctuation *removed*), not
   `normalizedForMatching` (punctuation becomes a word break, which is right for search and
   wrong for identity — it splits "JoJo's" from "JoJos").
+- **Keep the UI like Earmark's.** Both apps share a look (Sources, a source's page, the
+  Library's toolbar and Continue row, Stats); the pieces drawn identically are ShelfKit views.
+  A change to one app's version of those screens goes to the other's too, and nothing either
+  app can do is dropped to make them match.
 - UI is native iOS 26 (Liquid Glass). `navigationDestination` must sit outside lazy containers
   or the links silently do nothing.
 
