@@ -23,7 +23,6 @@
 		18A0874A8A9262995AA06B79 /* ReadingListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EAFA568AFDF3AD92E89998 /* ReadingListTests.swift */; };
 		1924E9749CEEFC7742C80C21 /* EPUBDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8390791BBCCC9E5AF85AA31 /* EPUBDocument.swift */; };
 		193EA59E97D58CA126B13639 /* LibraryModel+Downloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8323EA12C42BC791D2DA5AE2 /* LibraryModel+Downloads.swift */; };
-		1AB613EE3EB79B5B455BBC61 /* ActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35EB44A035C4ED4C1C8A9A59 /* ActivityViews.swift */; };
 		1CA325F976C4153490FA28C9 /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B9A316341A29ECD770C9B3 /* LibraryStore.swift */; };
 		1E1FB06091ED33989CC94ED2 /* Comic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CE48B6D8D5E95D44165066 /* Comic.swift */; };
 		1F8B4C51525EF5A3EB6D199B /* TallPageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B84550A723DC7845833093 /* TallPageTests.swift */; };
@@ -80,7 +79,6 @@
 		993E09D9CBA4C97CBF94CCBD /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06B9CBA09D73930A4A09130 /* AppSettings.swift */; };
 		9A6224D126CAD39F38BE55C5 /* DuplicateFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05BCE119D2A7CE7085E5991E /* DuplicateFinder.swift */; };
 		9D23D4B2FFB7AF2FCE894069 /* Series.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91901981DD7DA76063F12867 /* Series.swift */; };
-		9EE6CA1197E849A542E5C837 /* ActivityStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AEDD8030A8DCEF4BB0FD04A /* ActivityStats.swift */; };
 		A48E40900A8CE7FFE289018A /* ZipComicArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 286002CD921891FB1A7F3E6D /* ZipComicArchive.swift */; };
 		A516D8370CF24A0D3AA47F5D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44619CC2962880BD4E8D99E1 /* RootView.swift */; };
 		A879A73ADCA490313F8B9855 /* ReadingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1FE7A94B46C464EFF6CC7AE /* ReadingSnapshot.swift */; };
@@ -200,7 +198,6 @@
 		2C9630492B5EBB059EB50BD9 /* Mango.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Mango.entitlements; sourceTree = "<group>"; };
 		325D381D34D7FDA3BB22F566 /* ZoomableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableView.swift; sourceTree = "<group>"; };
 		336D3CBFDD5F7B32EB852C83 /* PageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageLoader.swift; sourceTree = "<group>"; };
-		35EB44A035C4ED4C1C8A9A59 /* ActivityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityViews.swift; sourceTree = "<group>"; };
 		362D971ABFBB071048A85123 /* ReaderControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderControls.swift; sourceTree = "<group>"; };
 		3651C7A2C034113FC75C60B6 /* ImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDecoder.swift; sourceTree = "<group>"; };
 		36AC28FAAD4AF3A319F39B7F /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
@@ -250,7 +247,6 @@
 		945AA080C5059CBFA8EC193E /* SeriesGrouper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesGrouper.swift; sourceTree = "<group>"; };
 		98384B24D7EE811294FE8537 /* CoverSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSync.swift; sourceTree = "<group>"; };
 		998EB466840EB739C25A87CF /* LibraryModel+Lists.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Lists.swift"; sourceTree = "<group>"; };
-		9AEDD8030A8DCEF4BB0FD04A /* ActivityStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityStats.swift; sourceTree = "<group>"; };
 		A17AB6483034DA771F4463F6 /* LibraryScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScannerTests.swift; sourceTree = "<group>"; };
 		A26C4AE90A771FAA6E3435BF /* SeriesLookupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesLookupView.swift; sourceTree = "<group>"; };
 		A2A384731307B7811C0770F0 /* LibrarySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibrarySource.swift; sourceTree = "<group>"; };
@@ -506,7 +502,6 @@
 		84A6B872F2F78AD610872EBF /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				9AEDD8030A8DCEF4BB0FD04A /* ActivityStats.swift */,
 				B06B9CBA09D73930A4A09130 /* AppSettings.swift */,
 				80D0DD540F9B4F1C140FFFEB /* Bookmark.swift */,
 				56CE48B6D8D5E95D44165066 /* Comic.swift */,
@@ -598,7 +593,6 @@
 		A6613B3EC389052D9B92DFB9 /* Stats */ = {
 			isa = PBXGroup;
 			children = (
-				35EB44A035C4ED4C1C8A9A59 /* ActivityViews.swift */,
 				A98CDFC6AEDF0059741C1FDF /* GoalEditor.swift */,
 				76612A65E1B788AC439B8339 /* LogBookView.swift */,
 				F88DA7CD560BCF2F67B60623 /* StatsView.swift */,
@@ -772,8 +766,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9EE6CA1197E849A542E5C837 /* ActivityStats.swift in Sources */,
-				1AB613EE3EB79B5B455BBC61 /* ActivityViews.swift in Sources */,
 				55E4642406338C126D773EDA /* AppEnvironment.swift in Sources */,
 				993E09D9CBA4C97CBF94CCBD /* AppSettings.swift in Sources */,
 				FC7383447342ABBD4774B565 /* ArchiveOpener.swift in Sources */,
@@ -1211,7 +1203,7 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.7.0;
+				version = 0.8.1;
 			};
 		};
 		7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */ = {

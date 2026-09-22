@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 /// Time actually spent reading, one session per book opening.
 ///
@@ -101,13 +102,6 @@ struct SessionRecorder: Sendable {
     }
 }
 
-/// One day's reading, rolled up. What syncs between devices, rather than every session.
-struct DayActivity: Codable, Hashable, Sendable {
-    var seconds: Double = 0
-    var pages: Int = 0
-    var sessions: Int = 0
-}
-
 extension ReadingSession {
     /// "2026-09-21" in the reader's own calendar — the key days are grouped and synced by.
     func dayKey(_ calendar: Calendar = .current) -> String {
@@ -115,28 +109,9 @@ extension ReadingSession {
     }
 }
 
-enum DayKey {
-    static func string(for date: Date, calendar: Calendar = .current) -> String {
-        let c = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
-    }
-
-    static func date(from key: String, calendar: Calendar = .current) -> Date? {
-        let parts = key.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { return nil }
-        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
-    }
-
-    /// Per-day totals from a list of sessions.
-    static func rollUp(_ sessions: [ReadingSession], calendar: Calendar = .current) -> [String: DayActivity] {
-        var days: [String: DayActivity] = [:]
-        for session in sessions {
-            var day = days[session.dayKey(calendar)] ?? DayActivity()
-            day.seconds += session.activeSeconds
-            day.pages += session.pagesTurned
-            day.sessions += 1
-            days[session.dayKey(calendar)] = day
-        }
-        return days
-    }
+/// How ShelfKit's `ActivityStats` sees a reading session: grouped by series, counting pages.
+extension ReadingSession: ActivitySession {
+    var activityGroupKey: String { seriesKey }
+    var activityGroupName: String { seriesName }
+    var activityPages: Int { pagesTurned }
 }
