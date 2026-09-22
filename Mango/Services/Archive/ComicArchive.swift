@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import ShelfKit
 
 /// An opened comic: something with an ordered list of pages that can hand back any one of them.
 ///

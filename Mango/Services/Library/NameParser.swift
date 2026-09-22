@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 /// What a filename turned out to mean.
 struct ParsedName: Equatable, Sendable {

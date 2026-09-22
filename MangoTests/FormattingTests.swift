@@ -1,5 +1,6 @@
 import XCTest
 @testable import Mango
+import ShelfKit
 
 final class FormattingTests: XCTestCase {
     func testWholeAndHalfNumbers() {

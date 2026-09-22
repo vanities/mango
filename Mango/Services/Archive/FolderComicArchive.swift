@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import os
+import ShelfKit
 
 /// A folder of loose page images — what you get after unzipping, or from a scanlation dump.
 /// Pages come from the folder listing, in natural order, including one level of subfolders

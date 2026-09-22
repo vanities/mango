@@ -1,6 +1,7 @@
 import Foundation
 import WidgetKit
 import os
+import ShelfKit
 
 /// Everything that reaches the library from outside its own screens: Siri, Shortcuts,
 /// widget taps, and the widget itself. It only reads the library and asks for a book to be

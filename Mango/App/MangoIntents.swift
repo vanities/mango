@@ -1,5 +1,6 @@
 import AppIntents
 import Foundation
+import ShelfKit
 
 /// One comic or novel, exposed to Siri and Shortcuts so "Open Tower Dungeon in Mango" works.
 struct ComicEntity: AppEntity, Identifiable {

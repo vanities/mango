@@ -1,5 +1,6 @@
 import XCTest
 @testable import Mango
+import ShelfKit
 
 /// Forward and backward compatibility of the one file that holds everything the user did.
 /// Losing this file loses reading positions, so these cases are load-bearing.

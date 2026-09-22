@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 /// Log a book read outside Mango so Stats counts it — years of reading from before the app,
 /// or a volume borrowed and given back.

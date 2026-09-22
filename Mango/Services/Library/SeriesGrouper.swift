@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// Turns a flat list of scanned comics into shelves.
 ///

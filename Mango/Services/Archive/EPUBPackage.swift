@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// One document in the reading order.
 struct EPUBSpineItem: Sendable, Hashable, Identifiable {
