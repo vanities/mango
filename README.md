@@ -122,7 +122,7 @@ your Apple Developer team in it.
 **From the Files app:** anything you put in "On My iPhone › Mango" is picked up on launch. Or add
 any other folder — iCloud Drive, an external drive, another app's folder — in Sources.
 
-**From a NAS:** Sources → Add a NAS share. You need the host, the share name, and optionally a
+**From a NAS:** Sources → Add NAS Share…. You need the host, the share name, and optionally a
 folder inside it to treat as the top of the library:
 
 ```

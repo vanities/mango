@@ -295,7 +295,6 @@
 		EB90731D0ADEC569ABD5A528 /* FormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingTests.swift; sourceTree = "<group>"; };
 		ED7B90B431D4C975A4C010D5 /* ImageFileTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageFileTypes.swift; sourceTree = "<group>"; };
 		EF9F14A9B442ADB731EB1CB3 /* NovelEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelEngine.swift; sourceTree = "<group>"; };
-		EF9FE4298103B5FA189613FD /* shelfkit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = shelfkit; path = ../shelfkit; sourceTree = SOURCE_ROOT; };
 		F1FE7A94B46C464EFF6CC7AE /* ReadingSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingSnapshot.swift; sourceTree = "<group>"; };
 		F32BE28E382903FEDB78351D /* SeriesGroupingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesGroupingTests.swift; sourceTree = "<group>"; };
 		F341DFF93C61C4717B8FD196 /* MangoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MangoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -356,7 +355,6 @@
 				17F3F85E8638D88274026E24 /* Mango */,
 				9C8024C72D85BB132CBE0262 /* MangoTests */,
 				477D1A277307BE3A625BB27A /* MangoWidgets */,
-				EFDD9D0E2845B251A33A9663 /* Packages */,
 				3359FDFE06AD9418967FF6DA /* Shared */,
 				A53A1A12C85C34628D70C4C7 /* Products */,
 			);
@@ -641,14 +639,6 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		EFDD9D0E2845B251A33A9663 /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				EF9FE4298103B5FA189613FD /* shelfkit */,
-			);
-			name = Packages;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -745,7 +735,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */,
-				68E352CE0E2A9EBA1D77D06F /* XCLocalSwiftPackageReference "../shelfkit" */,
+				5E140441CFABED8C420150A3 /* XCRemoteSwiftPackageReference "shelfkit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A53A1A12C85C34628D70C4C7 /* Products */;
@@ -1219,14 +1209,15 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		68E352CE0E2A9EBA1D77D06F /* XCLocalSwiftPackageReference "../shelfkit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../shelfkit;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
+		5E140441CFABED8C420150A3 /* XCRemoteSwiftPackageReference "shelfkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/vanities/shelfkit.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.5.0;
+			};
+		};
 		7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/amosavian/AMSMB2.git";
@@ -1240,6 +1231,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		C68BA5FC48025A18A39102D3 /* ShelfKit */ = {
 			isa = XCSwiftPackageProductDependency;
+			package = 5E140441CFABED8C420150A3 /* XCRemoteSwiftPackageReference "shelfkit" */;
 			productName = ShelfKit;
 		};
 		EB37802BFD4CF09156555AAF /* AMSMB2 */ = {
