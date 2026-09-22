@@ -101,7 +101,8 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   did). Bookmarks merge minus `LibraryState.deletedBookmarks` (tombstones, synced as
   `bookmarks.deleted.v1`, pruned at 180 days); ratings are latest-wins with dates
   (`ratings.v2`; v1 is only read, as the oldest). The rules are ShelfKit's `UnionSync`,
-  `Tombstones` and `LatestWins`, wrapped in `CollectionSync` and tested there.
+  `Tombstones` and `LatestWins`, wrapped in `CollectionSync` and tested there. Every key goes
+  through ShelfKit's `CloudKeyValueStore` (unchanged writes skipped, iCloud's size cap respected).
 - Heuristics live in `NameParser` and `SeriesGrouper` and are unit-tested. Changing a grouping
   rule means adding a case first.
 - Shelf identity uses `normalizedForIdentity` (punctuation *removed*), not
