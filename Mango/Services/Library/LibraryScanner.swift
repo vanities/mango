@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// Walks a source and derives the comics in it. Never opens an archive: cracking 2,000 zips to
 /// count pages would make a NAS scan take minutes, so `Comic.pageCount` stays nil until the

@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// Where a comic's bytes actually are. Resolving a `Comic` to one of these is `LibraryModel`'s
 /// job (it owns the security-scoped bookmarks and the NAS connections); opening it is this file's.

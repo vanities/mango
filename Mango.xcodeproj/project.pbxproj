@@ -105,7 +105,6 @@
 		C743992ED21F4D11C8C4D5CD /* LibraryScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17AB6483034DA771F4463F6 /* LibraryScannerTests.swift */; };
 		CD74E2D67275C4D4494B2968 /* PrivacyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24796FD8CB3E0F662C2447CE /* PrivacyTests.swift */; };
 		CDCEF7988033DF75517F4C23 /* MangoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC2AC268EA1C8E1CF75CA368 /* MangoApp.swift */; };
-		D0B74C02AECBE96A08821697 /* NASClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05BC4E703948F090F1C873A8 /* NASClient.swift */; };
 		D1D822EED879532B3C216B32 /* ContinuousReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EDB6EF0D7054153A973A8E /* ContinuousReader.swift */; };
 		D495C434078280922149AB10 /* Bookmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D0DD540F9B4F1C140FFFEB /* Bookmark.swift */; };
 		D508B82A18D2E1905472B7AF /* ComicArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9274137EF5F45522B05449F0 /* ComicArchive.swift */; };
@@ -180,7 +179,6 @@
 /* Begin PBXFileReference section */
 		02083CFB7F3AD3BA8B59208A /* SeriesGroupViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesGroupViews.swift; sourceTree = "<group>"; };
 		02FBB3EBD95E817A4A91C379 /* Medium.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Medium.swift; sourceTree = "<group>"; };
-		05BC4E703948F090F1C873A8 /* NASClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASClient.swift; sourceTree = "<group>"; };
 		05BCE119D2A7CE7085E5991E /* DuplicateFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateFinder.swift; sourceTree = "<group>"; };
 		0674DA6233904BF286B3A1E2 /* NameParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameParser.swift; sourceTree = "<group>"; };
 		06EDB6EF0D7054153A973A8E /* ContinuousReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinuousReader.swift; sourceTree = "<group>"; };
@@ -460,7 +458,6 @@
 			isa = PBXGroup;
 			children = (
 				A84CF8003C37EFD05A28B5CF /* KeychainStore.swift */,
-				05BC4E703948F090F1C873A8 /* NASClient.swift */,
 				554E34BEBB5365E89EC8B980 /* TransferManager.swift */,
 			);
 			path = Network;
@@ -826,7 +823,6 @@
 				0CCAC2CE8AD4247739B359D5 /* MangoIntents.swift in Sources */,
 				8728A84955BC31A8DC7B68DA /* MarginTrimmer.swift in Sources */,
 				5902EF8B53805DA0DDD96143 /* Medium.swift in Sources */,
-				D0B74C02AECBE96A08821697 /* NASClient.swift in Sources */,
 				24BCF8D5ABAD435C12411166 /* NASSetupView.swift in Sources */,
 				FBB6D102DE72D9500464C1F6 /* NameParser.swift in Sources */,
 				BA346ACBF469E97EDAF54833 /* NovelEngine.swift in Sources */,
@@ -1215,7 +1211,7 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.6.0;
+				version = 0.7.0;
 			};
 		};
 		7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */ = {
