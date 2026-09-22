@@ -94,6 +94,16 @@ struct SourcesView: View {
                     }
                 }
 
+                Section {
+                    NavigationLink {
+                        DuplicatesView()
+                    } label: {
+                        Label("Find Duplicates", systemImage: "doc.on.doc")
+                    }
+                } header: {
+                    Text("Tools")
+                }
+
                 Section("Library") {
                     LabeledContent("Comics", value: "\(library.totalComics)")
                     LabeledContent("Series", value: "\(library.series.count)")
