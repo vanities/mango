@@ -22,6 +22,8 @@ struct RootView: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        // As in Earmark: the bar gets out of the way while you scroll a long shelf.
+        .tabBarMinimizeBehavior(.onScrollDown)
         // The lock draws in a window of its own above this one: an overlay here sat under the
         // full-screen reader, so a page showed straight through the lock. `initial` puts it up
         // at launch.

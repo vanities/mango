@@ -11,6 +11,8 @@ struct LibraryView: View {
     @State private var query = ""
     @State private var readingComic: Comic?
     @State private var medium: Medium = .manga
+    @State private var showingLists = false
+    @State private var showingPicker = false
 
     /// Covers should be about the same physical size on both devices, not the same point size —
     /// phone-sized cards on a 13" iPad leave a sea of white and make the shelf look empty.
@@ -52,33 +54,35 @@ struct LibraryView: View {
                 }
             }
             .searchable(text: $query, prompt: "Series or title")
+            // The same two buttons as Earmark's Library: the lists, and one menu for how the
+            // shelf looks and for bringing comics in.
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button("Reading Lists", systemImage: "list.bullet.rectangle") { showingLists = true }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("Sort", selection: $settings.librarySort) {
+                        Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: $settings.librarySort) {
                             ForEach(LibrarySort.allCases, id: \.self) { Text($0.title).tag($0) }
                         }
+                        .pickerStyle(.menu)
                         Picker("Layout", selection: $settings.libraryLayout) {
                             ForEach(LibraryLayout.allCases, id: \.self) {
                                 Label($0 == .grid ? "Grid" : "List", systemImage: $0.systemImage).tag($0)
                             }
                         }
-                        Toggle("Show finished", isOn: $settings.showFinished)
+                        Toggle("Show Finished", isOn: $settings.showFinished)
                         Divider()
-                        NavigationLink {
-                            ReadingListsView()
-                        } label: {
-                            Label("Reading Lists", systemImage: "list.bullet.rectangle")
-                        }
-                        Button {
-                            Task { await library.scan() }
-                        } label: {
-                            Label("Rescan", systemImage: "arrow.clockwise")
-                        }
+                        Button("Rescan", systemImage: "arrow.clockwise") { Task { await library.scan() } }
+                        Button("Add Folder…", systemImage: "folder.badge.plus") { showingPicker = true }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Label("More", systemImage: "ellipsis")
                     }
                 }
+            }
+            .navigationDestination(isPresented: $showingLists) { ReadingListsView() }
+            .fileImporter(isPresented: $showingPicker, allowedContentTypes: [.folder], allowsMultipleSelection: true) { result in
+                if case .success(let urls) = result { urls.forEach(library.addFolderSource) }
             }
             .overlay(alignment: .top) { scanBanner }
             .refreshable {
