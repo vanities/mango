@@ -11,8 +11,14 @@ import os
 final class CloudSync {
     enum Key: String, CaseIterable {
         case progress = "progress.v1"
+        /// syncKey → stars, no dates: a cleared rating came back from it. Read until `ratingsV2`
+        /// exists, never written.
         case ratings = "ratings.v1"
+        /// syncKey → the latest set or clear, with its time.
+        case ratingsV2 = "ratings.v2"
         case bookmarks = "bookmarks.v1"
+        /// Bookmark id → when it was deleted, so a deletion reaches every device.
+        case deletedBookmarks = "bookmarks.deleted.v1"
         case readingLog = "readinglog.v1"
         /// Device ID → that device's day totals. Each device writes only its own slot, so
         /// adding them up never double-counts.

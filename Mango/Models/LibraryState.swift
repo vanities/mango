@@ -39,6 +39,11 @@ struct LibraryState: Codable, Sendable {
     /// Comic ID → 1–5 stars. Kept apart from progress on purpose: rating a book shouldn't
     /// count as reading it and reshuffle Continue Reading.
     var ratings: [String: Int] = [:]
+    /// Comic ID → when its rating was last set or cleared, so the latest change wins across
+    /// devices — a cleared rating included. Ratings from before this carry none (the oldest).
+    var ratingDates: [String: Date] = [:]
+    /// Bookmarks deleted here or on another device, by id, so a merge can't bring them back.
+    var deletedBookmarks = Tombstones()
     /// Books read outside the app, so Stats can count them.
     var readingLog: [ReadingLogEntry] = []
     /// This device's reading sessions. Local detail; only day totals travel to other devices.
@@ -88,10 +93,12 @@ struct LibraryState: Codable, Sendable {
         for (key, value) in old.overrides where overrides[key] == nil { overrides[key] = value }
         for (key, value) in old.seriesDirection where seriesDirection[key] == nil { seriesDirection[key] = value }
         for (key, value) in old.ratings where ratings[key] == nil { ratings[key] = value }
+        for (key, value) in old.ratingDates where ratingDates[key] == nil { ratingDates[key] = value }
+        deletedBookmarks = deletedBookmarks.merging(old.deletedBookmarks)
         for (key, oldList) in old.bookmarks {
             var list = bookmarks[key] ?? []
             let known = Set(list.map(\.id))
-            list.append(contentsOf: oldList.filter { !known.contains($0.id) })
+            list.append(contentsOf: oldList.filter { !known.contains($0.id) && !deletedBookmarks.contains($0.id) })
             bookmarks[key] = list.sorted { $0.page < $1.page }
         }
         let logIDs = Set(readingLog.map(\.id))
@@ -112,7 +119,8 @@ struct LibraryState: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
              customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog, sessions,
-             longStripComicIDs, seriesMode, hiddenSeries, seriesGroups, readingLists, coverChoices
+             longStripComicIDs, seriesMode, hiddenSeries, seriesGroups, readingLists, coverChoices,
+             ratingDates, deletedBookmarks
     }
 
     init(from decoder: any Decoder) throws {
@@ -138,6 +146,8 @@ struct LibraryState: Codable, Sendable {
         seriesGroups = try c.decodeIfPresent([String: String].self, forKey: .seriesGroups) ?? [:]
         readingLists = try c.decodeIfPresent([ReadingList].self, forKey: .readingLists) ?? []
         coverChoices = try c.decodeIfPresent([String: CoverChoice].self, forKey: .coverChoices) ?? [:]
+        ratingDates = try c.decodeIfPresent([String: Date].self, forKey: .ratingDates) ?? [:]
+        deletedBookmarks = try c.decodeIfPresent(Tombstones.self, forKey: .deletedBookmarks) ?? Tombstones()
     }
 }
 
@@ -250,6 +260,7 @@ extension LibraryState {
             bookmarks[remoteID] = merged.sorted { $0.page < $1.page }
         }
         if let rating = ratings[localID] { ratings[remoteID] = rating }
+        if let rated = ratingDates[localID] { ratingDates[remoteID] = max(rated, ratingDates[remoteID] ?? .distantPast) }
         if overrides[remoteID] == nil, let override = overrides[localID] { overrides[remoteID] = override }
         if customCovers[remoteID] == nil, let cover = customCovers[localID] { customCovers[remoteID] = cover }
         if hiddenComicIDs.contains(localID) { hiddenComicIDs.insert(remoteID) }
@@ -259,6 +270,7 @@ extension LibraryState {
         progress[localID] = nil
         bookmarks[localID] = nil
         ratings[localID] = nil
+        ratingDates[localID] = nil
         overrides[localID] = nil
         customCovers[localID] = nil
         hiddenComicIDs.remove(localID)

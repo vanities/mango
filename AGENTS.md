@@ -86,6 +86,12 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   older builds: give new fields a default *and* decode them with `decodeIfPresent`, then add a
   case to `LibraryStateCompatTests`. `LibraryStore` moves an undecodable library aside and
   merges it back once a build can read it.
+- **iCloud sync never plain-unions anything that can be deleted or cleared** — the other
+  device still has it, so the next merge brings it back (deleted bookmarks and cleared ratings
+  did). Bookmarks merge minus `LibraryState.deletedBookmarks` (tombstones, synced as
+  `bookmarks.deleted.v1`, pruned at 180 days); ratings are latest-wins with dates
+  (`ratings.v2`; v1 is only read, as the oldest). The rules are ShelfKit's `UnionSync`,
+  `Tombstones` and `LatestWins`, wrapped in `CollectionSync` and tested there.
 - Heuristics live in `NameParser` and `SeriesGrouper` and are unit-tested. Changing a grouping
   rule means adding a case first.
 - Shelf identity uses `normalizedForIdentity` (punctuation *removed*), not

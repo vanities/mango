@@ -628,6 +628,8 @@ final class LibraryModel {
 
     func removeBookmark(_ bookmark: Bookmark, from comic: Comic) {
         state.bookmarks[comic.id]?.removeAll { $0.id == bookmark.id }
+        // Remembered, so iCloud's copy can't bring it back on the next merge.
+        state.deletedBookmarks.bury(bookmark.id)
         if state.bookmarks[comic.id]?.isEmpty == true { state.bookmarks[comic.id] = nil }
         save()
     }
@@ -640,6 +642,8 @@ final class LibraryModel {
         } else {
             state.ratings[comic.id] = nil
         }
+        // Set or cleared, the latest change wins on every device.
+        state.ratingDates[comic.id] = .now
         save()
     }
 

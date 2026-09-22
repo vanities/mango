@@ -55,6 +55,7 @@ extension LibraryState {
             }
             if ratings[local.id] == nil, let rating = ratings[twin.id] {
                 ratings[local.id] = rating
+                ratingDates[local.id] = ratingDates[twin.id]
             }
             if bookmarks[local.id] == nil, let marks = bookmarks[twin.id] {
                 bookmarks[local.id] = marks
