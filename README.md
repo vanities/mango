@@ -75,8 +75,13 @@ download goes back to being read from the NAS with your place, bookmarks and rat
 Settings → Downloads shows what's on the device and removes the finished ones, or all of them.
 Only ever a copy that's still on the NAS: nothing in a folder you picked yourself is touched.
 
+**Open a source in Sources to manage it a series at a time.** Each series is one row with a ring
+showing how much of it is on the phone; tap the ring to download the rest or remove it. Open a
+series for its volumes as numbered tiles — filled is on the phone, outlined is only on the NAS —
+and **Select** picks any mix of series and volumes to download or remove at once. On the phone's
+own folder the ring points up instead: how much is safe on the NAS, with Upload in its menu.
 
-Pull a volume local from the context menu, or **Download everything** from a share in Sources.
+Pull a single volume local from its context menu, or **Download everything** from a share.
 Transfers run one at a time, survive the app being killed, and resume a half-finished file
 rather than starting a 300 MB volume over. Uploads go the other way and skip anything already
 on the share.
