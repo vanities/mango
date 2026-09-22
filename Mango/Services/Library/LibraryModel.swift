@@ -73,6 +73,14 @@ final class LibraryModel {
 
     func removeSource(_ source: LibrarySource) {
         guard source.isRemovable else { return }
+        // A NAS's login goes with its last share, as in Earmark; it used to stay behind under
+        // Servers, where only a second removal forgot it.
+        if let serverID = source.serverID, !state.sources.contains(where: { $0.id != source.id && $0.serverID == serverID }),
+           let server = state.nasServers.first(where: { $0.id == serverID }) {
+            Logger.library.info("[library] removing \(source.displayName, privacy: .public) and its server's login")
+            removeServer(server)
+            return
+        }
         if let url = scopedURLs[source.id] {
             url.stopAccessingSecurityScopedResource()
             scopedURLs[source.id] = nil
