@@ -10,8 +10,10 @@ import os
 /// to do — and downloading all of it from the NAS before page one. This way a chapter's images
 /// and stylesheets are fetched individually, on demand, as ranged reads.
 final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
-    static let scheme = "mango-epub"
-    private static let host = "book"
+    // WebKit's protocol makes the class main-actor; its URL helpers are plain string work, usable
+    // (and tested) anywhere.
+    nonisolated static let scheme = "mango-epub"
+    nonisolated private static let host = "book"
 
     private let document: EPUBDocument
     private let tasks = OSAllocatedUnfairLock(initialState: Set<ObjectIdentifier>())
@@ -21,7 +23,7 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     /// `mango-epub://book/OEBPS/Text/section-0005.html`
-    static func url(for path: String) -> URL? {
+    nonisolated static func url(for path: String) -> URL? {
         var components = URLComponents()
         components.scheme = scheme
         components.host = host
@@ -29,7 +31,7 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         return components.url
     }
 
-    static func path(from url: URL) -> String {
+    nonisolated static func path(from url: URL) -> String {
         let raw = url.path
         let trimmed = raw.hasPrefix("/") ? String(raw.dropFirst()) : raw
         return trimmed.removingPercentEncoding ?? trimmed

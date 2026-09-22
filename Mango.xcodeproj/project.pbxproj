@@ -1203,7 +1203,7 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.8.1;
+				version = 0.9.0;
 			};
 		};
 		7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */ = {

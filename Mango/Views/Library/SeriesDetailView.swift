@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 /// One run: every volume in order, with a Continue button that opens the right one.
 struct SeriesDetailView: View {
@@ -169,33 +170,13 @@ struct SeriesDetailView: View {
         }
     }
 
+    /// ShelfKit's `ShelfHeader`, the same view Earmark's author and series pages draw.
     private var header: some View {
-        HStack(alignment: .top, spacing: 16) {
+        let next = library.nextUp(in: shelf)
+        return ShelfHeader(title: shelf.name, subtitle: shelf.subtitle, detail: Formatting.bytes(shelf.totalBytes),
+                           primary: next.map { comic in .init(continueLabel(for: comic), systemImage: "book") { readingComic = comic } }) {
             CoverView(coverID: shelf.coverID, title: shelf.name, cornerRadius: 10)
-                .frame(width: 110)
-            VStack(alignment: .leading, spacing: 8) {
-                Text(shelf.name)
-                    .font(.title3.weight(.semibold))
-                    .lineLimit(3)
-                Text(shelf.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text(Formatting.bytes(shelf.totalBytes))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Spacer(minLength: 0)
-                if let next = library.nextUp(in: shelf) {
-                    Button {
-                        readingComic = next
-                    } label: {
-                        Label(continueLabel(for: next), systemImage: "book")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.glassProminent)
-                }
-            }
         }
-        .padding(.vertical, 8)
         .padding(.horizontal)
     }
 
