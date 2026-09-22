@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 struct RootView: View {
     @Environment(LibraryModel.self) private var library
@@ -21,16 +22,9 @@ struct RootView: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
-        // Over everything, reader included: locked means nothing of the library shows.
-        .overlay {
-            if lock.isLocked {
-                LockView(lock: lock)
-            } else if lock.isCovered {
-                // What the app switcher photographs.
-                Rectangle().fill(.background).ignoresSafeArea()
-                    .overlay { Image(systemName: "lock.fill").font(.largeTitle).foregroundStyle(.tint) }
-            }
-        }
-        .onChange(of: scenePhase) { _, phase in lock.sceneChanged(to: phase) }
+        // The lock draws in a window of its own above this one: an overlay here sat under the
+        // full-screen reader, so a page showed straight through the lock. `initial` puts it up
+        // at launch.
+        .onChange(of: scenePhase, initial: true) { _, phase in lock.sceneChanged(to: phase) }
     }
 }

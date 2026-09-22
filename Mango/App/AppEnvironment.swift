@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ShelfKit
 
 /// Composition root. Built once at launch and handed down through the SwiftUI environment,
 /// so nothing reaches for a singleton and tests can build their own.
@@ -19,6 +20,6 @@ final class AppEnvironment {
         self.settings = settings
         self.library = library
         self.transfers = TransferManager(library: library)
-        self.lock = AppLock(settings: settings)
+        self.lock = AppLock(appName: "Mango", settings: settings)
     }
 }

@@ -172,6 +172,17 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - Covers: a strip's cover is the top of page one cut to 2:3 (`CoverStore.coverImage`), and
   `CoverView` draws art as an overlay on a fixed 2:3 frame so no cover shape can resize a tile.
 
+## App Lock
+
+- The lock is ShelfKit's `AppLock`. It draws in a **window of its own** above the app's: an
+  overlay on `RootView` sat *under* the full-screen reader, so the page being read showed
+  straight through the lock and in the app switcher's snapshot. `RootView` only forwards
+  `scenePhase` (with `initial: true`, which is what puts the lock up at launch).
+- Testing it in the simulator needs Face ID enrolled and matched from the command line:
+  `xcrun simctl spawn <udid> notifyutil -s com.apple.BiometricKit.enrollmentChanged '1'`, then
+  `notifyutil -p com.apple.BiometricKit.enrollmentChanged`; `notifyutil -p
+  com.apple.BiometricKit_Sim.pearl.match` passes a prompt. Set the lock back to Off afterwards.
+
 ## Sources browser
 
 - `SourceBrowserView` is a row per series (stacks as in the library, members by short name)

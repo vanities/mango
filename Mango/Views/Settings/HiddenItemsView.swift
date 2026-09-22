@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 /// Everything hidden, and the way back. Behind Face ID when the lock is on — otherwise the list
 /// of what's hidden would give it away.
