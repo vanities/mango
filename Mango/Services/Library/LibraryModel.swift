@@ -595,18 +595,9 @@ final class LibraryModel {
 
     /// Day totals from every device: this one's live sessions plus the other devices' slots.
     var allDayActivity: [String: DayActivity] {
-        var days = DayKey.rollUp(state.sessions)
-        let others = cloud.load([String: [String: DayActivity]].self, .activity) ?? [:]
-        for (device, deviceDays) in others where device != settings.deviceID {
-            for (key, value) in deviceDays {
-                var day = days[key] ?? DayActivity()
-                day.seconds += value.seconds
-                day.pages += value.pages
-                day.sessions += value.sessions
-                days[key] = day
-            }
-        }
-        return days
+        DeviceActivity.combined(own: DayKey.rollUp(state.sessions),
+                                cloud: cloud.load([String: [String: DayActivity]].self, .activity) ?? [:],
+                                deviceID: settings.deviceID)
     }
 
     var activityStats: ActivityStats {
@@ -614,9 +605,9 @@ final class LibraryModel {
     }
 
     func pushActivity() {
-        var all = cloud.load([String: [String: DayActivity]].self, .activity) ?? [:]
-        let cutoff = DayKey.string(for: Date().addingTimeInterval(-Self.sessionRetention))
-        all[settings.deviceID] = DayKey.rollUp(state.sessions).filter { $0.key >= cutoff }
+        let all = DeviceActivity.updated(cloud: cloud.load([String: [String: DayActivity]].self, .activity) ?? [:],
+                                         own: DayKey.rollUp(state.sessions), deviceID: settings.deviceID,
+                                         since: Date().addingTimeInterval(-Self.sessionRetention))
         cloud.save(all, .activity)
     }
 

@@ -103,6 +103,11 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   (`ratings.v2`; v1 is only read, as the oldest). The rules are ShelfKit's `UnionSync`,
   `Tombstones` and `LatestWins`, wrapped in `CollectionSync` and tested there. Every key goes
   through ShelfKit's `CloudKeyValueStore` (unchanged writes skipped, iCloud's size cap respected).
+- **Reading time** is `SessionRecorder` (time with a book open in front of you) into
+  `ReadingSession`s kept on this device; what they add up to is ShelfKit's `ActivityStats`, and
+  day totals sync as `activity.v1`, one slot per device, through ShelfKit's `DeviceActivity` —
+  shared with Earmark's listening time, cards and all (`ActivityTimeView`, `ActivityHeatmap`,
+  `ActivityHabitsView`).
 - Heuristics live in `NameParser` and `SeriesGrouper` and are unit-tested. Changing a grouping
   rule means adding a case first.
 - Shelf identity uses `normalizedForIdentity` (punctuation *removed*), not

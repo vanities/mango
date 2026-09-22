@@ -81,29 +81,8 @@ struct StatsView: View {
 
     private var timeCard: some View {
         StatCard("Time reading") {
-            HStack(spacing: 12) {
-                timeStat(Durations.short(activity.thisWeekSeconds), "This week")
-                timeStat(Durations.short(activity.thisMonthSeconds), "This month")
-                timeStat(Durations.short(activity.totalSeconds), "All time")
-            }
-            HStack(spacing: 12) {
-                timeStat("\(activity.longestStreak)d", "Longest streak")
-                if let average = activity.averageSessionMinutes {
-                    timeStat("\(Int(average.rounded()))m", "Average sitting")
-                }
-                if let pace = activity.pagesPerMinute {
-                    timeStat(pace.formatted(.number.precision(.fractionLength(1))), "Pages / minute")
-                }
-            }
+            ActivityTimeView(stats: activity, sessionLabel: "Average sitting")
         }
-    }
-
-    private func timeStat(_ value: String, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.headline).monospacedDigit()
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var heatmapCard: some View {
@@ -114,19 +93,7 @@ struct StatsView: View {
 
     private var habitsCard: some View {
         StatCard("When you read") {
-            TimeOfDayChart(buckets: activity.timeOfDay)
-            if !activity.topSeriesByTime.isEmpty {
-                Divider().padding(.vertical, 4)
-                Text("Most time spent in").font(.caption).foregroundStyle(.secondary)
-                ForEach(activity.topSeriesByTime) { bucket in
-                    HStack {
-                        Text(bucket.name).font(.subheadline).lineLimit(1)
-                        Spacer()
-                        Text(Durations.short(bucket.seconds))
-                            .font(.subheadline.weight(.medium)).monospacedDigit().foregroundStyle(.secondary)
-                    }
-                }
-            }
+            ActivityHabitsView(stats: activity)
         }
     }
 
@@ -196,7 +163,7 @@ struct StatsView: View {
             StatTile(Durations.short(activity.totalSeconds), "Time reading", systemImage: "clock.fill", tint: .blue)
             StatTile("\(activity.currentStreak) day\(activity.currentStreak == 1 ? "" : "s")", "Current streak", systemImage: "flame.fill", tint: .red)
             StatTile("\(stats.finishedSeries)", "Series completed", systemImage: "books.vertical.fill", tint: .purple)
-            StatTile("\(activity.daysRead)", "Days read", systemImage: "calendar", tint: .orange)
+            StatTile("\(activity.daysActive)", "Days read", systemImage: "calendar", tint: .orange)
         }
     }
 
