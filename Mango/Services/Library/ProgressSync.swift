@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 /// Merge rules for syncing reading positions across devices, kept apart from the iCloud
 /// transport so they can be tested without iCloud.
@@ -46,50 +47,63 @@ enum ProgressSync {
 }
 
 /// Merge rules for the smaller things that follow you between devices: ratings, bookmarks and
-/// the reading log. Unlike positions these don't go stale — an older rating isn't wrong — so
-/// they merge as unions rather than last-writer-wins, with this device winning a conflict.
+/// the reading log (ShelfKit's `UnionSync`, `Tombstones` and `LatestWins` underneath).
+///
+/// A plain union brought back whatever was deleted or cleared — the other device still had it.
+/// So bookmarks union *minus* the ones deleted anywhere, and a rating is whichever device set or
+/// cleared it last.
 enum CollectionSync {
-    /// Cloud ratings for books this device has but hasn't rated.
-    static func mergedRatings(local: [String: Int], comics: [Comic], cloud: [String: Int]) -> [String: Int] {
-        var result = local
-        for comic in comics where result[comic.id] == nil {
-            if let rating = cloud[comic.syncKey] { result[comic.id] = rating }
+    /// Per file, the latest set or clear of its rating. A rating from before ratings carried a
+    /// date counts as the oldest, so any dated change beats it.
+    static func mergedRatings(local: [String: Int], dates: [String: Date], comics: [Comic],
+                              cloud: [String: Stamped<Int>]) -> (ratings: [String: Int], dates: [String: Date]) {
+        var ratings = local, stamps = dates
+        for comic in comics {
+            guard let remote = cloud[comic.syncKey] else { continue }
+            // Never rated or cleared here: take iCloud's, dated or not. Otherwise only a newer one.
+            let touchedHere = stamps[comic.id] != nil || ratings[comic.id] != nil
+            guard !touchedHere || remote.at > (stamps[comic.id] ?? .distantPast) else { continue }
+            ratings[comic.id] = remote.value
+            if remote.at > .distantPast { stamps[comic.id] = remote.at }
         }
-        return result
+        return (ratings, stamps)
     }
 
-    static func ratingsSnapshot(local: [String: Int], comics: [Comic], existingCloud: [String: Int]) -> [String: Int] {
-        var cloud = existingCloud
-        let keyByID = Dictionary(comics.map { ($0.id, $0.syncKey) }, uniquingKeysWith: { first, _ in first })
-        for (id, rating) in local { if let key = keyByID[id] { cloud[key] = rating } }
-        return cloud
+    /// What to write back: every rating this device set or cleared, wherever it's the newer.
+    static func ratingsSnapshot(local: [String: Int], dates: [String: Date], comics: [Comic],
+                                existingCloud: [String: Stamped<Int>]) -> [String: Stamped<Int>] {
+        var mine: [String: Stamped<Int>] = [:]
+        for comic in comics where local[comic.id] != nil || dates[comic.id] != nil {
+            let stamped = Stamped(local[comic.id], at: dates[comic.id] ?? .distantPast)
+            if stamped.at >= (mine[comic.syncKey]?.at ?? .distantPast) { mine[comic.syncKey] = stamped }
+        }
+        return LatestWins.merge(existingCloud, mine)
     }
 
-    /// Bookmarks unioned by id, so a spot saved on the iPad appears on the phone without the
-    /// phone's own being lost.
+    /// Bookmarks unioned by id — a spot saved on the iPad appears on the phone without the
+    /// phone's own being lost — minus any deleted on either.
     static func mergedBookmarks(local: [String: [Bookmark]], comics: [Comic],
-                                cloud: [String: [Bookmark]]) -> [String: [Bookmark]] {
+                                cloud: [String: [Bookmark]], buried: Tombstones) -> [String: [Bookmark]] {
         var result = local
         for comic in comics {
             guard let remote = cloud[comic.syncKey], !remote.isEmpty else { continue }
-            var list = result[comic.id] ?? []
-            let known = Set(list.map(\.id))
-            list.append(contentsOf: remote.filter { !known.contains($0.id) })
-            result[comic.id] = list.sorted { ($0.page, $0.fraction ?? 0) < ($1.page, $1.fraction ?? 0) }
+            result[comic.id] = UnionSync.merge(result[comic.id] ?? [], remote, without: buried)
+        }
+        for (id, list) in result {
+            let kept = list.filter { !buried.contains($0.id) }.sorted { ($0.page, $0.fraction ?? 0) < ($1.page, $1.fraction ?? 0) }
+            result[id] = kept.isEmpty ? nil : kept
         }
         return result
     }
 
     static func bookmarksSnapshot(local: [String: [Bookmark]], comics: [Comic],
-                                  existingCloud: [String: [Bookmark]]) -> [String: [Bookmark]] {
-        var cloud = existingCloud
+                                  existingCloud: [String: [Bookmark]], buried: Tombstones) -> [String: [Bookmark]] {
+        var cloud = existingCloud.mapValues { $0.filter { !buried.contains($0.id) } }.filter { !$0.value.isEmpty }
         let keyByID = Dictionary(comics.map { ($0.id, $0.syncKey) }, uniquingKeysWith: { first, _ in first })
         for (id, marks) in local {
             guard let key = keyByID[id] else { continue }
-            var list = cloud[key] ?? []
-            let known = Set(list.map(\.id))
-            list.append(contentsOf: marks.filter { !known.contains($0.id) })
-            cloud[key] = list
+            let merged = UnionSync.merge(cloud[key] ?? [], marks, without: buried)
+            cloud[key] = merged.isEmpty ? nil : merged
         }
         return cloud
     }

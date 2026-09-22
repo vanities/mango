@@ -1,5 +1,6 @@
 import XCTest
 @testable import Mango
+import ShelfKit
 
 final class BookmarksRatingsLogTests: XCTestCase {
     private let phone = UUID()
@@ -50,19 +51,51 @@ final class BookmarksRatingsLogTests: XCTestCase {
 
     // MARK: Sync
 
+    private let t0 = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
     func testRatingsFollowThePathAcrossDevices() {
         let onPhone = comic("a.cbz", source: phone)
         let onPad = comic("a.cbz", source: pad)
-        let cloud = CollectionSync.ratingsSnapshot(local: [onPhone.id: 4], comics: [onPhone], existingCloud: [:])
-        let merged = CollectionSync.mergedRatings(local: [:], comics: [onPad], cloud: cloud)
-        XCTAssertEqual(merged[onPad.id], 4)
+        let cloud = CollectionSync.ratingsSnapshot(local: [onPhone.id: 4], dates: [onPhone.id: t0], comics: [onPhone], existingCloud: [:])
+        let merged = CollectionSync.mergedRatings(local: [:], dates: [:], comics: [onPad], cloud: cloud)
+        XCTAssertEqual(merged.ratings[onPad.id], 4)
     }
 
-    /// A rating isn't stale the way a position is; this device's own rating stands.
-    func testLocalRatingIsNotOverwritten() {
+    /// Changing a rating on the iPad used to never reach the phone ("this device's own rating
+    /// stands"), leaving the two different for good. The latest change wins now, either way.
+    func testTheNewerRatingWins() {
         let book = comic("a.cbz", source: phone)
-        let merged = CollectionSync.mergedRatings(local: [book.id: 2], comics: [book], cloud: [book.syncKey: 5])
-        XCTAssertEqual(merged[book.id], 2)
+        let newer = CollectionSync.mergedRatings(local: [book.id: 2], dates: [book.id: t0], comics: [book],
+                                                 cloud: [book.syncKey: Stamped(5, at: t0.addingTimeInterval(60))])
+        XCTAssertEqual(newer.ratings[book.id], 5)
+        let older = CollectionSync.mergedRatings(local: [book.id: 2], dates: [book.id: t0], comics: [book],
+                                                 cloud: [book.syncKey: Stamped(5, at: t0.addingTimeInterval(-60))])
+        XCTAssertEqual(older.ratings[book.id], 2)
+    }
+
+    /// The bug: clearing a rating came straight back from iCloud's copy.
+    func testAClearedRatingStaysCleared() {
+        let onPhone = comic("a.cbz", source: phone)
+        let onPad = comic("a.cbz", source: pad)
+        let cleared = t0.addingTimeInterval(60)
+        let cloud = CollectionSync.ratingsSnapshot(local: [:], dates: [onPhone.id: cleared], comics: [onPhone],
+                                                   existingCloud: [onPhone.syncKey: Stamped(4, at: t0)])
+        XCTAssertEqual(cloud[onPhone.syncKey], Stamped(nil, at: cleared), "the clear goes up")
+        let onThePad = CollectionSync.mergedRatings(local: [onPad.id: 4], dates: [onPad.id: t0], comics: [onPad], cloud: cloud)
+        XCTAssertNil(onThePad.ratings[onPad.id], "and comes down")
+        let backHere = CollectionSync.mergedRatings(local: [:], dates: [onPhone.id: cleared], comics: [onPhone], cloud: cloud)
+        XCTAssertNil(backHere.ratings[onPhone.id], "and doesn't come back here")
+    }
+
+    /// Ratings from before they carried a date still sync, as the oldest of any change.
+    func testUndatedRatingsStillSync() {
+        let book = comic("a.cbz", source: phone)
+        let filled = CollectionSync.mergedRatings(local: [:], dates: [:], comics: [book], cloud: [book.syncKey: Stamped(3, at: .distantPast)])
+        XCTAssertEqual(filled.ratings[book.id], 3, "a gap is filled")
+        let kept = CollectionSync.mergedRatings(local: [book.id: 5], dates: [:], comics: [book], cloud: [book.syncKey: Stamped(3, at: .distantPast)])
+        XCTAssertEqual(kept.ratings[book.id], 5, "two undated: this device's stands")
+        let cleared = CollectionSync.mergedRatings(local: [book.id: 5], dates: [:], comics: [book], cloud: [book.syncKey: Stamped(nil, at: t0)])
+        XCTAssertNil(cleared.ratings[book.id], "a dated clear beats an undated rating")
     }
 
     /// Bookmarks union: a spot saved on the iPad appears on the phone and nothing is lost.
@@ -71,16 +104,36 @@ final class BookmarksRatingsLogTests: XCTestCase {
         let onPad = comic("a.cbz", source: pad)
         let phoneMark = Bookmark(page: 10)
         let padMark = Bookmark(page: 40)
-        let cloud = CollectionSync.bookmarksSnapshot(local: [onPad.id: [padMark]], comics: [onPad], existingCloud: [:])
-        let merged = CollectionSync.mergedBookmarks(local: [onPhone.id: [phoneMark]], comics: [onPhone], cloud: cloud)
+        let cloud = CollectionSync.bookmarksSnapshot(local: [onPad.id: [padMark]], comics: [onPad], existingCloud: [:], buried: Tombstones())
+        let merged = CollectionSync.mergedBookmarks(local: [onPhone.id: [phoneMark]], comics: [onPhone], cloud: cloud, buried: Tombstones())
         XCTAssertEqual(merged[onPhone.id]?.map(\.page), [10, 40])
     }
 
     func testTheSameBookmarkIsNotDuplicated() {
         let book = comic("a.cbz", source: phone)
         let mark = Bookmark(page: 10)
-        let merged = CollectionSync.mergedBookmarks(local: [book.id: [mark]], comics: [book], cloud: [book.syncKey: [mark]])
+        let merged = CollectionSync.mergedBookmarks(local: [book.id: [mark]], comics: [book], cloud: [book.syncKey: [mark]], buried: Tombstones())
         XCTAssertEqual(merged[book.id]?.count, 1)
+    }
+
+    /// The bug: a deleted bookmark came back on the next merge, because iCloud's copy still had it.
+    func testADeletedBookmarkDoesNotComeBack() {
+        let book = comic("a.cbz", source: phone)
+        let mark = Bookmark(id: "gone", page: 10), kept = Bookmark(id: "kept", page: 20)
+        var buried = Tombstones()
+        buried.bury("gone", at: t0)
+        let merged = CollectionSync.mergedBookmarks(local: [book.id: [kept]], comics: [book], cloud: [book.syncKey: [mark, kept]], buried: buried)
+        XCTAssertEqual(merged[book.id]?.map(\.id), ["kept"])
+        let cloud = CollectionSync.bookmarksSnapshot(local: [book.id: [kept]], comics: [book], existingCloud: [book.syncKey: [mark, kept]], buried: buried)
+        XCTAssertEqual(cloud[book.syncKey]?.map(\.id), ["kept"], "and it leaves iCloud's copy")
+    }
+
+    func testABookmarkDeletedElsewhereGoesHere() {
+        let book = comic("a.cbz", source: phone)
+        var buried = Tombstones()
+        buried.bury("gone", at: t0)
+        let merged = CollectionSync.mergedBookmarks(local: [book.id: [Bookmark(id: "gone", page: 10)]], comics: [book], cloud: [:], buried: buried)
+        XCTAssertNil(merged[book.id])
     }
 
     func testLogUnionsByIDNewestFirst() {
@@ -115,13 +168,18 @@ final class BookmarksRatingsLogTests: XCTestCase {
         state.readingLog = [ReadingLogEntry(title: "T", isNovel: true, finishedAt: Date(), rating: 4)]
         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
         let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        state.ratingDates["a"] = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        state.deletedBookmarks.bury("gone", at: Date(timeIntervalSinceReferenceDate: 800_000_000))
         let round = try decoder.decode(LibraryState.self, from: encoder.encode(state))
+        XCTAssertEqual(round.ratingDates["a"], Date(timeIntervalSinceReferenceDate: 800_000_000))
+        XCTAssertTrue(round.deletedBookmarks.contains("gone"))
         XCTAssertEqual(round.ratings["a"], 3)
         XCTAssertEqual(round.bookmarks["a"]?.first?.fraction, 0.5)
         XCTAssertEqual(round.readingLog.first?.isNovel, true)
 
         let old = try decoder.decode(LibraryState.self, from: Data(#"{"progress":{}}"#.utf8))
         XCTAssertTrue(old.ratings.isEmpty && old.bookmarks.isEmpty && old.readingLog.isEmpty)
+        XCTAssertTrue(old.ratingDates.isEmpty && old.deletedBookmarks.isEmpty)
     }
 
     /// Restoring a moved-aside library must bring these back too, never duplicating.
@@ -136,5 +194,15 @@ final class BookmarksRatingsLogTests: XCTestCase {
         XCTAssertEqual(current.ratings["a"], 4)
         XCTAssertEqual(current.bookmarks["a"]?.map(\.id), ["keep", "lost"])
         XCTAssertEqual(current.readingLog.count, 1)
+    }
+
+    /// A bookmark deleted since the old file was written stays deleted when it's restored.
+    func testSalvageDoesNotRestoreADeletedBookmark() {
+        var current = LibraryState()
+        current.deletedBookmarks.bury("gone")
+        var old = LibraryState()
+        old.bookmarks["a"] = [Bookmark(id: "gone", page: 3), Bookmark(id: "lost", page: 9)]
+        current.merge(restoring: old)
+        XCTAssertEqual(current.bookmarks["a"]?.map(\.id), ["lost"])
     }
 }

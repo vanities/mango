@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 // MARK: - iCloud
 //
@@ -10,27 +11,32 @@ extension LibraryModel {
     /// Folds in anything another device wrote more recently. Positions are matched by relative
     /// path, so a book only syncs to devices that have the same file in the same place.
     func mergeFromCloud() {
-        var progress = state.progress, ratings = state.ratings, bookmarks = state.bookmarks, log = state.readingLog
+        var progress = state.progress, ratings = state.ratings, ratingDates = state.ratingDates
+        var bookmarks = state.bookmarks, log = state.readingLog
         if let remote = cloud.load([String: ReadingProgress].self, .progress), !remote.isEmpty {
             let merged = ProgressSync.merged(local: progress, comics: state.comics, cloud: remote)
             let count = merged.filter { progress[$0.key] != $0.value }.count
             if count > 0 { Logger.store.info("[cloud] took \(count) newer position(s) from another device") }
             progress = merged
         }
-        if let remote = cloud.load([String: Int].self, .ratings) {
-            ratings = CollectionSync.mergedRatings(local: ratings, comics: state.comics, cloud: remote)
-        }
-        if let remote = cloud.load([String: [Bookmark]].self, .bookmarks) {
-            bookmarks = CollectionSync.mergedBookmarks(local: bookmarks, comics: state.comics, cloud: remote)
-        }
+        (ratings, ratingDates) = CollectionSync.mergedRatings(local: ratings, dates: ratingDates, comics: state.comics,
+                                                              cloud: cloudRatings())
+        let buried = deletedBookmarks()
+        bookmarks = CollectionSync.mergedBookmarks(local: bookmarks, comics: state.comics,
+                                                   cloud: cloud.load([String: [Bookmark]].self, .bookmarks) ?? [:], buried: buried)
         if let remote = cloud.load([ReadingLogEntry].self, .readingLog) {
             log = CollectionSync.mergedLog(local: log, cloud: remote)
         }
-        if progress != state.progress || ratings != state.ratings || bookmarks != state.bookmarks || log != state.readingLog {
+        if progress != state.progress || ratings != state.ratings || ratingDates != state.ratingDates
+            || bookmarks != state.bookmarks || buried != state.deletedBookmarks || log != state.readingLog {
+            let removed = state.bookmarks.values.reduce(0) { $0 + $1.count } - bookmarks.values.reduce(0) { $0 + $1.count }
+            if removed > 0 { Logger.store.info("[cloud] removed \(removed) bookmark(s) deleted on another device") }
             mutateState { state in
                 state.progress = progress
                 state.ratings = ratings
+                state.ratingDates = ratingDates
                 state.bookmarks = bookmarks
+                state.deletedBookmarks = buried
                 state.readingLog = log
             }
         }
@@ -40,15 +46,31 @@ extension LibraryModel {
     func pushToCloud() {
         let progress = cloud.load([String: ReadingProgress].self, .progress) ?? [:]
         cloud.save(ProgressSync.cloudSnapshot(local: state.progress, comics: state.comics, existingCloud: progress), .progress)
-        let ratings = cloud.load([String: Int].self, .ratings) ?? [:]
-        cloud.save(CollectionSync.ratingsSnapshot(local: state.ratings, comics: state.comics, existingCloud: ratings), .ratings)
+        cloud.save(CollectionSync.ratingsSnapshot(local: state.ratings, dates: state.ratingDates, comics: state.comics,
+                                                  existingCloud: cloudRatings()), .ratingsV2)
+        let buried = deletedBookmarks()
         let marks = cloud.load([String: [Bookmark]].self, .bookmarks) ?? [:]
-        cloud.save(CollectionSync.bookmarksSnapshot(local: state.bookmarks, comics: state.comics, existingCloud: marks), .bookmarks)
+        cloud.save(CollectionSync.bookmarksSnapshot(local: state.bookmarks, comics: state.comics, existingCloud: marks,
+                                                    buried: buried), .bookmarks)
+        cloud.save(buried, .deletedBookmarks)
         let log = cloud.load([ReadingLogEntry].self, .readingLog) ?? []
         cloud.save(CollectionSync.mergedLog(local: state.readingLog, cloud: log), .readingLog)
         let covers = cloud.load([String: CoverChoice].self, .covers) ?? [:]
         cloud.save(CoverSync.snapshot(local: state.coverChoices, cloud: covers), .covers)
         pushActivity()
+    }
+
+    /// iCloud's ratings: `ratings.v2`, or before any device wrote that, the undated v1 as the oldest.
+    private func cloudRatings() -> [String: Stamped<Int>] {
+        if let dated = cloud.load([String: Stamped<Int>].self, .ratingsV2) { return dated }
+        return (cloud.load([String: Int].self, .ratings) ?? [:]).mapValues { Stamped($0, at: .distantPast) }
+    }
+
+    /// Deletions from here and every other device. Pruned at 180 days: every device has long
+    /// seen them by then, and iCloud's store is capped near 1 MB.
+    private func deletedBookmarks() -> Tombstones {
+        let everywhere = state.deletedBookmarks.merging(cloud.load(Tombstones.self, .deletedBookmarks) ?? Tombstones())
+        return everywhere.pruned(before: Date.now.addingTimeInterval(-180 * 86_400))
     }
 
     /// Covers another device chose after this one last did anything to that file: fetch a Find
