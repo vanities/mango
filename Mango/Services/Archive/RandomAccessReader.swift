@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// Random access to a file's bytes, wherever it lives.
 ///
