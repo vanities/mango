@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 /// Everything Mango persists about the library, in one JSON document.
 ///

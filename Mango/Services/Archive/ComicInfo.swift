@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// Metadata a release ships *inside* its archive, as `ComicInfo.xml` — the Anansi schema that
 /// Komga, Kavita and ComicRack all read. When it's there it beats anything guessed from the

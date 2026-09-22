@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 /// Manual corrections, for when the filename lied. Overrides survive rescans.
 struct EditComicView: View {

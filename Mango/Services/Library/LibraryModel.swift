@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import Observation
 import os
+import ShelfKit
 
 /// The one source of truth the UI reads from.
 ///

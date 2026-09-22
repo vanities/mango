@@ -1,6 +1,7 @@
 import AMSMB2
 import Foundation
 import os
+import ShelfKit
 
 struct NASEntry: Hashable, Sendable {
     var name: String

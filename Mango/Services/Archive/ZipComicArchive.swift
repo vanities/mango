@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import os
+import ShelfKit
 
 /// A `.cbz`: a zip whose entries are page images, in name order.
 ///

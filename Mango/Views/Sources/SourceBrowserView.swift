@@ -1,5 +1,6 @@
 import SwiftUI
 import os
+import ShelfKit
 
 /// Everything on one source, a compact row per series, and a ring showing how much of it is in
 /// both places — on a NAS, how much is on this device; on this device, how much is safe on the

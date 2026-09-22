@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 /// Adding an SMB share. The password goes to the Keychain, never into the library JSON.
 struct NASSetupView: View {

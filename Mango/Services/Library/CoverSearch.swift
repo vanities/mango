@@ -1,5 +1,6 @@
 import Foundation
 import os
+import ShelfKit
 
 /// A cover found online.
 struct CoverCandidate: Identifiable, Hashable, Sendable {

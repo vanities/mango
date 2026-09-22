@@ -1,4 +1,5 @@
 import Foundation
+import ShelfKit
 
 extension LibraryModel {
     /// The library grid: shelves, with the ones that belong together stacked.
