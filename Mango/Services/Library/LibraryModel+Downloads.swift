@@ -46,7 +46,7 @@ extension LibraryModel {
         }
         let target = documents.appending(path: local.relativePath).standardizedFileURL
         // Only ever inside Mango's own folder, whatever a relative path might say.
-        guard target.path.hasPrefix(documents.standardizedFileURL.path + "/") else {
+        guard target.isInside(documents) else {
             Logger.downloads.error("[downloads] refusing to delete outside Mango's folder: \(local.relativePath, privacy: .public)")
             return 0
         }
@@ -81,7 +81,7 @@ extension LibraryModel {
     }
 
     /// A series folder emptied by removing its last download goes too — never Mango's folder itself.
-    private func removeEmptyFolders(from folder: URL, downTo root: URL) {
+    func removeEmptyFolders(from folder: URL, downTo root: URL) {
         var current = folder.standardizedFileURL
         let stop = root.standardizedFileURL.path
         while current.path.hasPrefix(stop + "/"),

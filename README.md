@@ -86,6 +86,10 @@ Transfers run one at a time, survive the app being killed, and resume a half-fin
 rather than starting a 300 MB volume over. Uploads go the other way and skip anything already
 on the share.
 
+**Find Duplicates** (Sources › Tools) compares what's on the device by content, not name, so
+the same volume added twice or copied in Files is caught; delete a copy and the one that stays
+keeps your place. Nothing on the NAS is read or touched.
+
 A downloaded volume replaces its copy on the share in the library rather than appearing twice,
 and it takes your reading position with it — download something you're halfway through and
 you're still halfway through it.

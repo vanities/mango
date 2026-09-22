@@ -15,6 +15,11 @@ architecture: derived library, JSON state keyed by stable ids, SMB via AMSMB2, x
   (`BookmarkStore`) or the app's own Documents folder. The only things Mango writes are cover
   thumbnails in Caches (`CoverStore`), covers the user picked in Application Support, and JSON
   in Application Support.
+- **The only deletions are ones the user asks for, one at a time:** Remove Download (a copy in
+  Mango's folder whose original is still on a NAS) and Find Duplicates (one copy of a comic
+  that's on this device twice — confirmed, never the last copy, never on a NAS). Both check
+  the file is inside its folder (`URL.isInside`) and hand its place, bookmarks and rating to
+  the copy that stays.
 - **Nothing leaves the device unless the user asks.** The one exception to "talks only to your
   NAS" is Find Cover / Look Up Series, which send the series name (and volume number) to
   MangaDex, AniList and Apple's iTunes Search API when tapped — never in the background. The
