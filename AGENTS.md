@@ -15,6 +15,9 @@ architecture: derived library, JSON state keyed by stable ids, SMB via AMSMB2, x
   (`BookmarkStore`) or the app's own Documents folder. The only things Mango writes are cover
   thumbnails in Caches (`CoverStore`), covers the user picked in Application Support, and JSON
   in Application Support.
+- **Move into Mango** (a comic in a folder the user picked → Mango's own folder) is the one
+  move, and only when asked: `LocalMove` copies, checks every size, and only then removes the
+  original; a different file already there is never overwritten (`LocalMoveTests`).
 - **The only deletions are ones the user asks for, one at a time:** Remove Download (a copy in
   Mango's folder whose original is still on a NAS) and Find Duplicates (one copy of a comic
   that's on this device twice — confirmed, never the last copy, never on a NAS). Both check

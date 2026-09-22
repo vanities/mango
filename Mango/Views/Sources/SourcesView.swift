@@ -25,7 +25,7 @@ struct SourcesView: View {
                 } header: {
                     Text("Sources")
                 } footer: {
-                    Text("Mango reads your files where they are. It never copies, moves, or renames them — only covers and a small library file are written.")
+                    Text("Mango reads your files where they are. It never copies, moves, renames or deletes them unless you ask — only covers and a small library file are written.")
                 }
 
                 Section {
@@ -142,7 +142,7 @@ struct TransferRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Image(systemName: job.kind == .download ? "arrow.down.circle" : "arrow.up.circle")
+                Image(systemName: job.kind == .download ? "arrow.down.circle" : job.kind == .upload ? "arrow.up.circle" : "arrow.right.circle")
                     .foregroundStyle(job.state == .failed ? Color.red : Color.accentColor)
                 Text(job.title).font(.subheadline).lineLimit(1)
                 Spacer()

@@ -16,6 +16,8 @@ struct SourceBrowserView: View {
     @State private var selection = Set<String>()
     @State private var expanded = Set<String>()
     @State private var reading: Comic?
+    /// A move asks first: the originals leave the folder the user picked.
+    @State private var confirmingMove: [Comic]?
 
     var body: some View {
         let shelves = shelves
@@ -45,6 +47,15 @@ struct SourceBrowserView: View {
         .toolbar(selecting ? .hidden : .automatic, for: .tabBar)
         .toolbar { toolbar(comics, status) }
         .fullScreenCover(item: $reading) { ReaderRouter(comic: $0) }
+        .confirmationDialog(
+            "Move \(confirmingMove?.count ?? 0) into Mango?",
+            isPresented: Binding(get: { confirmingMove != nil }, set: { if !$0 { confirmingMove = nil } }),
+            titleVisibility: .visible, presenting: confirmingMove
+        ) { comics in
+            Button("Move \(comics.count) (\(Self.bytes(comics)))") { move(comics) }
+        } message: { _ in
+            Text("Each is copied into Mango's own folder, checked, and only then removed from \(source.displayName). Your place, bookmarks and ratings go with them. A different file already in Mango's folder is never replaced.")
+        }
         .task {
             // A source with a series or two opens with its volumes showing.
             if expanded.isEmpty, shelves.count <= 2 { expanded = Set(shelves.map(\.id)) }
@@ -142,6 +153,19 @@ struct SourceBrowserView: View {
 
     private func comics(_ comics: [Comic], for action: Action, _ status: Status) -> [Comic] {
         comics.filter { self.action(for: state(of: $0, status)) == action }
+    }
+
+    /// A folder the user picked can be moved into Mango's own — only when they ask.
+    private var canMove: Bool { source.kind == .folder }
+
+    private func movable(_ comics: [Comic], _ status: Status) -> [Comic] {
+        guard canMove else { return [] }
+        return comics.filter { status.jobs[$0.id] == nil }
+    }
+
+    /// Something a bulk action can do to it: download, upload, remove — or move, from a folder.
+    private func isSelectable(_ comic: Comic, _ status: Status) -> Bool {
+        action(for: state(of: comic, status)) != nil || (canMove && status.jobs[comic.id] == nil)
     }
 
     private static func bytes(_ comics: [Comic]) -> String {
@@ -259,14 +283,20 @@ struct SourceBrowserView: View {
     private func seriesButton(_ shelf: Series, _ status: Status) -> some View {
         let states = shelf.comics.map { state(of: $0, status) }
         let moving = states.contains { if case .transferring = $0 { true } else { false } }
-        if moving || states.contains(where: { action(for: $0) != nil }) {
+        if moving || canMove || states.contains(where: { action(for: $0) != nil }) {
             Menu {
                 seriesActions(shelf, status)
             } label: {
-                SeriesRing(fraction: bothFraction(shelf.comics, status), upward: !source.isRemote, isMoving: moving,
-                           isComplete: !moving && !states.contains { $0 == .remote || $0 == .deviceOnly })
-                    .frame(width: 36, height: 36)
-                    .contentShape(Rectangle())
+                Group {
+                    if canMove, uploadServer == nil, !moving {
+                        Image(systemName: "arrow.right.circle").font(.title3).foregroundStyle(Color.accentColor)
+                    } else {
+                        SeriesRing(fraction: bothFraction(shelf.comics, status), upward: !source.isRemote, isMoving: moving,
+                                   isComplete: !moving && !states.contains { $0 == .remote || $0 == .deviceOnly })
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .contentShape(Rectangle())
             }
             .accessibilityLabel(source.isRemote ? "Download options" : "Upload options")
         }
@@ -300,11 +330,17 @@ struct SourceBrowserView: View {
                 remove(removals)
             }
         }
+        let moves = movable(shelf.comics, status)
+        if !moves.isEmpty {
+            Button("Move \(moves.count) into Mango (\(Self.bytes(moves)))", systemImage: "arrow.right.circle") {
+                confirmingMove = moves
+            }
+        }
     }
 
     /// Select mode's circle for a whole series: empty, part-picked, or all picked.
     private func seriesMark(_ shelf: Series, name: String, _ status: Status) -> some View {
-        let ids = Set(shelf.comics.filter { action(for: state(of: $0, status)) != nil }.map(\.id))
+        let ids = Set(shelf.comics.filter { isSelectable($0, status) }.map(\.id))
         let picked = ids.intersection(selection).count
         return Button {
             if !ids.isEmpty, picked == ids.count { selection.subtract(ids) } else { selection.formUnion(ids) }
@@ -343,7 +379,7 @@ struct SourceBrowserView: View {
 
     private func tile(_ comic: Comic, label: String, _ status: Status) -> some View {
         let state = state(of: comic, status)
-        let actionable = action(for: state) != nil
+        let actionable = isSelectable(comic, status)
         let picked = selection.contains(comic.id)
         return Button {
             if selecting {
@@ -416,7 +452,7 @@ struct SourceBrowserView: View {
 
     @ToolbarContentBuilder
     private func toolbar(_ comics: [Comic], _ status: Status) -> some ToolbarContent {
-        let actionable = Set(comics.filter { action(for: state(of: $0, status)) != nil }.map(\.id))
+        let actionable = Set(comics.filter { isSelectable($0, status) }.map(\.id))
         if selecting || !actionable.isEmpty {
             ToolbarItem(placement: .primaryAction) {
                 Button(selecting ? "Done" : "Select") {
@@ -432,6 +468,7 @@ struct SourceBrowserView: View {
             let downloads = self.comics(picked, for: .download, status)
             let uploads = self.comics(picked, for: .upload, status)
             let removals = self.comics(picked, for: .remove, status)
+            let moves = movable(picked, status)
             ToolbarItem(placement: .topBarLeading) {
                 Button(!actionable.isEmpty && actionable.isSubset(of: selection) ? "Deselect All" : "Select All") {
                     selection = actionable.isSubset(of: selection) ? [] : actionable
@@ -458,6 +495,11 @@ struct SourceBrowserView: View {
                         Text(removals.isEmpty ? "Remove" : "Remove \(removals.count) (\(Self.bytes(removals)))")
                     }
                     .disabled(removals.isEmpty)
+                } else if canMove {
+                    Button { confirmingMove = moves } label: {
+                        Text(moves.isEmpty ? "Move" : "Move \(moves.count) (\(Self.bytes(moves)))")
+                    }
+                    .disabled(moves.isEmpty)
                 }
             }
         }
@@ -473,6 +515,12 @@ struct SourceBrowserView: View {
         guard let server = uploadServer else { return }
         comics.forEach { transfers.upload($0, to: server.id) }
         Logger.downloads.info("[sources] queued \(comics.count) upload(s) from \(source.displayName, privacy: .public)")
+        finishSelecting()
+    }
+
+    private func move(_ comics: [Comic]) {
+        comics.forEach(transfers.move)
+        Logger.downloads.info("[sources] queued \(comics.count) move(s) into Mango from \(source.displayName, privacy: .public)")
         finishSelecting()
     }
 

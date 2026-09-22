@@ -103,7 +103,7 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Text("Mango reads the comics you already have — on this device or on your NAS — and never copies, moves, or renames them. No accounts, no tracking, no tip jar.")
+                    Text("Mango reads the comics you already have — on this device or on your NAS — and never copies, moves, renames or deletes them unless you ask. No accounts, no tracking, no tip jar.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

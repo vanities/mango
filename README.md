@@ -5,7 +5,8 @@ An open-source manga, comic and light novel reader for iPhone and iPad.
 **[Join the TestFlight beta →](https://testflight.apple.com/join/nEjBWtgp)**
 
 It reads the manga, comics and light novels you already have — in the Files app, in a folder you
-picked, or straight off your NAS — and it never copies, moves, or renames a single one of them.
+picked, or straight off your NAS — and it never copies, moves, or renames a single one of them
+unless you ask it to.
 No account, no catalog, no tracking, no tip jar.
 
 ## Why
@@ -85,6 +86,10 @@ Pull a single volume local from its context menu, or **Download everything** fro
 Transfers run one at a time, survive the app being killed, and resume a half-finished file
 rather than starting a 300 MB volume over. Uploads go the other way and skip anything already
 on the share.
+
+**Move into Mango** gathers a folder you added (Files › Downloads, say) into Mango's own: each
+comic is copied, checked, and only then removed from where it was, keeping your place — from a
+comic's menu, or a series or a selection in that folder's Sources page.
 
 **Find Duplicates** (Sources › Tools) compares what's on the device by content, not name, so
 the same volume added twice or copied in Files is caught; delete a copy and the one that stays

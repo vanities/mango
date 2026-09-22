@@ -85,6 +85,10 @@ struct SeriesDetailView: View {
                                 transfers.upload(comic, to: server.id)
                             }
                         }
+                        // From a folder you picked into Mango's own: copied, checked, then removed there.
+                        if library.state.sources.first(where: { $0.id == comic.sourceID })?.kind == .folder {
+                            Button("Move into Mango", systemImage: "arrow.right.circle") { transfers.move(comic) }
+                        }
                         Menu {
                             ForEach((1...5).reversed(), id: \.self) { stars in
                                 Button(String(repeating: "★", count: stars)) { library.setRating(stars, for: comic) }
@@ -244,7 +248,7 @@ struct VolumeRow: View {
             if let job = transfers.job(for: comic.id), job.isActive {
                 VStack(spacing: 3) {
                     ProgressView(value: job.fraction).frame(width: 46)
-                    Text(job.kind == .download ? "Downloading" : "Uploading")
+                    Text(job.kind == .download ? "Downloading" : job.kind == .upload ? "Uploading" : "Moving into Mango")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             } else if comic.isRemote(in: library) {
