@@ -22,7 +22,8 @@ struct ContinuousReader: View {
     /// The page crossing this line, just below the Dynamic Island, is the one being read.
     /// `onAppear` can't say that (a lazy stack builds pages before they're on screen), and
     /// neither can a scroll position that only knows which page's top is nearest.
-    private static let readingLine: CGFloat = 120
+    /// `nonisolated`: the geometry check that reads it runs off the main actor.
+    private nonisolated static let readingLine: CGFloat = 120
 
     init(engine: ReaderEngine) {
         self.engine = engine

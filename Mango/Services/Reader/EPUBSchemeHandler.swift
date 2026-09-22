@@ -41,7 +41,7 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
             return
         }
         let key = ObjectIdentifier(urlSchemeTask)
-        tasks.withLock { $0.insert(key) }
+        tasks.withLock { _ = $0.insert(key) }
         let path = Self.path(from: url)
 
         Task { [document, tasks] in
@@ -63,7 +63,8 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {
-        tasks.withLock { _ = $0.remove(ObjectIdentifier(urlSchemeTask)) }
+        let key = ObjectIdentifier(urlSchemeTask)   // only the id crosses into the lock
+        tasks.withLock { _ = $0.remove(key) }
     }
 
     private static func mimeType(for path: String) -> String {
