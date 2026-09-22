@@ -1,5 +1,6 @@
 import SwiftUI
 import os
+import ShelfKit
 
 @main
 struct MangoApp: App {

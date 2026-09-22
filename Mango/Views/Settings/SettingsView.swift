@@ -1,4 +1,5 @@
 import SwiftUI
+import ShelfKit
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings

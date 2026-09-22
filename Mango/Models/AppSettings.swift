@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ShelfKit
 
 enum LibrarySort: String, CaseIterable, Codable, Sendable {
     case recent, title, lastRead
@@ -139,3 +140,6 @@ final class AppSettings {
         static let demoMode = "MangoDemoMode"
     }
 }
+
+/// The lock (ShelfKit's `AppLock`) reads and saves its mode here, under `privacy.lockMode`.
+extension AppSettings: LockSettings {}

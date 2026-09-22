@@ -1,5 +1,6 @@
 import XCTest
 @testable import Mango
+import ShelfKit
 
 /// Hidden shelves and the app lock.
 final class PrivacyTests: XCTestCase {
