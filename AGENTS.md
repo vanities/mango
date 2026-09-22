@@ -172,6 +172,20 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - Covers: a strip's cover is the top of page one cut to 2:3 (`CoverStore.coverImage`), and
   `CoverView` draws art as an overlay on a fixed 2:3 frame so no cover shape can resize a tile.
 
+## Sources browser
+
+- `SourceBrowserView` is a row per series (stacks as in the library, members by short name)
+  with a ring for how much is in both places, and the series' volumes as number tiles when
+  opened. Where each comic stands is worked out once per update (`Status`): asking
+  `downloadedCopy(of:)` per tile is a scan of the library each, and made the first version
+  quadratic.
+- No `.searchable` there: its drawer shows and hides as the list's height changes, so the title
+  jumped every time a series opened or closed.
+- A bottom-bar `.status` item renders as a squeezed glass bubble on iOS 26 — the selection count
+  goes in the navigation title instead, and the buttons carry their count and size.
+- On a picked folder, comics can go up to the NAS but are never removed: only downloads in
+  Mango's own folder are.
+
 ## Releasing
 
 **Pushing to `main` is the release path.** An Xcode Cloud workflow builds it and distributes to
