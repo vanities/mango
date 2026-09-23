@@ -36,7 +36,7 @@ COPY = {
     "description": """Mango is a manga, comic and light novel reader for people who already have a library.
 
 READS YOUR FILES WHERE THEY ARE
-Point Mango at a folder in Files, iCloud Drive, or another app and it reads from there. Nothing is copied, nothing is moved, nothing is renamed, nothing is uploaded. Delete the app and your library is exactly where you left it.
+Point Mango at a folder in Files, iCloud Drive, or another app and it reads from there. Reading leaves your original files in place. Downloads, moves into Mango and uploads to your NAS happen only when you request them.
 
 STRAIGHT OFF YOUR NAS
 Add an SMB share and the whole thing appears on your shelf. A comic archive keeps its index at the end of the file, so Mango opens a 300 MB volume by fetching a few kilobytes and then pulls one page at a time as you read. No download queue, no waiting \u2014 it just opens.
@@ -45,7 +45,7 @@ ORGANIZED FROM THE FILENAMES
 Series, volumes and chapters are worked out from the names scanlation groups and digital releases actually use \u2014 v01, Vol. 3, c012.5, #45, bracket tags and all. Volumes land on one shelf in reading order, and Mango knows which one you are up to.
 
 LIGHT NOVELS TOO
-An EPUB is an archive with an index, the same as a comic archive, so the same machinery reads it. Point Mango at your .epub files and they appear under a Novels tab with chapter navigation, adjustable text size, and a position that survives changing it. Chapters and their illustrations are pulled out one at a time, so a light novel reads off your NAS exactly like a comic does instead of downloading the whole book first. Manga and light novels stay on separate shelves even when they are the same series.
+An EPUB is an archive with an index, the same as a comic archive, so the same machinery reads it. Point Mango at your .epub files and they appear on the Novels shelf in Library with chapter navigation, adjustable text size, and a position that survives changing it. Chapters and their illustrations are pulled out one at a time, so a light novel reads off your NAS exactly like a comic does instead of downloading the whole book first. Manga and light novels stay on separate shelves even when they are the same series.
 
 A READER BUILT FOR MANGA
 \u2022 Right to left by default, with per-series and per-book overrides for western comics
