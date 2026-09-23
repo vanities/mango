@@ -97,13 +97,13 @@ AGE_RATING = {
     "koreaAgeRatingOverride": "NONE",
 }
 
-REVIEW_NOTES = """Mango is a manga and comic reader for files the user already has. It has no accounts, no sign-in, and no catalog — it does not download or supply any content.
+REVIEW_NOTES = """Mango reads manga, comics and EPUB novels supplied by the user. No account or sign-in is required. There is no subscription or built-in reading catalog.
 
-To test: on the device, open the Files app and copy any .cbz or .pdf file (or a folder of JPEGs) into Mango's folder under On My iPhone. It appears on the shelf immediately; tap it to read. Swipe or tap the screen edges to turn pages, tap the middle for the controls, pinch to zoom, and rotate to landscape for two-page spreads. Reading is right-to-left by default (it is a manga reader); the arrow in the top bar flips it.
+On iPhone or iPad, open Files and copy a CBZ, PDF or EPUB into On My iPhone > Mango or On My iPad > Mango. Return to Mango: the file appears in Library. Files added while Mango is visible also appear automatically. Alternatively, use Library > More (...) > Add Folder to select a folder, or use Files > Open With > Mango on a supported file. Open With opens the reader once the file is scanned.
 
-Light novels: copy an .epub in instead and it appears under the Novels tab, with chapter navigation and text size controls.
+Tap a series and a volume to read. Swipe or tap the screen edges to turn pages; tap the middle for controls; pinch to zoom. Reading direction is adjustable, and landscape supports two-page spreads. EPUBs appear on the Novels shelf in Library; the Manga/Novels selector appears when both types are present. Novels support chapter navigation and text size controls.
 
-The NAS feature (Sources > Add a NAS share) connects to the reviewer's own SMB server on their local network. It is entirely optional and can be skipped — everything above works with local files alone. The app never contacts any server operated by us, and collects no data. The optional Find Cover and Look Up Series buttons (on a series or volume) query MangaDex, AniList and Apple's iTunes Search API with the series name, only when tapped, to show cover art and titles to choose from."""
+Sources can optionally connect to the reviewer's SMB server. A NAS is not required; all core reading features work with local files. Find Cover and Look Up Series contact MangaDex, AniList and Apple's iTunes Search API only when the user requests a lookup. No servers are operated by us."""
 
 
 class Store(tf.ASC):

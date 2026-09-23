@@ -1,3 +1,4 @@
+import ShelfKit
 import SwiftUI
 
 /// The shelf. Series first — a run of 34 volumes should be one thing you tap, not 34 things
@@ -91,16 +92,7 @@ struct LibraryView: View {
             .fullScreenCover(item: $readingComic) { comic in
                 ReaderRouter(comic: comic)
             }
-            // Siri, Shortcuts and the widget ask the library to open something; do it here.
-            .onChange(of: library.requestedComic) { _, requested in
-                guard let requested else { return }
-                readingComic = nil
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(150))
-                    readingComic = requested
-                    library.requestedComic = nil
-                }
-            }
+
         }
     }
 
@@ -228,7 +220,7 @@ struct LibraryView: View {
         ContentUnavailableView {
             Label("No comics yet", systemImage: "books.vertical")
         } description: {
-            Text("Add a folder or a NAS share in Sources, or drop .cbz files into Mango's folder in the Files app.")
+            Text("Add a folder or a NAS share in Sources, or drop .cbz files into \(DeviceStorage.folder("Mango")) in the Files app.")
         } actions: {
             NavigationLink("Add a source") { SourcesView() }
                 .buttonStyle(.glassProminent)

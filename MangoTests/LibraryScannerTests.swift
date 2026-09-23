@@ -22,6 +22,17 @@ final class LibraryScannerTests: XCTestCase {
         try Data(repeating: 0, count: bytes).write(to: url)
     }
 
+    func testSingleFileSourceFindsOnlyTheOpenedFile() throws {
+        try write("Opened.cbz")
+        try write("Neighbor.cbz")
+        let file = LibrarySource(id: UUID(), kind: .file, displayName: "Opened",
+                                 bookmark: nil, addedAt: Date())
+        let result = LibraryScanner.scanLocal(source: file, root: root.appending(path: "Opened.cbz"))
+        XCTAssertEqual(result.comics.count, 1)
+        XCTAssertEqual(result.comics.first?.relativePath, "Opened.cbz")
+        XCTAssertEqual(result.fileCount, 1)
+    }
+
     func testFindsArchivesInNestedFolders() throws {
         try write("Berserk/Berserk v01.cbz")
         try write("Berserk/Berserk v02.cbz")

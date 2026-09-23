@@ -30,6 +30,9 @@ final class LibraryModel {
     @ObservationIgnored private var roots: [UUID: URL] = [:]
     @ObservationIgnored private var scopedURLs: [UUID: URL] = [:]
     @ObservationIgnored private var clients: [UUID: NASClient] = [:]
+    @ObservationIgnored var ownFolderWatcher: FolderWatcher?
+    @ObservationIgnored var pendingOpen: (sourceID: UUID, path: String?, date: Date)?
+    @ObservationIgnored private var queuedScanIDs: Set<UUID> = []
     @ObservationIgnored private var coverTask: Task<Void, Never>?
     @ObservationIgnored let cloud = CloudSync()
 
@@ -57,6 +60,10 @@ final class LibraryModel {
     }
 
     func addFolderSource(_ url: URL) {
+        if let existing = state.sources.first(where: { $0.kind != .smb && root(for: $0)?.isSameFile(as: url) == true }) {
+            Task { await scan(sourceIDs: [existing.id]) }
+            return
+        }
         do {
             let bookmark = try BookmarkStore.makeBookmark(for: url)
             let source = LibrarySource(id: UUID(), kind: .folder, displayName: url.lastPathComponent,
@@ -64,7 +71,7 @@ final class LibraryModel {
             state.sources.append(source)
             save()
             Logger.library.info("[library] added folder source \(source.displayName, privacy: .public)")
-            Task { await scan() }
+            Task { await scan(sourceIDs: [source.id]) }
         } catch {
             lastError = error.localizedDescription
             Logger.library.error("[library] couldn't bookmark \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
@@ -158,15 +165,28 @@ final class LibraryModel {
 
     // MARK: Scanning
 
-    func scan() async {
-        guard !isScanning else { return }
+    func scan(sourceIDs: Set<UUID>? = nil) async {
+        let requested = sourceIDs ?? Set(state.sources.map(\.id))
+        guard !isScanning else {
+            queuedScanIDs.formUnion(requested)
+            return
+        }
         isScanning = true
-        defer { isScanning = false; scanStatus = nil }
+        defer {
+            isScanning = false
+            scanStatus = nil
+            if !queuedScanIDs.isEmpty {
+                let next = queuedScanIDs
+                queuedScanIDs.removeAll()
+                Task { await scan(sourceIDs: next) }
+            }
+        }
         let sw = Stopwatch()
 
         var found: [Comic] = []
-        for index in state.sources.indices {
-            let source = state.sources[index]
+        var scanned: Set<UUID> = []
+        // Sources can be added or removed while a scan awaits disk or network IO.
+        for source in state.sources.filter({ requested.contains($0.id) }) {
             // Demo mode photographs a generated library: skip shares and picked folders so
             // nobody's real shelf ends up in a screenshot. Their sources stay configured.
             if settings.demoMode, source.kind != .appDocuments { continue }
@@ -176,7 +196,9 @@ final class LibraryModel {
             switch source.kind {
             case .appDocuments, .folder, .file:
                 guard let root = root(for: source) else {
-                    state.sources[index].lastError = "Couldn't reach this folder any more."
+                    if let index = state.sources.firstIndex(where: { $0.id == source.id }) {
+                        state.sources[index].lastError = "Couldn't reach this folder any more."
+                    }
                     continue
                 }
                 result = await Task.detached(priority: .userInitiated) {
@@ -184,25 +206,32 @@ final class LibraryModel {
                 }.value
             case .smb:
                 guard let serverID = source.serverID, let client = client(for: serverID) else {
-                    state.sources[index].lastError = "No saved credentials for this server."
+                    if let index = state.sources.firstIndex(where: { $0.id == source.id }) {
+                        state.sources[index].lastError = "No saved credentials for this server."
+                    }
                     continue
                 }
                 result = await LibraryScanner.scanRemote(source: source, client: client)
             }
 
+            guard let index = state.sources.firstIndex(where: { $0.id == source.id }) else { continue }
             state.sources[index].lastScanAt = Date()
             state.sources[index].lastScanBookCount = result.comics.count
             state.sources[index].lastScanFileCount = result.fileCount
             state.sources[index].lastScanUnreadable = result.unreadable.isEmpty ? nil : result.unreadable
             state.sources[index].lastError = result.error
-            found.append(contentsOf: result.comics)
+            if result.error == nil {
+                scanned.insert(source.id)
+                found.append(contentsOf: result.comics)
+            }
         }
 
         // Carry forward everything the user set, and keep page counts already discovered so a
         // rescan doesn't make every book claim it has no pages again.
         let previous = Dictionary(state.comics.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var lostCovers = 0
-        state.comics = found.map { comic in
+        let retained = settings.demoMode ? [] : state.comics.filter { !scanned.contains($0.sourceID) }
+        state.comics = retained + found.map { comic in
             var merged = comic
             if let old = previous[comic.id] {
                 merged.pageCount = old.pageCount
@@ -245,6 +274,7 @@ final class LibraryModel {
         save()
         rebuildSeries()
         Logger.library.info("[library] scan complete: \(self.state.comics.count) comics, \(self.series.count) series in \(sw.seconds, format: .fixed(precision: 2))s")
+        resolvePendingOpen(scanned: scanned)
         startCoverBackfill()
     }
 
@@ -283,7 +313,7 @@ final class LibraryModel {
         switch source.kind {
         case .appDocuments, .folder, .file:
             guard let root = root(for: source) else { return nil }
-            return .local(root.appending(path: comic.relativePath))
+            return .local(source.kind == .file ? root : root.appending(path: comic.relativePath))
         case .smb:
             guard let serverID = source.serverID, let client = client(for: serverID) else { return nil }
             return .remote(client: client, relativePath: comic.relativePath, size: comic.totalBytes)
