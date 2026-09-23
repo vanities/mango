@@ -26,5 +26,8 @@ Validation:
 Both apps pin ShelfKit 0.10.0 for release; local package paths were used only during development.
 
 Earmark's review also requests a recording on a physical device demonstrating audio continuing
-after navigating to the Home Screen. Simulator checks do not satisfy that request. No App
-Review reply or resubmission was sent during this continuation.
+after navigating to the Home Screen. Simulator checks do not satisfy that request. Mango 1.0 build 59 is Waiting for Review (September 23). Earmark build 46 is selected for
+resubmission; the physical-device recording remains outstanding. Reviewer notes were updated
+in both listings, Mango's missing free price was configured, and Earmark's old screenshots
+were replaced with three captures from the current app. Both versions retain manual release.
+A silent simulator reference, sample MP3 and recording instructions are in Downloads/App Review 2026-09-23.
