@@ -26,7 +26,22 @@ struct LibraryScanner: Sendable {
     static func scanLocal(source: LibrarySource, root: URL) -> Result {
         let sw = Stopwatch()
         var result = Result()
-        walkLocal(root, base: root, source: source, depth: 0, into: &result)
+        if source.kind == .file {
+            let name = root.lastPathComponent
+            do {
+                let values = try root.resourceValues(forKeys: [.fileSizeKey])
+                result.fileCount = 1
+                if ImageFileTypes.isReadable(name) {
+                    result.comics = makeComics([Candidate(name: name, folderName: nil,
+                        relativePath: name, kind: ImageFileTypes.kind(for: name),
+                        size: Int64(values.fileSize ?? 0))], source: source)
+                } else if ImageFileTypes.isUnreadableArchive(name) {
+                    result.unreadable[root.pathExtension.lowercased()] = 1
+                }
+            } catch { result.error = error.localizedDescription }
+        } else {
+            walkLocal(root, base: root, source: source, depth: 0, into: &result)
+        }
         Logger.scan.info("[scan] \(source.displayName, privacy: .public) → \(result.comics.count) comics from \(result.fileCount) files (\(result.unreadable.values.reduce(0, +)) unreadable) in \(sw.ms, format: .fixed(precision: 0))ms")
         return result
     }
@@ -36,6 +51,7 @@ struct LibraryScanner: Sendable {
         let fm = FileManager.default
         let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey]
         guard let entries = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys) else {
+            result.error = "Couldn't read \(directory.lastPathComponent)."
             Logger.scan.error("[scan] couldn't list \(directory.lastPathComponent, privacy: .public)")
             return
         }
