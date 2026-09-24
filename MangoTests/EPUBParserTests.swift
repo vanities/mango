@@ -291,6 +291,14 @@ final class ReadingStatsTests: XCTestCase {
 /// a pager, up-and-down like scrolling a document — so the signs are independent, and getting
 /// one of them backwards is exactly the bug this guards.
 final class PanAxesTests: XCTestCase {
+    func testRetainedZoomKeepsRelativePositionAcrossViewportsAndClampsEdges() {
+        let zoom = PageZoom(scale: 2, x: 0.25, y: -0.4)
+        XCTAssertEqual(zoom.offset(in: CGSize(width: 400, height: 800)), CGSize(width: 100, height: -320))
+        XCTAssertEqual(zoom.offset(in: CGSize(width: 800, height: 400)), CGSize(width: 200, height: -160))
+        XCTAssertEqual(PageZoom(scale: 1, x: 1, y: 1).offset(in: CGSize(width: 400, height: 800)), .zero)
+        XCTAssertEqual(PageZoom(scale: 2, x: 9, y: -9).offset(in: CGSize(width: 400, height: 800)), CGSize(width: 200, height: -400))
+    }
+
     private let committed = CGSize(width: 10, height: 20)
 
     func testMovesViewGoesAgainstTheFinger() {

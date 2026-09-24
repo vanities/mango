@@ -25,7 +25,7 @@ struct PagedReader: View {
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
                     ForEach(Array(engine.groups.enumerated()), id: \.offset) { position, group in
-                        spread(group)
+                        spread(group, active: position == engine.groupIndex)
                             .containerRelativeFrame(.horizontal)
                             .id(position)
                     }
@@ -48,8 +48,11 @@ struct PagedReader: View {
             // view sees it. A simultaneous spatial tap reads the same position without taking
             // the gesture away.
             .simultaneousGesture(
-                SpatialTapGesture(coordinateSpace: .named(Self.space))
-                    .onEnded { value in handleTap(atX: value.location.x, width: geometry.size.width) }
+                SpatialTapGesture(count: 2, coordinateSpace: .named(Self.space))
+                    .exclusively(before: SpatialTapGesture(coordinateSpace: .named(Self.space)))
+                    .onEnded { value in
+                        if case .second(let tap) = value { handleTap(atX: tap.location.x, width: geometry.size.width) }
+                    }
             )
         }
         .coordinateSpace(.named(Self.space))
@@ -75,8 +78,9 @@ struct PagedReader: View {
     /// A group is one page, or two shown side by side. In right-to-left the environment flips
     /// the HStack too, so the lower page number lands on the right — which is correct.
     @ViewBuilder
-    private func spread(_ group: [Int]) -> some View {
-        ZoomableView(resetToken: group, panAxes: panAxes, isZoomed: $isZoomed) {
+    private func spread(_ group: [Int], active: Bool) -> some View {
+        ZoomableView(resetToken: group, panAxes: panAxes, isZoomed: $isZoomed,
+                     active: active, locksZoom: engine.locksZoom, retainedZoom: $engine.retainedZoom) {
             if group.count == 1 {
                 PageImageView(index: group[0], engine: engine, fit: fit)
             } else {
@@ -93,9 +97,9 @@ struct PagedReader: View {
     /// space — the coordinate space is named outside the flipped environment, so x is always
     /// "distance from the left edge of the device" — and "forward" then follows the reading
     /// direction. Weighted towards the middle: a mis-tap should show the controls, not
-    /// silently lose your place. Ignored while zoomed, where taps belong to the page.
+    /// silently lose your place. Locked zoom keeps edge taps available; other zoomed taps show controls.
     private func handleTap(atX x: CGFloat, width: CGFloat) {
-        guard !isZoomed else { return }
+        guard !isZoomed || engine.locksZoom else { engine.toggleControls(); return }
         guard tapToTurn, width > 0 else {
             engine.toggleControls()
             return

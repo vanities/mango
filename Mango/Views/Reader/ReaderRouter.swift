@@ -5,12 +5,13 @@ import SwiftUI
 /// almost nothing else.
 struct ReaderRouter: View {
     let comic: Comic
+    var startAt: Bookmark?
 
     var body: some View {
         if comic.isNovel {
-            NovelReaderView(comic: comic)
+            NovelReaderView(comic: comic, startAt: startAt)
         } else {
-            ReaderView(comic: comic)
+            ReaderView(comic: comic, startAt: startAt)
         }
     }
 }

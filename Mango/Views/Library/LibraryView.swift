@@ -13,6 +13,8 @@ struct LibraryView: View {
     @State private var readingComic: Comic?
     @State private var medium: Medium = .manga
     @State private var showingLists = false
+    @State private var showingOffline = false
+    @State private var showingBookmarks = false
     @State private var showingPicker = false
 
     /// Covers should be about the same physical size on both devices, not the same point size —
@@ -63,6 +65,9 @@ struct LibraryView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
+                        Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
+                        Divider()
                         Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: $settings.librarySort) {
                             ForEach(LibrarySort.allCases, id: \.self) { Text($0.title).tag($0) }
                         }
@@ -81,6 +86,8 @@ struct LibraryView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingOffline) { OfflineLibraryView() }
+            .sheet(isPresented: $showingBookmarks) { BookmarkSearchView() }
             .navigationDestination(isPresented: $showingLists) { ReadingListsView() }
             .fileImporter(isPresented: $showingPicker, allowedContentTypes: [.folder], allowsMultipleSelection: true) { result in
                 if case .success(let urls) = result { urls.forEach(library.addFolderSource) }
