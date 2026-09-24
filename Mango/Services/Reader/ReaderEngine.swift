@@ -35,6 +35,9 @@ final class ReaderEngine {
     }
     /// Visible on open so the way out is obvious, then it gets out of the way on its own.
     var showsControls = true
+    /// Temporary for this book; never persisted as a library preference.
+    var locksZoom = false
+    var retainedZoom = PageZoom()
 
     @ObservationIgnored private let library: LibraryModel
     @ObservationIgnored private let settings: AppSettings

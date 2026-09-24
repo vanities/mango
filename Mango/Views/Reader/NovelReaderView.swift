@@ -6,6 +6,7 @@ import os
 /// reflowable text, so the controls are chapters and type size rather than pages and spreads.
 struct NovelReaderView: View {
     let comic: Comic
+    var startAt: Bookmark?
 
     @Environment(LibraryModel.self) private var library
     @Environment(AppSettings.self) private var settings
@@ -70,6 +71,7 @@ struct NovelReaderView: View {
             created.onReachedEnd = { reachEnd() }
             engine = created
             await created.open()
+            if openComic.id == comic.id, let startAt { created.go(to: startAt) }
         }
         .sheet(isPresented: $showingChapters) {
             if let engine { ChapterListView(engine: engine) }

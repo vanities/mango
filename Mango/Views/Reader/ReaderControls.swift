@@ -120,6 +120,10 @@ struct ReaderControls: View {
 
     private var bottomBar: some View {
         HStack(spacing: 12) {
+            if engine.locksZoom {
+                button("backward.end", label: "Previous page") { engine.retreat(); engine.keepControlsAwake() }
+                button("forward.end", label: "Next page") { engine.advance(); engine.keepControlsAwake() }
+            }
             if let page = engine.jumpOrigin {
                 button("arrow.uturn.backward", label: "Return to page \(page + 1)") { engine.undoJump() }
             }
@@ -215,6 +219,13 @@ struct ReaderSettingsSheet: View {
                     // Both are saved for the whole series, so a webtoon needs setting only once.
                     if let series = engine.comic.series {
                         Text("Applies to every volume and chapter of \(series).")
+                    }
+                }
+                if engine.mode == .paged {
+                    Section {
+                        Toggle("Keep zoom between pages", isOn: $engine.locksZoom)
+                    } footer: {
+                        Text("For this book only. Pinch and pan to frame the page, then use the page buttons or edge taps to turn. Turning this off resets the zoom.")
                     }
                 }
                 Section("Everywhere") {

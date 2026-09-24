@@ -8,6 +8,7 @@ import os
 /// point of a run of 34 volumes.
 struct ReaderView: View {
     let comic: Comic
+    var startAt: Bookmark?
 
     @Environment(LibraryModel.self) private var library
     @Environment(AppSettings.self) private var settings
@@ -58,6 +59,7 @@ struct ReaderView: View {
                 engine = created
                 await created.open(screenPixels: CGSize(width: geometry.size.width * displayScale,
                                                         height: geometry.size.height * displayScale))
+                if openComic.id == comic.id, let startAt { created.goToPage(startAt.page) }
             }
         }
         .statusBarHidden(!(engine?.showsControls ?? true))
