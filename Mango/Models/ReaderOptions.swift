@@ -71,6 +71,10 @@ enum PageFilter: String, Codable, CaseIterable, Sendable {
     case none
     /// Warm, like newsprint — easier on the eyes than paper white.
     case sepia
+    /// Muted tan paper with dark ink, without inverting the artwork.
+    case tan
+    /// Red paper with dark ink for a low-light reading preference.
+    case red
     /// The whole page darker, below what the screen's own brightness goes down to.
     case dim
     /// Black and white swapped (hues kept), for reading in bed with the lights off.
@@ -80,6 +84,8 @@ enum PageFilter: String, Codable, CaseIterable, Sendable {
         switch self {
         case .none: "None"
         case .sepia: "Sepia"
+        case .tan: "Tan paper"
+        case .red: "Red light"
         case .dim: "Dim"
         case .night: "Night (inverted)"
         }

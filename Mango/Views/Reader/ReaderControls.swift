@@ -159,6 +159,27 @@ struct ReaderSettingsSheet: View {
         @Bindable var settings = settings
         NavigationStack {
             Form {
+                Section {
+                    Picker("Page tint", selection: $settings.pageFilter) {
+                        ForEach(PageFilter.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    HStack(spacing: 12) {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.title2)
+                        Text("Paper and ink preview")
+                            .font(.body.weight(.medium))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .background(.white)
+                    .pageFilter(settings.pageFilter)
+                    .clipShape(.rect(cornerRadius: 8))
+                    .accessibilityLabel("Page tint preview: \(settings.pageFilter.label)")
+                } header: {
+                    Text("Night reading")
+                } footer: {
+                    Text("Tan paper and Red light soften white pages while keeping dark ink. Applies to all comics, including page thumbnails. Your files stay unchanged.")
+                }
                 if !engine.bookmarks.isEmpty {
                     Section("Bookmarks") {
                         ForEach(engine.bookmarks) { mark in
@@ -209,9 +230,6 @@ struct ReaderSettingsSheet: View {
                     Toggle("Keep screen awake", isOn: $settings.keepScreenAwake)
                     Toggle("Black background", isOn: $settings.blackBackground)
                     Toggle("Crop margins", isOn: $settings.cropMargins)
-                    Picker("Page tint", selection: $settings.pageFilter) {
-                        ForEach(PageFilter.allCases, id: \.self) { Text($0.label).tag($0) }
-                    }
                 }
                 Section {
                     Picker("Pages to load ahead", selection: $settings.prefetchCount) {

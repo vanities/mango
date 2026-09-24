@@ -40,6 +40,7 @@ struct PageGridView: View {
 }
 
 private struct PageThumbnailCell: View {
+    @Environment(AppSettings.self) private var settings
     let index: Int
     let engine: ReaderEngine
     let isCurrent: Bool
@@ -56,6 +57,7 @@ private struct PageThumbnailCell: View {
                         Image(decorative: image, scale: 1, orientation: .up)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
+                            .pageFilter(settings.pageFilter)
                     } else {
                         ProgressView()
                     }
@@ -91,6 +93,8 @@ extension View {
         switch filter {
         case .none: self
         case .sepia: self.colorMultiply(Color(red: 1.0, green: 0.93, blue: 0.80))
+        case .tan: self.colorMultiply(Color(red: 0.78, green: 0.62, blue: 0.43))
+        case .red: self.colorMultiply(Color(red: 0.72, green: 0.20, blue: 0.12))
         case .dim: self.brightness(-0.28)
         // Inverting keeps line art readable white-on-black; turning the hue back round keeps a
         // colour page's reds red.
