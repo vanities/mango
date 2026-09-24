@@ -152,3 +152,28 @@ struct PanAxes: Equatable, Sendable {
                height: committed.height + vertical.sign * translation.height)
     }
 }
+
+/// Built-in fonts need no downloads and remain available offline.
+enum NovelFont: String, CaseIterable, Sendable {
+    case publisher, book, classic, rounded, system
+
+    var label: String {
+        switch self {
+        case .publisher: "Publisher"
+        case .book: "Book (Georgia)"
+        case .classic: "Classic (Palatino)"
+        case .rounded: "Rounded"
+        case .system: "System"
+        }
+    }
+
+    var css: String {
+        switch self {
+        case .publisher: "inherit"
+        case .book: "Georgia, serif"
+        case .classic: "Palatino, serif"
+        case .rounded: "ui-rounded, system-ui, sans-serif"
+        case .system: "system-ui, sans-serif"
+        }
+    }
+}
