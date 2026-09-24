@@ -16,13 +16,14 @@ struct StatsView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if stats.isEmpty {
+                if stats.isEmpty && !activity.hasActivity {
                     ContentUnavailableView("Nothing to count yet", systemImage: "chart.bar",
                                            description: Text("Add some comics in Sources and this fills in."))
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 24) {
                             headline
+                            ReadingInsightsView()
                             goalCard
                             if activity.hasActivity {
                                 timeCard
@@ -159,7 +160,7 @@ struct StatsView: View {
     private var headline: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
             StatTile("\(stats.finishedVolumes)", "Volumes finished", systemImage: "checkmark.circle.fill", tint: .green)
-            StatTile(stats.pagesRead.formatted(), "Pages read", systemImage: "doc.text.fill", tint: .accentColor)
+            StatTile(stats.pagesRead.formatted(), "Comic pages read", systemImage: "doc.text.fill", tint: .accentColor)
             StatTile(Durations.short(activity.totalSeconds), "Time reading", systemImage: "clock.fill", tint: .blue)
             StatTile("\(activity.currentStreak) day\(activity.currentStreak == 1 ? "" : "s")", "Current streak", systemImage: "flame.fill", tint: .red)
             StatTile("\(stats.finishedSeries)", "Series completed", systemImage: "books.vertical.fill", tint: .purple)

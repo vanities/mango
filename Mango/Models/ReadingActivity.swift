@@ -79,6 +79,9 @@ struct SessionRecorder: Sendable {
         lastTick = now
     }
 
+    /// A deliberate jump is navigation, not evidence that all the skipped pages were read.
+    mutating func jump(to page: Int) { furthestPage = max(furthestPage, page) }
+
     /// The app went to the background: count what's accrued and stop the clock.
     mutating func pause(now: Date = .now) {
         if let lastTick {

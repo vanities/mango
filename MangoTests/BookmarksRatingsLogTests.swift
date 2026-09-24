@@ -22,6 +22,16 @@ final class BookmarksRatingsLogTests: XCTestCase {
                           rating: rating)
     }
 
+    func testNovelChaptersNeverCountAsComicPages() {
+        var novel = item(rating: nil)
+        novel.isNovel = true
+        let stats = ReadingStats.build([novel, item(rating: nil)], log: [
+            ReadingLogEntry(title: "Novel", isNovel: true, finishedAt: .now, pages: 300)
+        ])
+        XCTAssertEqual(stats.finishedVolumes, 3)
+        XCTAssertEqual(stats.pagesRead, 100)
+    }
+
     func testAverageAndDistribution() {
         let stats = ReadingStats.build([item(rating: 5), item(rating: 4), item(rating: 4), item(rating: nil)])
         XCTAssertEqual(stats.ratedCount, 3)

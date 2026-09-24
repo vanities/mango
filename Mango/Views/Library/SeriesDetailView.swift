@@ -41,6 +41,20 @@ struct SeriesDetailView: View {
                 }
             }
 
+            if shelf.comics.count > 1 {
+                Section("Series progress") {
+                    let finished = shelf.comics.filter { library.progress(for: $0)?.finished == true }.count
+                    ProgressView(value: Double(finished), total: Double(shelf.comics.count)) {
+                        Text("\(finished) of \(shelf.comics.count) finished")
+                    }
+                    if let current = library.nextUp(in: shelf) {
+                        LabeledContent("Continue", value: current.numberLabel ?? current.title)
+                        if let next = library.nextInSeries(after: current) {
+                            LabeledContent("Next", value: next.numberLabel ?? next.title)
+                        }
+                    }
+                }
+            }
             Section("Volumes") {
                 ForEach(shelf.comics) { comic in
                     Button { readingComic = comic } label: {
@@ -212,7 +226,7 @@ struct VolumeRow: View {
                 HStack(spacing: 6) {
                     Text(comic.formatLabel)
                     if let pages = comic.pageCount {
-                        Text("· \(pages) pages")
+                        Text("· \(pages) \(comic.isNovel ? "chapters" : "pages")")
                     }
                 }
                 .font(.caption2)

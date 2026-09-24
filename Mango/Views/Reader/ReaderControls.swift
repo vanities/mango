@@ -120,14 +120,18 @@ struct ReaderControls: View {
 
     private var bottomBar: some View {
         HStack(spacing: 12) {
+            if let page = engine.jumpOrigin {
+                button("arrow.uturn.backward", label: "Return to page \(page + 1)") { engine.undoJump() }
+            }
             if engine.groups.count > 1 {
                 Slider(
                     value: Binding(
                         get: { Double(engine.groupIndex) },
-                        set: { engine.goToGroup(Int($0.rounded())); engine.keepControlsAwake() }
+                        set: { engine.scrub(to: Int($0.rounded())); engine.keepControlsAwake() }
                     ),
                     in: 0...Double(max(1, engine.groups.count - 1)),
-                    step: 1
+                    step: 1,
+                    onEditingChanged: { if $0 { engine.beginJump() } }
                 )
                 // The slider runs the way the pages do, so dragging "forward" is the same
                 // gesture as turning forward.

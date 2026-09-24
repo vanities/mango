@@ -53,7 +53,7 @@ struct NovelReaderView: View {
                         }
                     )
                     .ignoresSafeArea()
-                    .id("\(chapter.path)-\(settings.novelPaged)")
+                    .id("\(chapter.path)-\(settings.novelPaged)-\(engine.jumpID)")
 
                     NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close)
                 }
@@ -217,13 +217,18 @@ struct NovelControls: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 12) {
+                if engine.jumpOrigin != nil {
+                    button("arrow.uturn.backward", label: "Undo position jump") { engine.undoJump() }
+                }
                 Button { engine.previousChapter() } label: { Image(systemName: "chevron.left") }
                     .disabled(engine.chapterIndex <= 0)
-                Text(engine.positionLabel)
-                    .font(.caption.weight(.medium))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 2) {
+                    Text(engine.positionLabel).font(.caption.weight(.medium)).monospacedDigit()
+                    if settings.showReadingEstimates, let minutes = engine.chapterMinutesRemaining {
+                        Text("~\(minutes) min left in chapter").font(.caption2)
+                            .accessibilityLabel("About \(minutes) minutes left, estimated at 220 words per minute")
+                    }
+                }.foregroundStyle(.secondary).frame(maxWidth: .infinity)
                 Button { engine.nextChapter() } label: { Image(systemName: "chevron.right") }
             }
             .padding(.horizontal, 18)
@@ -259,6 +264,7 @@ struct ChapterListView: View {
         NavigationStack {
             List {
                 Section("Reading") {
+                    Toggle("Show chapter time estimate", isOn: Bindable(settings).showReadingEstimates)
                     Toggle("Turn pages like a book", isOn: Bindable(settings).novelPaged)
                     Toggle("Tap edges to turn", isOn: Bindable(settings).tapToTurn)
                     Picker("Font", selection: Bindable(settings).novelFont) {

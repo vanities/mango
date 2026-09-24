@@ -64,6 +64,7 @@ final class AppSettings {
     /// Identifies this device's slot in the synced activity totals. Stable across launches.
     @ObservationIgnored let deviceID: String
     /// Light-novel typography and navigation, saved on this device.
+    var showReadingEstimates: Bool { didSet { defaults.set(showReadingEstimates, forKey: "reader.showEstimates") } }
     var novelFont: NovelFont { didSet { defaults.set(novelFont.rawValue, forKey: "reader.novelFont") } }
     var novelLineSpacing: Double { didSet { defaults.set(novelLineSpacing, forKey: "reader.novelLineSpacing") } }
     var novelMargin: Double { didSet { defaults.set(novelMargin, forKey: "reader.novelMargin") } }
@@ -102,6 +103,7 @@ final class AppSettings {
         lockMode = LockMode(rawValue: defaults.string(forKey: Key.lockMode) ?? "") ?? .off
         removeFinishedDownloads = defaults.object(forKey: Key.removeFinished) as? Bool ?? false
         pageFilter = PageFilter(rawValue: defaults.string(forKey: Key.pageFilter) ?? "") ?? .none
+        showReadingEstimates = defaults.object(forKey: "reader.showEstimates") as? Bool ?? true
         novelFont = NovelFont(rawValue: defaults.string(forKey: "reader.novelFont") ?? "") ?? .book
         novelLineSpacing = defaults.object(forKey: "reader.novelLineSpacing") as? Double ?? 1.6
         novelMargin = defaults.object(forKey: "reader.novelMargin") as? Double ?? 22

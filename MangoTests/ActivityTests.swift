@@ -11,6 +11,16 @@ final class SessionRecorderTests: XCTestCase {
                               year: nil, subtitle: nil, pageCount: 100, totalBytes: 1,
                               addedAt: Date(), coverID: nil)
 
+    func testJumpDoesNotInflateReadPagesOrPace() {
+        var recorder = SessionRecorder(startingAt: 0, now: at(0))
+        recorder.tick(page: 1, now: at(30))
+        recorder.jump(to: 90)
+        recorder.tick(page: 90, now: at(31))
+        XCTAssertEqual(recorder.pagesTurned, 1)
+        recorder.tick(page: 91, now: at(60))
+        XCTAssertEqual(recorder.pagesTurned, 2)
+    }
+
     func testCountsTimeBetweenTurns() {
         var recorder = SessionRecorder(startingAt: 0, now: at(0))
         recorder.tick(page: 1, now: at(30))

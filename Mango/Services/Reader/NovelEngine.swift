@@ -30,6 +30,23 @@ final class NovelEngine {
         }
     }
     var showsControls = true
+    private(set) var jumpOrigin: (chapter: Int, fraction: Double)?
+    private(set) var jumpID = 0
+    private(set) var chapterWords = 0
+    var chapterMinutesRemaining: Int? {
+        guard chapterWords > 0 else { return nil }
+        return max(1, Int(ceil(Double(chapterWords) * max(0, 1 - scrollFraction) / 220)))
+    }
+
+    func undoJump() {
+        guard let origin = jumpOrigin else { return }
+        jumpOrigin = nil
+        pendingJumpFraction = origin.fraction
+        scrollFraction = origin.fraction
+        chapterIndex = origin.chapter
+        jumpID += 1
+        keepControlsAwake()
+    }
     private(set) var reachedEnd = false
     @ObservationIgnored var onReachedEnd: (@MainActor () -> Void)?
 
@@ -94,6 +111,7 @@ final class NovelEngine {
                 chapterIndex = saved.page
                 scrollFraction = saved.fractionInChapter
             }
+            countChapterWords()
             isOpening = false
             Logger.reader.info("[novel] opened \(self.comic.title, privacy: .public) chapters=\(self.chapters.count) in \(sw.ms, format: .fixed(precision: 0))ms")
             keepControlsAwake()
@@ -123,6 +141,7 @@ final class NovelEngine {
         }
         // A bookmark jump's landing point applies to that one load only; turning the chapter
         // afterwards must start at the top, not wherever the bookmark was.
+        jumpOrigin = (chapterIndex, scrollFraction)
         pendingJumpFraction = 0
         scrollFraction = 0
         chapterIndex += 1
@@ -130,6 +149,7 @@ final class NovelEngine {
 
     func previousChapter(atEnd: Bool = false) {
         guard chapterIndex > 0 else { return }
+        jumpOrigin = (chapterIndex, scrollFraction)
         pendingJumpFraction = atEnd ? 1 : 0
         scrollFraction = pendingJumpFraction
         chapterIndex -= 1
@@ -137,6 +157,7 @@ final class NovelEngine {
 
     func goToChapter(_ index: Int) {
         guard chapters.indices.contains(index), index != chapterIndex else { return }
+        jumpOrigin = (chapterIndex, scrollFraction)
         pendingJumpFraction = 0
         scrollFraction = 0
         chapterIndex = index
@@ -168,6 +189,8 @@ final class NovelEngine {
 
     func go(to bookmark: Bookmark) {
         guard chapters.indices.contains(bookmark.page) else { return }
+        jumpOrigin = (chapterIndex, scrollFraction)
+        jumpID += 1
         pendingJumpFraction = bookmark.fraction ?? 0
         if chapterIndex == bookmark.page {
             scrollFraction = pendingJumpFraction
@@ -248,7 +271,22 @@ final class NovelEngine {
 
     // MARK: Internals
 
+    private func countChapterWords() {
+        chapterWords = 0
+        guard let document else { return }
+        let index = chapterIndex
+        Task { [weak self] in
+            guard let data = await document.chapterHTML(at: index),
+                  let html = String(data: data, encoding: .utf8) else { return }
+            let prose = html.replacingOccurrences(of: "(?is)<(script|style)[^>]*>.*?</\\1>", with: " ", options: .regularExpression)
+                .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+            guard let self, self.chapterIndex == index else { return }
+            self.chapterWords = prose.split(whereSeparator: \.isWhitespace).count
+        }
+    }
+
     private func onChapterChanged() {
+        countChapterWords()
         if showsControls { keepControlsAwake() }
         scheduleSave()
     }
