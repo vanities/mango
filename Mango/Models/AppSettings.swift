@@ -63,7 +63,11 @@ final class AppSettings {
     var yearlyGoal: Int { didSet { defaults.set(yearlyGoal, forKey: Key.yearlyGoal) } }
     /// Identifies this device's slot in the synced activity totals. Stable across launches.
     @ObservationIgnored let deviceID: String
-    /// Body text size in the novel reader, as a multiplier on the book's own size.
+    /// Light-novel typography and navigation, saved on this device.
+    var novelFont: NovelFont { didSet { defaults.set(novelFont.rawValue, forKey: "reader.novelFont") } }
+    var novelLineSpacing: Double { didSet { defaults.set(novelLineSpacing, forKey: "reader.novelLineSpacing") } }
+    var novelMargin: Double { didSet { defaults.set(novelMargin, forKey: "reader.novelMargin") } }
+    var novelPaged: Bool { didSet { defaults.set(novelPaged, forKey: "reader.novelPaged") } }
     var novelFontScale: Double { didSet { defaults.set(novelFontScale, forKey: Key.novelFontScale) } }
     var librarySort: LibrarySort { didSet { defaults.set(librarySort.rawValue, forKey: Key.sort) } }
     var libraryLayout: LibraryLayout { didSet { defaults.set(libraryLayout.rawValue, forKey: Key.layout) } }
@@ -98,6 +102,10 @@ final class AppSettings {
         lockMode = LockMode(rawValue: defaults.string(forKey: Key.lockMode) ?? "") ?? .off
         removeFinishedDownloads = defaults.object(forKey: Key.removeFinished) as? Bool ?? false
         pageFilter = PageFilter(rawValue: defaults.string(forKey: Key.pageFilter) ?? "") ?? .none
+        novelFont = NovelFont(rawValue: defaults.string(forKey: "reader.novelFont") ?? "") ?? .book
+        novelLineSpacing = defaults.object(forKey: "reader.novelLineSpacing") as? Double ?? 1.6
+        novelMargin = defaults.object(forKey: "reader.novelMargin") as? Double ?? 22
+        novelPaged = defaults.object(forKey: "reader.novelPaged") as? Bool ?? true
         novelFontScale = defaults.object(forKey: Key.novelFontScale) as? Double ?? 1.0
         yearlyGoal = defaults.object(forKey: Key.yearlyGoal) as? Int ?? 50
         if let existing = defaults.string(forKey: Key.deviceID) {

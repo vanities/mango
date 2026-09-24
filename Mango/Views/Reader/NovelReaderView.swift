@@ -37,16 +37,23 @@ struct NovelReaderView: View {
                         chapterPath: chapter.path,
                         fontScale: settings.novelFontScale,
                         dark: dark,
+                        paged: settings.novelPaged,
+                        tapToTurn: settings.tapToTurn,
+                        fontFamily: settings.novelFont == .publisher ? "" : settings.novelFont.css,
+                        lineSpacing: settings.novelLineSpacing,
+                        margin: settings.novelMargin,
                         restoreFraction: engine.pendingJumpFraction > 0 ? engine.pendingJumpFraction : engine.scrollFraction,
                         onScroll: { engine.scrollFraction = $0 },
                         onTapMiddle: { engine.toggleControls() },
+                        onNextChapter: { engine.nextChapter() },
+                        onPreviousChapter: { engine.previousChapter(atEnd: true) },
                         onReachedBottom: {
                             // Reaching the bottom of the last chapter is the end of the book.
                             if engine.isAtLastChapter { engine.notifyReachedEnd() }
                         }
                     )
                     .ignoresSafeArea()
-                    .id(chapter.path)
+                    .id("\(chapter.path)-\(settings.novelPaged)")
 
                     NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close)
                 }
@@ -195,7 +202,7 @@ struct NovelControls: View {
                        label: engine.isHereBookmarked ? "Remove bookmark" : "Bookmark this spot") {
                     engine.toggleBookmark()
                 }
-                button("list.bullet", label: "Chapters") {
+                button("list.bullet", label: "Chapters and reading settings") {
                     showingChapters = true
                     engine.keepControlsAwake()
                 }
@@ -244,12 +251,32 @@ struct NovelControls: View {
 }
 
 struct ChapterListView: View {
+    @Environment(AppSettings.self) private var settings
     @Bindable var engine: NovelEngine
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             List {
+                Section("Reading") {
+                    Toggle("Turn pages like a book", isOn: Bindable(settings).novelPaged)
+                    Toggle("Tap edges to turn", isOn: Bindable(settings).tapToTurn)
+                    Picker("Font", selection: Bindable(settings).novelFont) {
+                        ForEach(NovelFont.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    LabeledContent("Text size", value: "\(Int(settings.novelFontScale * 100))%")
+                    Slider(value: Bindable(settings).novelFontScale, in: 0.7...2, step: 0.1) {
+                        Text("Text size")
+                    }
+                    LabeledContent("Line spacing", value: settings.novelLineSpacing.formatted(.number.precision(.fractionLength(1))))
+                    Slider(value: Bindable(settings).novelLineSpacing, in: 1.2...2.2, step: 0.1) {
+                        Text("Line spacing")
+                    }
+                    LabeledContent("Margins", value: "\(Int(settings.novelMargin))")
+                    Slider(value: Bindable(settings).novelMargin, in: 12...48, step: 2) {
+                        Text("Margins")
+                    }
+                }
                 if !engine.bookmarks.isEmpty {
                     Section("Bookmarks") {
                         ForEach(engine.bookmarks) { mark in
@@ -286,7 +313,7 @@ struct ChapterListView: View {
                 }
                 }
             }
-            .navigationTitle("Chapters")
+            .navigationTitle("Reading")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }

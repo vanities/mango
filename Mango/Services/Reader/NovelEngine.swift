@@ -128,10 +128,10 @@ final class NovelEngine {
         chapterIndex += 1
     }
 
-    func previousChapter() {
+    func previousChapter(atEnd: Bool = false) {
         guard chapterIndex > 0 else { return }
-        pendingJumpFraction = 0
-        scrollFraction = 0
+        pendingJumpFraction = atEnd ? 1 : 0
+        scrollFraction = pendingJumpFraction
         chapterIndex -= 1
     }
 
