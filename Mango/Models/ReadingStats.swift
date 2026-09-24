@@ -85,9 +85,9 @@ struct ReadingStats: Equatable, Sendable {
             }
 
             // A finished comic counts every page; an open one counts as far as you've got.
-            if finished {
+            if finished && !item.isNovel {
                 stats.pagesRead += item.pageCount ?? progress?.pageCount ?? 0
-            } else if let progress, progress.isStarted {
+            } else if !item.isNovel, let progress, progress.isStarted {
                 stats.pagesRead += progress.page
             }
 
@@ -109,7 +109,7 @@ struct ReadingStats: Equatable, Sendable {
         for entry in log {
             stats.loggedBooks += 1
             stats.finishedVolumes += 1
-            stats.pagesRead += entry.pages ?? 0
+            if !entry.isNovel { stats.pagesRead += entry.pages ?? 0 }
             finishDates.append(entry.finishedAt)
             if let rating = entry.rating, (1...5).contains(rating) { ratings.append(rating) }
             mediumCounts[entry.isNovel ? "Novels" : "Manga", default: 0] += 1

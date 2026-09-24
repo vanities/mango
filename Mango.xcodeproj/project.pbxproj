@@ -29,6 +29,7 @@
 		237B506B1A4AEAF1A8AFA169 /* EditComicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F577D1086DFE59CA7E30B2 /* EditComicView.swift */; };
 		24BCF8D5ABAD435C12411166 /* NASSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E57AF5756D814DC395CD5C15 /* NASSetupView.swift */; };
 		253854F185F23FBE87F3BE7C /* LogBookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76612A65E1B788AC439B8339 /* LogBookView.swift */; };
+		25F1AF9E5B545C0DEEDF0944 /* ReadingInsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F583CB5770F18D9AD67C82 /* ReadingInsightsView.swift */; };
 		28040003F9A50C9E397B03FA /* ComicInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850C21986BD7FEAF69E55374 /* ComicInfo.swift */; };
 		28209DC6B56A22C1B4231B43 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3EED7A5A833B0ECB7558CAD1 /* Assets.xcassets */; };
 		2A41C7DBD35175D82D875F9B /* ReadingListViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B735B2CD88FDF644B2D5BA90 /* ReadingListViews.swift */; };
@@ -230,6 +231,7 @@
 		6A3054D3D409674E41BCE15F /* BookmarksRatingsLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksRatingsLogTests.swift; sourceTree = "<group>"; };
 		6D51D5B1DE8F484A69F39007 /* LibraryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryState.swift; sourceTree = "<group>"; };
 		6E6E70FA8B2118AFE3D7C496 /* LibraryStateCompatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStateCompatTests.swift; sourceTree = "<group>"; };
+		71F583CB5770F18D9AD67C82 /* ReadingInsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingInsightsView.swift; sourceTree = "<group>"; };
 		74FC0AD5C92133DC59D9BEC8 /* CoverSearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearchTests.swift; sourceTree = "<group>"; };
 		76612A65E1B788AC439B8339 /* LogBookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogBookView.swift; sourceTree = "<group>"; };
 		76EAFA568AFDF3AD92E89998 /* ReadingListTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingListTests.swift; sourceTree = "<group>"; };
@@ -604,6 +606,7 @@
 			children = (
 				A98CDFC6AEDF0059741C1FDF /* GoalEditor.swift */,
 				76612A65E1B788AC439B8339 /* LogBookView.swift */,
+				71F583CB5770F18D9AD67C82 /* ReadingInsightsView.swift */,
 				F88DA7CD560BCF2F67B60623 /* StatsView.swift */,
 			);
 			path = Stats;
@@ -844,6 +847,7 @@
 				49BA93688AE2702B1FC6CD70 /* ReaderRouter.swift in Sources */,
 				5DEA74AF015A28D4ADFB7CCF /* ReaderView.swift in Sources */,
 				DFA6C2015E4309917275DD52 /* ReadingActivity.swift in Sources */,
+				25F1AF9E5B545C0DEEDF0944 /* ReadingInsightsView.swift in Sources */,
 				DC107FE04D876CE44C5A1054 /* ReadingList.swift in Sources */,
 				2A41C7DBD35175D82D875F9B /* ReadingListViews.swift in Sources */,
 				D789FF35D794EAD467F8952E /* ReadingProgress.swift in Sources */,
@@ -1215,7 +1219,7 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.10.0;
+				version = 0.11.0;
 			};
 		};
 		7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */ = {

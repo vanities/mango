@@ -334,6 +334,20 @@ final class ReaderEngine {
     /// `readingPage(_:)` instead, which leaves this alone: a strip that took its own reports as
     /// jumps would chase them, and did (open at page 2 → 1 → 2 → 1).
     private(set) var jumpCount = 0
+    private(set) var jumpOrigin: Int?
+
+    func beginJump() { jumpOrigin = currentPage }
+    func scrub(to group: Int) {
+        if groups.indices.contains(group), let page = groups[group].first { recorder?.jump(to: page) }
+        goToGroup(group)
+    }
+    func undoJump() {
+        guard let page = jumpOrigin else { return }
+        jumpOrigin = nil
+        recorder?.jump(to: page)
+        goToGroup(SpreadLayout.groupIndex(containing: page, in: groups))
+        keepControlsAwake()
+    }
 
     func goToGroup(_ index: Int) {
         guard groups.indices.contains(index) else { return }
@@ -342,6 +356,9 @@ final class ReaderEngine {
     }
 
     func goToPage(_ page: Int) {
+        guard page != currentPage else { return }
+        beginJump()
+        recorder?.jump(to: page)
         goToGroup(SpreadLayout.groupIndex(containing: page, in: groups))
     }
 
