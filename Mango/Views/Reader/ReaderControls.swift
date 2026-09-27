@@ -159,6 +159,7 @@ struct ReaderControls: View {
 
 /// Per-comic reader options, reachable without leaving the page you're on.
 struct ReaderSettingsSheet: View {
+    @State private var selectingText = false
     @Bindable var engine: ReaderEngine
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
@@ -167,6 +168,7 @@ struct ReaderSettingsSheet: View {
         @Bindable var settings = settings
         NavigationStack {
             Form {
+                Section { Button("Select text on this page", systemImage: "text.viewfinder") { selectingText = true } }
                 Section {
                     Picker("Page tint", selection: $settings.pageFilter) {
                         ForEach(PageFilter.allCases, id: \.self) { Text($0.label).tag($0) }
@@ -254,6 +256,7 @@ struct ReaderSettingsSheet: View {
                     Text("More pages ahead means instant turns and more memory. Three is a good balance over a network.")
                 }
             }
+            .sheet(isPresented: $selectingText) { LiveTextPageView(engine: engine, index: engine.currentPage) }
             .navigationTitle("Reading")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

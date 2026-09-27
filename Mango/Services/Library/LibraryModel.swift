@@ -27,9 +27,9 @@ final class LibraryModel {
 
     /// Resolved security-scoped roots, held for the app's lifetime so scanning and reading can
     /// both reach the files. The scope is released in `removeSource`.
-    @ObservationIgnored private var roots: [UUID: URL] = [:]
-    @ObservationIgnored private var scopedURLs: [UUID: URL] = [:]
-    @ObservationIgnored private var clients: [UUID: NASClient] = [:]
+    @ObservationIgnored var roots: [UUID: URL] = [:]
+    @ObservationIgnored var scopedURLs: [UUID: URL] = [:]
+    @ObservationIgnored var clients: [UUID: NASClient] = [:]
     @ObservationIgnored var ownFolderWatcher: FolderWatcher?
     @ObservationIgnored var pendingOpen: (sourceID: UUID, path: String?, date: Date)?
     @ObservationIgnored private var queuedScanIDs: Set<UUID> = []
@@ -197,7 +197,7 @@ final class LibraryModel {
             case .appDocuments, .folder, .file:
                 guard let root = root(for: source) else {
                     if let index = state.sources.firstIndex(where: { $0.id == source.id }) {
-                        state.sources[index].lastError = "Couldn't reach this folder any more."
+                        state.sources[index].lastError = "Couldn't reach this folder. Reconnect it in Library tools."
                     }
                     continue
                 }
@@ -221,6 +221,9 @@ final class LibraryModel {
             state.sources[index].lastScanUnreadable = result.unreadable.isEmpty ? nil : result.unreadable
             state.sources[index].lastError = result.error
             if result.error == nil {
+                state.tools.recordScan(source: source.id, keys: Set(result.comics.map(\.syncKey)),
+                                       previousKeys: Set(state.comics.map(\.syncKey)),
+                                       hadPreviousScan: source.lastScanAt != nil)
                 scanned.insert(source.id)
                 found.append(contentsOf: result.comics)
             }

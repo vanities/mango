@@ -18,6 +18,10 @@ struct NovelWebView: UIViewRepresentable {
     var margin: Double
     /// Where in the chapter to restore to, 0...1. Applied once per chapter load.
     var restoreFraction: Double
+    var highlights: [NovelTextAnchor] = []
+    var jumpAnchor: NovelTextAnchor?
+    var findRequest: Int = 0
+    var onSelection: (NovelTextAnchor) -> Void = { _ in }
     var onScroll: (Double) -> Void
     var onTapMiddle: () -> Void
     var onNextChapter: () -> Void
@@ -33,6 +37,7 @@ struct NovelWebView: UIViewRepresentable {
         configuration.userContentController.add(context.coordinator, name: "mangoNavigation")
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.isFindInteractionEnabled = true
         webView.navigationDelegate = context.coordinator
         webView.scrollView.delegate = context.coordinator
         // .always, not .never: a comic page should run under the notch, but a line of prose
@@ -55,6 +60,13 @@ struct NovelWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
+        if context.coordinator.lastFindRequest != findRequest {
+            context.coordinator.lastFindRequest = findRequest
+            webView.findInteraction?.presentFindNavigator(showingReplace: false)
+        }
+        if context.coordinator.lastHighlights != highlights {
+            context.coordinator.paintHighlights()
+        }
         if context.coordinator.loadedPath != chapterPath {
             context.coordinator.loadedPath = chapterPath
             context.coordinator.pendingRestore = restoreFraction
@@ -200,6 +212,26 @@ struct NovelWebView: UIViewRepresentable {
         var appliedStyle: String?
         var pendingRestore: Double = 0
         private var reportedBottom = false
+        var lastFindRequest = 0
+        var lastHighlights: [NovelTextAnchor] = []
+
+        func paintHighlights() {
+            guard let data = try? JSONEncoder().encode(parent.highlights), let json = String(data: data, encoding: .utf8) else { return }
+            webView?.evaluateJavaScript("window.mangoText?.paint(\(json))")
+            lastHighlights = parent.highlights
+        }
+
+        func prepareTextTools() {
+            guard let webView else { return }
+            webView.evaluateJavaScript(NovelTextScript.source) { [weak self] _, _ in
+                guard let self else { return }
+                self.paintHighlights()
+                if let anchor = self.parent.jumpAnchor,
+                   let data = try? JSONEncoder().encode(anchor), let json = String(data: data, encoding: .utf8) {
+                    webView.evaluateJavaScript("document.fonts.ready.then(() => window.mangoText.jump(\(json)))")
+                }
+            }
+        }
 
         init(_ parent: NovelWebView) {
             self.parent = parent
@@ -222,8 +254,10 @@ struct NovelWebView: UIViewRepresentable {
             })();
             """
             webView.evaluateJavaScript(js) { [weak self] _, _ in
-                guard let self, self.parent.paged else { return }
-                webView.evaluateJavaScript(self.parent.paginationScript)
+                guard let self else { return }
+                if self.parent.paged {
+                    webView.evaluateJavaScript(self.parent.paginationScript) { [weak self] _, _ in self?.prepareTextTools() }
+                } else { self.prepareTextTools() }
             }
             appliedStyle = parent.styleKey
         }
@@ -235,7 +269,7 @@ struct NovelWebView: UIViewRepresentable {
             // Restore after layout settles, or the content height is still zero.
             let fraction = pendingRestore
             pendingRestore = 0
-            guard fraction > 0.001 else { return }
+            guard fraction > 0.001, parent.jumpAnchor == nil else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak webView] in
                 guard let scroll = webView?.scrollView else { return }
                 let reachable = max(0, scroll.contentSize.height - scroll.bounds.height)
@@ -259,6 +293,12 @@ struct NovelWebView: UIViewRepresentable {
             guard message.frameInfo.isMainFrame,
                   let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
             switch action {
+            case "selection":
+                if let value = body["anchor"] as? [String: Any], let quote = value["quote"] as? String,
+                   let offset = value["offset"] as? Int, offset >= 0, !quote.isEmpty, quote.utf16.count <= 10000 {
+                    parent.onSelection(NovelTextAnchor(quote: quote, prefix: String((value["prefix"] as? String ?? "").suffix(32)),
+                                                       suffix: String((value["suffix"] as? String ?? "").prefix(32)), offset: offset))
+                }
             case "progress":
                 if let fraction = body["fraction"] as? Double { parent.onScroll(fraction) }
             case "next": parent.onNextChapter()

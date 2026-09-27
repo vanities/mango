@@ -8,11 +8,13 @@ struct Bookmark: Identifiable, Codable, Hashable, Sendable {
     var page: Int
     /// For novels only: how far down that chapter, 0...1. A novel has no page numbers.
     var fraction: Double?
+    var anchor: NovelTextAnchor?
     var note: String
     var createdAt: Date
 
     init(id: String = UUID().uuidString, page: Int, fraction: Double? = nil, note: String = "",
-         createdAt: Date = .now) {
+         createdAt: Date = .now, anchor: NovelTextAnchor? = nil) {
+        self.anchor = anchor
         self.id = id
         self.page = page
         self.fraction = fraction
@@ -25,6 +27,7 @@ struct Bookmark: Identifiable, Codable, Hashable, Sendable {
         id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
         page = try c.decodeIfPresent(Int.self, forKey: .page) ?? 0
         fraction = try c.decodeIfPresent(Double.self, forKey: .fraction)
+        anchor = try c.decodeIfPresent(NovelTextAnchor.self, forKey: .anchor)
         note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
     }

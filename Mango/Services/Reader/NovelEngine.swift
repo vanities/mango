@@ -39,6 +39,7 @@ final class NovelEngine {
     }
 
     func undoJump() {
+        pendingTextAnchor = nil
         guard let origin = jumpOrigin else { return }
         jumpOrigin = nil
         pendingJumpFraction = origin.fraction
@@ -135,6 +136,7 @@ final class NovelEngine {
     // MARK: Navigation
 
     func nextChapter() {
+        pendingTextAnchor = nil
         guard !isAtLastChapter else {
             notifyReachedEnd()
             return
@@ -148,6 +150,7 @@ final class NovelEngine {
     }
 
     func previousChapter(atEnd: Bool = false) {
+        pendingTextAnchor = nil
         guard chapterIndex > 0 else { return }
         jumpOrigin = (chapterIndex, scrollFraction)
         pendingJumpFraction = atEnd ? 1 : 0
@@ -156,6 +159,7 @@ final class NovelEngine {
     }
 
     func goToChapter(_ index: Int) {
+        pendingTextAnchor = nil
         guard chapters.indices.contains(index), index != chapterIndex else { return }
         jumpOrigin = (chapterIndex, scrollFraction)
         pendingJumpFraction = 0
@@ -175,11 +179,11 @@ final class NovelEngine {
     var bookmarks: [Bookmark] { library.bookmarks(for: comic) }
 
     var isHereBookmarked: Bool {
-        bookmarks.contains { $0.page == chapterIndex && abs(($0.fraction ?? 0) - scrollFraction) < 0.02 }
+        bookmarks.contains { $0.anchor == nil && $0.page == chapterIndex && abs(($0.fraction ?? 0) - scrollFraction) < 0.02 }
     }
 
     func toggleBookmark() {
-        if let here = bookmarks.first(where: { $0.page == chapterIndex && abs(($0.fraction ?? 0) - scrollFraction) < 0.02 }) {
+        if let here = bookmarks.first(where: { $0.anchor == nil && $0.page == chapterIndex && abs(($0.fraction ?? 0) - scrollFraction) < 0.02 }) {
             library.removeBookmark(here, from: comic)
         } else {
             library.addBookmark(page: chapterIndex, fraction: scrollFraction, to: comic)
@@ -191,6 +195,7 @@ final class NovelEngine {
         guard chapters.indices.contains(bookmark.page) else { return }
         jumpOrigin = (chapterIndex, scrollFraction)
         jumpID += 1
+        pendingTextAnchor = bookmark.anchor
         pendingJumpFraction = bookmark.fraction ?? 0
         if chapterIndex == bookmark.page {
             scrollFraction = pendingJumpFraction
@@ -205,6 +210,8 @@ final class NovelEngine {
 
     /// Where to land in a chapter being jumped to from a bookmark, handed to the web view once.
     var pendingJumpFraction: Double = 0
+    var pendingTextAnchor: NovelTextAnchor?
+    var findRequest = 0
 
     // MARK: Chrome
 

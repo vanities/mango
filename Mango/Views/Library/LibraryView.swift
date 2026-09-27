@@ -13,6 +13,7 @@ struct LibraryView: View {
     @State private var readingComic: Comic?
     @State private var medium: Medium = .manga
     @State private var showingLists = false
+    @State private var showingTools = false
     @State private var showingOffline = false
     @State private var showingBookmarks = false
     @State private var showingPicker = false
@@ -66,6 +67,7 @@ struct LibraryView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
+                        Button("Library tools…", systemImage: "suitcase") { showingTools = true }
                         Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
                         Divider()
                         Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: $settings.librarySort) {
@@ -86,6 +88,7 @@ struct LibraryView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingTools) { NavigationStack { LibraryToolsView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingTools = false } } } } }
             .sheet(isPresented: $showingOffline) { OfflineLibraryView() }
             .sheet(isPresented: $showingBookmarks) { BookmarkSearchView() }
             .navigationDestination(isPresented: $showingLists) { ReadingListsView() }

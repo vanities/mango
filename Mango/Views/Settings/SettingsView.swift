@@ -11,6 +11,7 @@ struct SettingsView: View {
         @Bindable var settings = settings
         NavigationStack {
             Form {
+                Section("Library tools") { NavigationLink("Library tools") { LibraryToolsView() } }
                 Section("Reading") {
                     Picker("Default direction", selection: $settings.defaultDirection) {
                         ForEach(ReadingDirection.allCases, id: \.self) { Text($0.label).tag($0) }

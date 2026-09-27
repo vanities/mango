@@ -5,6 +5,21 @@ import ShelfKit
 /// Forward and backward compatibility of the one file that holds everything the user did.
 /// Losing this file loses reading positions, so these cases are load-bearing.
 final class LibraryStateCompatTests: XCTestCase {
+    func testLibraryToolsDecodeOlderStateAndRoundTrip() throws {
+        let old = try JSONDecoder().decode(LibraryState.self, from: Data("{}".utf8))
+        XCTAssertTrue(old.tools.smartShelves.isEmpty)
+        XCTAssertTrue(old.tools.arrivals.isEmpty)
+        var state = old
+        state.tools.smartShelves = [SmartShelf(name: "Trip", rule: .downloadedUnfinished)]
+        let decoded = try JSONDecoder().decode(LibraryState.self, from: JSONEncoder().encode(state))
+        XCTAssertEqual(decoded.tools.smartShelves.first?.name, "Trip")
+        let mark = try JSONDecoder().decode(Bookmark.self, from: Data(#"{"page":1}"#.utf8))
+        XCTAssertNil(mark.anchor)
+        let highlight = Bookmark(page: 2, note: "Note", anchor: NovelTextAnchor(quote: "hello", offset: 100))
+        let restored = try JSONDecoder().decode(Bookmark.self, from: JSONEncoder().encode(highlight))
+        XCTAssertEqual(restored.anchor?.quote, "hello")
+    }
+
     private func decode(_ json: String) throws -> LibraryState {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

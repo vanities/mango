@@ -99,6 +99,43 @@ A downloaded volume replaces its copy on the share in the library rather than ap
 and it takes your reading position with it — download something you're halfway through and
 you're still halfway through it.
 
+## Library tools and reading additions
+
+Library's menu and Settings both offer:
+
+- **Prepare for a trip:** select books, reading lists, Continue Reading or the next three
+  volumes in each active series. Review size, download together, then verify after transfers
+  finish. Files managed by another app may still need Keep Downloaded in Files.
+- **Smart lists:** save rules for downloaded unfinished books, books untouched for 30 days,
+  or books with under two hours remaining. Time estimates use your measured comic reading
+  pace; novels and books without a known page count are excluded from the time rule.
+- **New arrivals:** see books found after a source's initial scan, select downloads, and
+  mark arrivals seen. Downloaded copies of existing books don't count as new arrivals.
+- **Backup and restore:** export progress, bookmarks/highlights, notes, lists, corrections
+  and chosen cover images. Restore previews matching files by path and size, keeps current
+  values on conflicts and skips unmatched books. Configure media sources first on a new
+  device. Media, folder permissions and NAS passwords are not restored.
+- **Reconnect a folder:** preview known filenames and sizes in a new folder before keeping
+  the source's identity, progress and notes. Every known item must match. A NAS source
+  reconnected through Files becomes a Files-managed folder; no content hashes are compared.
+  Native NAS reconnect also changes the host, share or root folder with the saved login,
+  previews remote directory listings, and preserves SMB streaming and downloads.
+
+In the **novel reader**, Chapters and Reading Settings includes Find in This Chapter.
+Select a passage to save a highlight and optional note. Highlights use text anchors that
+survive typography changes; open them from the chapter list or library bookmark search.
+Notes can be edited from bookmark search. Whole-book text indexing is not required to open
+or search the current chapter.
+
+In the **comic reader**, Reader Settings → Select Text on This Page opens an explicit Live
+Text mode. Copy text or use the system's offered text actions. Pages with no recognized text,
+and devices without Live Text support, show an explanation.
+
+Series pages flag **possible missing volumes** between known whole-numbered volumes.
+Chapters, fractional specials and ambiguous collected editions do not generate guesses.
+Dismiss intentional gaps; Library Tools can show dismissed gaps again. No catalog lookup
+or automatic download happens in the background.
+
 ## Building
 
 Requires Xcode 26 and [xcodegen](https://github.com/yonaskolb/XcodeGen).
@@ -109,6 +146,11 @@ make gen        # generate Mango.xcodeproj from project.yml
 make run        # build and launch on the simulator
 make test       # unit tests
 ```
+
+`python3 scripts/test-library-ui.py` checks backup export/import and novel chapter search
+in a fresh simulator with an isolated app identity. Generate `demo-library` first with
+`python3 scripts/make-demo-library.py`. Logs and screenshots remain in the printed temporary
+directory; `--keep-simulator` keeps the test simulator for investigating a failure.
 
 Want something to look at? `make fixtures && make install-fixtures` generates a sample library —
 a couple of multi-volume series, a standalone, a PDF, an unzipped folder of pages, and a

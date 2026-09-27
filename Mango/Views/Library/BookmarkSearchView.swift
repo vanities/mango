@@ -21,7 +21,7 @@ struct BookmarkSearchView: View {
         return library.visibleComics.flatMap { book in
             library.bookmarks(for: book).map { Result(book: book, mark: $0) }
         }.filter { result in
-            let text = [result.book.title, result.book.series ?? "", result.book.author ?? "", result.mark.note, result.location].joined(separator: " ")
+            let text = [result.book.title, result.book.series ?? "", result.book.author ?? "", result.mark.note, result.mark.anchor?.quote ?? "", result.location].joined(separator: " ")
             return words.allSatisfy { text.localizedStandardContains($0) }
         }.sorted { $0.mark.createdAt > $1.mark.createdAt }
     }
@@ -31,7 +31,7 @@ struct BookmarkSearchView: View {
                 Button {
                     selected = result
                 } label: {
-                    BookmarkSearchRow(title: result.book.title, note: result.mark.note, location: result.location)
+                    BookmarkSearchRow(title: result.book.title, note: result.mark.note.isEmpty ? (result.mark.anchor?.quote ?? "") : result.mark.note, location: result.location)
                 }
                 .buttonStyle(.plain)
                 .contextMenu {

@@ -16,7 +16,11 @@ struct NovelReaderView: View {
     @State private var current: Comic?
     @State private var engine: NovelEngine?
     @State private var showingChapters = false
+    @State private var findAfterChaptersDismiss = false
     @State private var atEnd = false
+    @State private var selection: NovelTextAnchor?
+    @State private var highlightNote = ""
+    @State private var addingHighlight = false
 
     private var openComic: Comic { current ?? comic }
     private var dark: Bool { settings.blackBackground || systemScheme == .dark }
@@ -44,6 +48,10 @@ struct NovelReaderView: View {
                         lineSpacing: settings.novelLineSpacing,
                         margin: settings.novelMargin,
                         restoreFraction: engine.pendingJumpFraction > 0 ? engine.pendingJumpFraction : engine.scrollFraction,
+                        highlights: engine.bookmarks.filter { $0.page == engine.chapterIndex }.compactMap(\.anchor),
+                        jumpAnchor: engine.pendingTextAnchor,
+                        findRequest: engine.findRequest,
+                        onSelection: { selection = $0 },
                         onScroll: { engine.scrollFraction = $0 },
                         onTapMiddle: { engine.toggleControls() },
                         onNextChapter: { engine.nextChapter() },
@@ -56,12 +64,31 @@ struct NovelReaderView: View {
                     .ignoresSafeArea()
                     .id("\(chapter.path)-\(settings.novelPaged)-\(engine.jumpID)")
 
+                    if selection != nil {
+                        VStack { Spacer(); HStack {
+                            Button { highlightNote = ""; addingHighlight = true } label: {
+                                Label("Save highlight", systemImage: "highlighter").frame(minHeight: 44)
+                            }
+                            Button { selection = nil } label: { Text("Cancel").frame(minHeight: 44) }
+                        }.padding().glassEffect(in: .capsule).padding(.bottom, 70) }
+                    }
                     NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close)
                 }
             } else {
                 ProgressView()
             }
         }
+        .alert("Highlight note", isPresented: $addingHighlight) {
+            TextField("Optional note", text: $highlightNote)
+            Button("Save") {
+                if let selection, let engine {
+                    library.addHighlight(selection, page: engine.chapterIndex, fraction: engine.scrollFraction, note: highlightNote, to: engine.comic)
+                    self.selection = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .onChange(of: engine?.chapterIndex) { selection = nil }
         .statusBarHidden(!(engine?.showsControls ?? true))
         .persistentSystemOverlays(engine?.showsControls ?? true ? .automatic : .hidden)
         .navigationBarBackButtonHidden()
@@ -73,9 +100,16 @@ struct NovelReaderView: View {
             await created.open()
             if openComic.id == comic.id, let startAt { created.go(to: startAt) }
         }
-        .sheet(isPresented: $showingChapters) {
-            if let engine { ChapterListView(engine: engine) }
-        }
+        .sheet(isPresented: $showingChapters, onDismiss: {
+            // Present the system find navigator only after the sheet's dismissal completes.
+            // Starting it from the sheet's button makes UIKit dismiss it with the sheet.
+            if findAfterChaptersDismiss {
+                findAfterChaptersDismiss = false
+                engine?.findRequest += 1
+            }
+        }, content: {
+            if let engine { ChapterListView(engine: engine, onFind: { findAfterChaptersDismiss = true }) }
+        })
         .onAppear { UIApplication.shared.isIdleTimerDisabled = settings.keepScreenAwake }
         .onDisappear {
             engine?.close()
@@ -260,11 +294,16 @@ struct NovelControls: View {
 struct ChapterListView: View {
     @Environment(AppSettings.self) private var settings
     @Bindable var engine: NovelEngine
+    var onFind: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button("Find in this chapter", systemImage: "magnifyingglass") { onFind(); dismiss() }
+                    Text("Select text in the chapter to save a highlight and optional note.").font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("Reading") {
                     Toggle("Show chapter time estimate", isOn: Bindable(settings).showReadingEstimates)
                     Toggle("Turn pages like a book", isOn: Bindable(settings).novelPaged)
@@ -293,7 +332,11 @@ struct ChapterListView: View {
                                 dismiss()
                             } label: {
                                 HStack {
-                                    Label(mark.label(isNovel: true), systemImage: "bookmark.fill")
+                                    VStack(alignment: .leading) {
+                                        Label(mark.label(isNovel: true), systemImage: mark.anchor == nil ? "bookmark.fill" : "highlighter")
+                                        if let anchor = mark.anchor { Text(anchor.quote).font(.caption).lineLimit(3) }
+                                        if !mark.note.isEmpty { Text(mark.note).font(.caption).foregroundStyle(.secondary) }
+                                    }
                                     Spacer()
                                     Text("\(Int((mark.fraction ?? 0) * 100))% in")
                                         .font(.caption).foregroundStyle(.secondary)

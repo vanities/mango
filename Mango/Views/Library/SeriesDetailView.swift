@@ -55,6 +55,21 @@ struct SeriesDetailView: View {
                     }
                 }
             }
+            let gaps = SeriesGaps.missing(in: shelf.comics).filter { !library.state.tools.dismissedGaps.contains(SeriesGaps.key(series: shelf, volume: $0)) }
+            if !gaps.isEmpty {
+                Section("Possible missing volumes") {
+                    ForEach(gaps, id: \.self) { volume in
+                        HStack {
+                            Text("Volume \(volume) may be missing")
+                            Spacer()
+                            Button("Dismiss") {
+                                library.mutateState { $0.tools.dismissedGaps.insert(SeriesGaps.key(series: shelf, volume: volume)) }
+                            }.frame(minHeight: 44)
+                        }
+                    }
+                    Text("Based on files in this series, not an online catalog. Collected editions are excluded.").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
             Section("Volumes") {
                 ForEach(shelf.comics) { comic in
                     Button { readingComic = comic } label: {
