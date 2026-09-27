@@ -8,5 +8,7 @@ Library tools and reader improvements
 - Select text from comic pages with Live Text on supported devices.
 - Review possible missing volumes in a series, with dismiss and reset controls.
 
+- Fix a crash when the NAS responds after a network timeout.
+
 Please test upgrading an existing library, backup restore, NAS reconnect, offline preparation,
 chapter search, highlights and Live Text. Interrupted downloads need additional device testing.

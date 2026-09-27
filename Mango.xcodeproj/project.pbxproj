@@ -788,7 +788,7 @@
 			mainGroup = 15526783FDA1EEFDA5E41EEE;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */,
+				74EBF940551D37F1139F9DF8 /* XCRemoteSwiftPackageReference "AMSMB2" */,
 				5E140441CFABED8C420150A3 /* XCRemoteSwiftPackageReference "shelfkit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1287,15 +1287,15 @@
 			repositoryURL = "https://github.com/vanities/shelfkit.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.13.0;
+				version = 0.13.1;
 			};
 		};
-		7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */ = {
+		74EBF940551D37F1139F9DF8 /* XCRemoteSwiftPackageReference "AMSMB2" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/amosavian/AMSMB2.git";
+			repositoryURL = "https://github.com/vanities/AMSMB2.git";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 4.0.3;
+				kind = exactVersion;
+				version = 4.0.4;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -1308,7 +1308,7 @@
 		};
 		EB37802BFD4CF09156555AAF /* AMSMB2 */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 7C2FFC7B910C7411BE4721AF /* XCRemoteSwiftPackageReference "AMSMB2" */;
+			package = 74EBF940551D37F1139F9DF8 /* XCRemoteSwiftPackageReference "AMSMB2" */;
 			productName = AMSMB2;
 		};
 /* End XCSwiftPackageProductDependency section */
