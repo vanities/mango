@@ -1,0 +1,63 @@
+{
+  "verifiedAt": "2026-09-27T23:27:03.620446+00:00",
+  "appID": "6814299186",
+  "version": "1.0",
+  "build": "59",
+  "state": "WAITING_FOR_REVIEW",
+  "releaseType": "AFTER_APPROVAL",
+  "locale": "en-US",
+  "copyMatchesSource": true,
+  "subtitle": "Comics, EPUB & offline reading",
+  "screenshotSets": [
+    {
+      "displayType": "APP_IPAD_PRO_3GEN_129",
+      "screenshots": [
+        {
+          "file": "ipad/01-reader.png",
+          "ascFileName": "2026-09-01-reader.png",
+          "state": "COMPLETE",
+          "md5": "59b1e560676ff304537de0fb906d14d3",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/02-novel.png",
+          "ascFileName": "2026-09-02-novel.png",
+          "state": "COMPLETE",
+          "md5": "f46853f9eab36a4262480b1eea68c4f2",
+          "width": 2064,
+          "height": 2752
+        }
+      ]
+    },
+    {
+      "displayType": "APP_IPHONE_67",
+      "screenshots": [
+        {
+          "file": "iphone/01-reader.png",
+          "ascFileName": "2026-09-01-reader.png",
+          "state": "COMPLETE",
+          "md5": "6b4f018a5bc3c487a8f1decd61b05a65",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/02-library.png",
+          "ascFileName": "2026-09-02-library.png",
+          "state": "COMPLETE",
+          "md5": "4228f6bd01915a4351f757d75565bffb",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/03-novel.png",
+          "ascFileName": "2026-09-03-novel.png",
+          "state": "COMPLETE",
+          "md5": "54dceeda8530dc2c02ffd3df5d391567",
+          "width": 1320,
+          "height": 2868
+        }
+      ]
+    }
+  ]
+}

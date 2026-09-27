@@ -1,0 +1,139 @@
+{
+  "brand": "Mango",
+  "sets": {
+    "iphone": [
+      {
+        "raw": "reader.png",
+        "headline": [
+          "Your next chapter,",
+          "beautifully told."
+        ],
+        "subtitle": [
+          "A reader for the comics you own."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "library.png",
+        "headline": [
+          "Your collection.",
+          "Your own shelf."
+        ],
+        "subtitle": [
+          "Manga, comics and light novels."
+        ],
+        "tilt": -3,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "novel.png",
+        "headline": [
+          "Light novels.",
+          "Room to breathe."
+        ],
+        "subtitle": [
+          "EPUB chapters and adjustable text."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      }
+    ],
+    "ipad": [
+      {
+        "raw": "reader.png",
+        "headline": [
+          "Your next chapter,",
+          "beautifully told."
+        ],
+        "subtitle": [
+          "A reader for the comics you own."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "novel.png",
+        "headline": [
+          "Light novels.",
+          "Room to breathe."
+        ],
+        "subtitle": [
+          "EPUB chapters and adjustable text."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      }
+    ]
+  }
+}
