@@ -334,7 +334,7 @@ def main() -> None:
     ci = sub.add_parser("ci")
     ci.add_argument("--wait", type=int, default=0, help="minutes to wait for the newest run to complete")
     beta = sub.add_parser("beta-info")
-    beta.add_argument("--phone", default="REDACTED")
+    beta.add_argument("--phone", required=True, help="Beta App Review contact phone, e.g. '+1 555 555 5555'")
     add = sub.add_parser("add-tester")
     add.add_argument("--email", required=True)
     add.add_argument("--group", default="Internal Testers")
