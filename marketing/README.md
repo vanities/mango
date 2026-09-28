@@ -11,11 +11,12 @@ that Mango includes no reading catalog.
 
 ## Captures and build accuracy
 
-App Review is attached to 1.0 build 59. Xcode Cloud's build-59 record identifies
+App Review is attached to 1.0 build 73. The screenshots were captured from the
+build-59 implementation. Xcode Cloud's build-59 record identifies
 source commit `28228c525ce0545e6b9528c2cd4e7eab7a5c32f9`. Captures were taken from a
 separate simulator build of `cf46bba`; its app, shared code, project and dependencies
 are identical to that commit (only listing documentation/scripts changed).
-Newer TestFlight-only reading tools are deliberately absent from this listing.
+The screenshots focus on the core reading and organization features.
 
 Two isolated iOS 26.5 simulators were used, with demo mode enabled. The novels use the reader's saved font scale: 220% on iPhone and 180% on iPad. The CBZs and EPUB were built from invented
 Lantern Hollow and The Tin Sparrow art, with original demo prose from
@@ -52,8 +53,8 @@ The following assets were generated with the built-in image generation tool.
 The subtitle, promotional text, description and keywords were read back from ASC.
 All fit Apple's limits. The marketing, support and privacy pages returned HTTP 200,
 and support contact information is present. Screenshot uploads are checked for
-COMPLETE delivery and correct order before resubmission. Build 59 and automatic
-release after approval are preserved. See `asc-verification.json` for final state;
+COMPLETE delivery and correct order before resubmission. The selected build is recorded below; automatic
+release after approval is preserved. See `asc-verification.json` for final state;
 Waiting for Review does not mean approved or publicly available.
 
 ## Expanded feature tour
