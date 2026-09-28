@@ -4,8 +4,8 @@ The en-US listing copy lives in `scripts/appstore.py` (`COPY`). The screenshots
 follow SwiftBible's large feature headlines, rich gradients and rounded real app
 captures, using coral over deep teal for Mango.
 
-The iPhone set shows comic reading, the library and EPUB reading. The iPad set
-focuses on comic and EPUB reading. All content is an invented demo library;
+Each seven-frame iPhone and iPad set shows comic and EPUB reading, library and
+series organization, page navigation, reading settings and chapters. All content is an invented demo library;
 Sources and personal libraries were never photographed. The listing clearly says
 that Mango includes no reading catalog.
 
@@ -55,3 +55,28 @@ and support contact information is present. Screenshot uploads are checked for
 COMPLETE delivery and correct order before resubmission. Build 59 and automatic
 release after approval are preserved. See `asc-verification.json` for final state;
 Waiting for Review does not mean approved or publicly available.
+
+## Expanded feature tour
+
+Both iPhone and iPad now have seven frames: comic reader, library, series,
+page grid, reading settings, EPUB reader and EPUB chapters. The expanded demo
+library includes three Lantern Hollow comic volumes, The Tin Sparrow,
+Rooftop Garden and a Lantern Hollow EPUB. New captures use four-page demo CBZs;
+the opening reader captures retain the earlier fourteen-page demo edition.
+All are fixtures made for this presentation, not a bundled catalog.
+
+Additional original artwork generated with the built-in image generation tool:
+
+`assets/harbor-page-2.png`:
+
+> Original wordless comic page in portrait format with four clearly separated panels and cream gutters. A quiet harbor adventure: top wide panel an antique sailboat leaving a lantern lit village at dawn; middle left panel closeup of a brass compass on a hand drawn sea map; middle right a seabird soaring over teal waves; bottom wide panel mysterious green island cliffs emerging from mist. No people. Sophisticated ink and gouache, deep teal and warm coral gold, polished narrative illustration. No lettering, no titles, no logos, no interface.
+
+`assets/harbor-page-3.png`:
+
+> Original wordless comic page in portrait format with five separated panels and cream gutters. An atmospheric exploration of a hidden island garden: wide top panel a stone archway covered with flowers and vines; two middle panels a small waterfall into a teal pool and an old brass key resting on moss; two bottom panels a winding stone stair and glowing lantern beside an open weathered wooden door. No people. Sophisticated ink and gouache, teal, jade, amber and coral colors, polished detailed graphic novel illustration. No text, logos or interface.
+
+`assets/rooftop-cover.png`:
+
+> Original portrait comic book cover titled ROOFTOP GARDEN in large elegant readable lettering. A lush garden of flowers and vegetables atop a red brick city building, a tiny greenhouse glowing at sunrise, copper city rooftops and distant hills. No people. Sophisticated ink and gouache illustration with coral, sage green and golden cream, beautifully detailed, inviting composition. Flat full bleed book cover, no logos, no app interface, no physical mockup.
+
+Preview the complete sequence: [iPhone](previews/iphone.jpg) · [iPad](previews/ipad.jpg).

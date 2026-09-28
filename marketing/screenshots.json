@@ -31,13 +31,91 @@
       {
         "raw": "library.png",
         "headline": [
-          "Your collection.",
-          "Your own shelf."
+          "A home for",
+          "your whole collection."
         ],
         "subtitle": [
-          "Manga, comics and light novels."
+          "Comics and novels, neatly together."
         ],
-        "tilt": -3,
+        "tilt": -2,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "series.png",
+        "headline": [
+          "Every volume.",
+          "In its place."
+        ],
+        "subtitle": [
+          "Pick up a series right where you left off."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "pages.png",
+        "headline": [
+          "See the story",
+          "at a glance."
+        ],
+        "subtitle": [
+          "Browse pages. Jump to any moment."
+        ],
+        "tilt": 2,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "settings.png",
+        "headline": [
+          "Read it",
+          "your way."
+        ],
+        "subtitle": [
+          "Direction, layout and page appearance."
+        ],
+        "tilt": 0,
         "top": [
           13,
           27,
@@ -62,6 +140,32 @@
         ],
         "subtitle": [
           "EPUB chapters and adjustable text."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "chapters.png",
+        "headline": [
+          "The next chapter",
+          "is one tap away."
+        ],
+        "subtitle": [
+          "Navigate your EPUBs with ease."
         ],
         "tilt": 0,
         "top": [
@@ -109,6 +213,110 @@
         ]
       },
       {
+        "raw": "library.png",
+        "headline": [
+          "A home for",
+          "your whole collection."
+        ],
+        "subtitle": [
+          "Comics and novels, neatly together."
+        ],
+        "tilt": -2,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "series.png",
+        "headline": [
+          "Every volume.",
+          "In its place."
+        ],
+        "subtitle": [
+          "Pick up a series right where you left off."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "pages.png",
+        "headline": [
+          "See the story",
+          "at a glance."
+        ],
+        "subtitle": [
+          "Browse pages. Jump to any moment."
+        ],
+        "tilt": 2,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "settings.png",
+        "headline": [
+          "Read it",
+          "your way."
+        ],
+        "subtitle": [
+          "Direction, layout and page appearance."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
         "raw": "novel.png",
         "headline": [
           "Light novels.",
@@ -116,6 +324,32 @@
         ],
         "subtitle": [
           "EPUB chapters and adjustable text."
+        ],
+        "tilt": 0,
+        "top": [
+          13,
+          27,
+          37
+        ],
+        "bottom": [
+          30,
+          60,
+          65
+        ],
+        "accent": [
+          255,
+          165,
+          139
+        ]
+      },
+      {
+        "raw": "chapters.png",
+        "headline": [
+          "The next chapter",
+          "is one tap away."
+        ],
+        "subtitle": [
+          "Navigate your EPUBs with ease."
         ],
         "tilt": 0,
         "top": [

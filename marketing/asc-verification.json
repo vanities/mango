@@ -1,5 +1,5 @@
 {
-  "verifiedAt": "2026-09-27T23:27:03.620446+00:00",
+  "verifiedAt": "2026-09-28T00:30:00.893113+00:00",
   "appID": "6814299186",
   "version": "1.0",
   "build": "59",
@@ -21,10 +21,50 @@
           "height": 2752
         },
         {
-          "file": "ipad/02-novel.png",
-          "ascFileName": "2026-09-02-novel.png",
+          "file": "ipad/02-library.png",
+          "ascFileName": "2026-09-02-library.png",
+          "state": "COMPLETE",
+          "md5": "a297c4982f90ae1796477f198b54653a",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/03-series.png",
+          "ascFileName": "2026-09-03-series.png",
+          "state": "COMPLETE",
+          "md5": "8b3a560e5643a295e721c4cbe15d7426",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/04-pages.png",
+          "ascFileName": "2026-09-04-pages.png",
+          "state": "COMPLETE",
+          "md5": "aef7f59165ca30b7b994dd3e46010450",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/05-settings.png",
+          "ascFileName": "2026-09-05-settings.png",
+          "state": "COMPLETE",
+          "md5": "57b2cf01689d1e082acc91a7430dee45",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/06-novel.png",
+          "ascFileName": "2026-09-06-novel.png",
           "state": "COMPLETE",
           "md5": "f46853f9eab36a4262480b1eea68c4f2",
+          "width": 2064,
+          "height": 2752
+        },
+        {
+          "file": "ipad/07-chapters.png",
+          "ascFileName": "2026-09-07-chapters.png",
+          "state": "COMPLETE",
+          "md5": "6685e5bea4ef31fd6409807a91724dfc",
           "width": 2064,
           "height": 2752
         }
@@ -45,15 +85,47 @@
           "file": "iphone/02-library.png",
           "ascFileName": "2026-09-02-library.png",
           "state": "COMPLETE",
-          "md5": "4228f6bd01915a4351f757d75565bffb",
+          "md5": "2df37541520c8cafa35cdf58808dfcc7",
           "width": 1320,
           "height": 2868
         },
         {
-          "file": "iphone/03-novel.png",
-          "ascFileName": "2026-09-03-novel.png",
+          "file": "iphone/03-series.png",
+          "ascFileName": "2026-09-03-series.png",
+          "state": "COMPLETE",
+          "md5": "803587b5ff1b5d7f87429c41d6311098",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/04-pages.png",
+          "ascFileName": "2026-09-04-pages.png",
+          "state": "COMPLETE",
+          "md5": "675eb86d7bda888a8b7f2c910394af09",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/05-settings.png",
+          "ascFileName": "2026-09-05-settings.png",
+          "state": "COMPLETE",
+          "md5": "b628373323165cbec5fd426539b542f7",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/06-novel.png",
+          "ascFileName": "2026-09-06-novel.png",
           "state": "COMPLETE",
           "md5": "54dceeda8530dc2c02ffd3df5d391567",
+          "width": 1320,
+          "height": 2868
+        },
+        {
+          "file": "iphone/07-chapters.png",
+          "ascFileName": "2026-09-07-chapters.png",
+          "state": "COMPLETE",
+          "md5": "fbd677c4533e0c0839e6d5dba289d048",
           "width": 1320,
           "height": 2868
         }
