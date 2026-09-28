@@ -93,4 +93,134 @@ final class NovelPaginationTests: XCTestCase {
         let value = try await web.evaluateJavaScript(expression)
         return try XCTUnwrap(value as? NSNumber).doubleValue
     }
+
+    func testIllustratedPrologueAtPhoneAndTabletSizes() async throws {
+        // Same portrait proportions as the reported prologue, with invented text and art.
+        let image = illustration(width: 1127, height: 1600)
+        for size in pageSizes {
+            try await checkIllustratedChapter(images: "<img src='\(image)'/>", size: size)
+        }
+    }
+
+    func testConsecutiveIllustrationsAtPhoneAndTabletSizes() async throws {
+        let portrait = illustration(width: 1127, height: 1600)
+        let landscape = illustration(width: 1600, height: 1127)
+        let tall = illustration(width: 600, height: 2400)
+        let images = "<img src='\(portrait)'/><img src='\(landscape)'/><img src='\(tall)'/>"
+        for size in pageSizes {
+            try await checkIllustratedChapter(images: images, size: size)
+        }
+    }
+
+    func testFinalParagraphMarginDoesNotAddABlankPage() async throws {
+        let image = illustration(width: 1127, height: 1600)
+        for size in pageSizes {
+            try await checkIllustratedChapter(images: "<img src='\(image)'/>", size: size, endsNearBottom: true)
+        }
+    }
+
+    private var pageSizes: [CGSize] {
+        [CGSize(width: 390, height: 700), CGSize(width: 700, height: 390), CGSize(width: 1024, height: 768)]
+    }
+
+    private func illustration(width: CGFloat, height: CGFloat) -> String {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let data = UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).jpegData(withCompressionQuality: 0.5) { context in
+            UIColor.orange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        return "data:image/jpeg;base64," + data.base64EncodedString()
+    }
+
+    private func checkIllustratedChapter(images: String, size: CGSize, endsNearBottom: Bool = false) async throws {
+        let files = [
+            "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
+            "book.opf": "<package><manifest><item id='ch' href='ch.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='ch'/></spine></package>",
+            "ch.xhtml": "<html><body>Fixture</body></html>"
+        ]
+        let zip = ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) })
+        let document = try await EPUBDocument.open(reader: DataReader(zip), displayName: "Illustrated prologue")
+        var view = NovelWebView(document: document, chapterPath: "ch.xhtml", fontScale: 1, dark: false,
+                                paged: true, tapToTurn: true, fontFamily: "Georgia, serif", lineSpacing: 1.6,
+                                margin: 22, restoreFraction: 0, onScroll: { _ in }, onTapMiddle: {},
+                                onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
+        let messages = Messages()
+        let config = WKWebViewConfiguration()
+        config.userContentController.add(messages, name: "mangoNavigation")
+        let web = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: config)
+        web.scrollView.contentInsetAdjustmentBehavior = .never
+        web.scrollView.isScrollEnabled = false
+        let coordinator = view.makeCoordinator()
+        coordinator.webView = web
+        web.navigationDelegate = coordinator
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.frame = web.bounds
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.view.addSubview(web)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; withExtendedLifetime(coordinator) {} }
+        let paragraphs = (0..<40).map { "<p id='p\($0)'>Paragraph \($0). The traveler crossed the quiet garden and opened the old wooden gate.</p>" }
+        let body = endsNearBottom
+            ? "<div style='break-after:column'>\(images)</div><p id='p39' style='margin-top:0;height:calc(100vh - 133px)'>The last words of the prologue.</p>"
+            : paragraphs.prefix(25).joined() + images + paragraphs.suffix(15).joined()
+        // Apply the reader style after navigation, exactly as a real EPUB chapter is loaded.
+        web.loadHTMLString("<html><head></head><body>\(body)</body></html>", baseURL: nil)
+        for _ in 0..<100 {
+            if (try? await web.evaluateJavaScript("!!window.mangoPager && [...document.images].every(i => i.complete && i.naturalWidth > 0)")) as? Bool == true { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        var normalPageCount: Int?
+        for scale in (endsNearBottom ? [1.0] : [1.0, 1.8, 1.0]) {
+            view.fontScale = scale
+            coordinator.parent = view
+            coordinator.applyStyle()
+            try await Task.sleep(for: .milliseconds(150))
+            let fits = try await web.evaluateJavaScript("""
+            [...document.images].every(image => {
+              const rect = image.getBoundingClientRect();
+              return rect.width <= innerWidth - 44 && rect.height <= innerHeight - 128 &&
+                Math.abs(rect.width / rect.height - image.naturalWidth / image.naturalHeight) < 0.01;
+            })
+            """) as? Bool
+            XCTAssertEqual(fits, true, "Illustrations must stay whole and proportional at \(size), font \(scale)")
+            _ = try await web.evaluateJavaScript("mangoPager.fraction=0; mangoPager.layout()")
+            try await Task.sleep(for: .milliseconds(50))
+            messages.actions.removeAll()
+            let count = Int(try await number("mangoPager.count", web))
+            XCTAssertGreaterThan(count, 1)
+            if endsNearBottom { XCTAssertEqual(count, 2, "The final paragraph's margin must not create a third, blank page") }
+            if scale == 1 {
+                if let normalPageCount { XCTAssertEqual(count, normalPageCount, "Shrinking the font must remove the extra pages") }
+                normalPageCount = count
+            } else if let normalPageCount {
+                XCTAssertGreaterThan(count, normalPageCount)
+            }
+            for page in 0..<count {
+                let offset = try await number("window.scrollX", web)
+                XCTAssertEqual(offset, Double(page) * size.width, accuracy: 1, "Tap must land on a whole column")
+                if page == count - 1 {
+                    let lastTextRight = try await number("document.getElementById('p39').getBoundingClientRect().right", web)
+                    XCTAssertLessThanOrEqual(lastTextRight, size.width)
+                    XCTAssertGreaterThan(lastTextRight, 0)
+                }
+                try await tap(at: size.width * 0.9, web)
+            }
+            XCTAssertEqual(messages.actions.filter { $0 == "next" }.count, 1)
+            for page in (0..<count).reversed() {
+                let offset = try await number("window.scrollX", web)
+                XCTAssertEqual(offset, Double(page) * size.width, accuracy: 1)
+                try await tap(at: size.width * 0.1, web)
+            }
+            XCTAssertEqual(messages.actions.filter { $0 == "previous" }.count, 1)
+        }
+    }
+
+    private func tap(at x: CGFloat, _ web: WKWebView) async throws {
+        _ = try await web.evaluateJavaScript("document.body.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:\(x), detail:1}))")
+        // Let WebKit commit the native scroll between gestures, as it does between real taps.
+        try await Task.sleep(for: .milliseconds(50))
+    }
 }

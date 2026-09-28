@@ -99,7 +99,6 @@ struct NovelWebView: UIViewRepresentable {
           text-rendering: optimizeLegibility;
           hyphens: auto;
         }
-        \(paged ? paginationCSS : "")
         \(fontFamily.isEmpty ? "" : "body, p, span, div, li, td { font-family: \(fontFamily) !important; }")
         p { orphans: 2; widows: 2; }
         /* Plates, colour galleries and cover pages are single full-page images; let them
@@ -113,6 +112,9 @@ struct NovelWebView: UIViewRepresentable {
           margin: 0 auto !important;
         }
         svg { width: 100% !important; }
+        /* Page limits must follow the general image rules: an illustration taller than a
+           column gets fragmented by WebKit, even with break-inside: avoid. */
+        \(paged ? paginationCSS : "")
         a { color: \(dark ? "#f0a23c" : "#b45309") !important; }
         /* Publisher stylesheets often hard-code black on white. */
         * { background-color: transparent !important; }
@@ -132,6 +134,8 @@ struct NovelWebView: UIViewRepresentable {
           overflow: visible !important;
         }
         img, svg { max-height: calc(100vh - 128px) !important; break-inside: avoid; }
+        /* A final paragraph's margin can overflow into an otherwise empty column. */
+        body > :last-child { margin-bottom: 0 !important; }
         """
     }
 
@@ -156,11 +160,14 @@ struct NovelWebView: UIViewRepresentable {
             send('progress', pager.fraction);
           };
           pager.layout = () => {
-            {
-              pager.count = Math.max(1, Math.round(Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) / window.innerWidth));
-              pager.page = Math.min(pager.count - 1, Math.round(pager.fraction * (pager.count - 1)));
-              show();
-            }
+            // Measure fresh so a smaller font or wider viewport can reduce the page count.
+            document.documentElement.style.width = '100%';
+            pager.count = Math.max(1, Math.round(Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) / window.innerWidth));
+            // Column overflow omits the final right padding. Reserve a whole last page or
+            // WebKit clamps its scroll offset and shifts the text after the tap completes.
+            document.documentElement.style.width = (pager.count * window.innerWidth) + 'px';
+            pager.page = Math.min(pager.count - 1, Math.round(pager.fraction * (pager.count - 1)));
+            show();
           };
           const turn = delta => {
             if (selected()) return;
