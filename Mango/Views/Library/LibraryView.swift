@@ -238,7 +238,7 @@ struct LibraryView: View {
     }
 }
 
-/// One shelf in the grid: the cover, the name, and how far through the run you are.
+/// One shelf in the grid: the cover, with how far through the run you are on it, and the name.
 struct SeriesCardView: View {
     let series: Series
     /// Shown instead of the series name — inside a stack, without the stack's own name.
@@ -249,24 +249,46 @@ struct SeriesCardView: View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
                 CoverView(coverID: series.coverID, title: series.name)
-                if series.volumeCount > 1 {
-                    Text("\(series.volumeCount)")
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .glassEffect(in: .capsule)
-                        .padding(6)
-                }
+                ReadBadge(finished: library.finishedCount(in: series), total: series.volumeCount)
+                    .padding(6)
             }
             Text(title ?? series.name)
                 .font(.caption)
                 .lineLimit(2, reservesSpace: true)
-            let finished = library.finishedCount(in: series)
-            if finished > 0 {
-                Text("\(finished)/\(series.volumeCount) read")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
         }
+    }
+}
+
+/// How far through a run, on its cover: "Complete" once every volume is read, "12/15" part of
+/// the way, and before any is finished, how many volumes there are.
+struct ReadBadge: View {
+    let finished: Int
+    let total: Int
+
+    var body: some View {
+        if total > 0, finished >= total {
+            Label("Complete", systemImage: "checkmark")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .glassEffect(.regular.tint(.green), in: .capsule)
+                .accessibilityLabel(total == 1 ? "Complete" : "Complete, all \(total) read")
+        } else if finished > 0 {
+            count("\(finished)/\(total)")
+                .accessibilityLabel("\(finished) of \(total) read")
+        } else if total > 1 {
+            count("\(total)")
+                .accessibilityLabel("\(total) books")
+        }
+    }
+
+    private func count(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .monospacedDigit()
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .glassEffect(in: .capsule)
     }
 }
