@@ -213,12 +213,14 @@ final class TransferManager {
     }
 
     private func registerBackgroundTask() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.backgroundTaskIdentifier, using: nil) { task in
-            MainActor.assumeIsolated {
-                guard let processing = task as? BGProcessingTask else { return task.setTaskCompleted(success: false) }
-                self.runInBackground(processing)
-            }
+        // `using: nil` runs this on a background queue, so hop to the main actor rather than
+        // assume it: `MainActor.assumeIsolated` traps off the main thread, which would crash
+        // the app each time iOS ran a transfer in the background. Earmark hops the same way.
+        let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.backgroundTaskIdentifier, using: nil) { task in
+            guard let processing = task as? BGProcessingTask else { return task.setTaskCompleted(success: false) }
+            Task { @MainActor in self.runInBackground(processing) }
         }
+        Logger.downloads.info("[transfers] background task registered=\(registered)")
     }
 
     private func scheduleBackgroundProcessing() {
@@ -230,7 +232,14 @@ final class TransferManager {
     }
 
     private func runInBackground(_ task: BGProcessingTask) {
-        task.expirationHandler = { MainActor.assumeIsolated { self.cancelAll() } }
+        Logger.downloads.info("[transfers] background processing started")
+        // The system calls this on its own queue too.
+        task.expirationHandler = {
+            Task { @MainActor in
+                Logger.downloads.info("[transfers] background time expiring, stopping")
+                self.cancelAll()
+            }
+        }
         runNext()
         Task { @MainActor in
             while isTransferring { try? await Task.sleep(for: .seconds(2)) }
