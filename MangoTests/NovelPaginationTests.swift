@@ -1,3 +1,4 @@
+import SwiftUI
 import WebKit
 import XCTest
 @testable import Mango
@@ -41,7 +42,7 @@ final class NovelPaginationTests: XCTestCase {
             if (try? await web.evaluateJavaScript("document.querySelectorAll('p').length")) as? Int == 100, !web.isLoading { break }
             try await Task.sleep(for: .milliseconds(50))
         }
-        _ = try await web.evaluateJavaScript(view.paginationScript)
+        _ = try await web.evaluateJavaScript(view.paginationScript(startingAt: 0))
         try await Task.sleep(for: .milliseconds(150))
         let count = try await number("mangoPager.count", web)
         XCTAssertGreaterThan(count, 3)
@@ -92,6 +93,86 @@ final class NovelPaginationTests: XCTestCase {
     private func number(_ expression: String, _ web: WKWebView) async throws -> Double {
         let value = try await web.evaluateJavaScript(expression)
         return try XCTUnwrap(value as? NSNumber).doubleValue
+    }
+
+    private final class Reports {
+        var fractions: [Double] = []
+    }
+
+    /// The reader feeds every reported position back in as the place to restore to, so the
+    /// host does the same: a wrong report while opening changes where the chapter lands.
+    private struct PagedChapterHost: View {
+        let document: EPUBDocument
+        @State var fraction: Double
+        let reports: Reports
+
+        var body: some View {
+            NovelWebView(document: document, chapterPath: "ch.xhtml", fontScale: 1, dark: false,
+                         paged: true, tapToTurn: true, fontFamily: "Georgia, serif", lineSpacing: 1.6,
+                         margin: 22, restoreFraction: fraction,
+                         onScroll: { fraction = $0; reports.fractions.append($0) },
+                         onTapMiddle: {}, onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
+                .ignoresSafeArea()
+        }
+    }
+
+    /// Reopening a book in page mode must land on the page it was closed on. This goes through
+    /// the reader's own path: SwiftUI hosts the view, the chapter comes from the EPUB scheme
+    /// handler without a viewport tag (as EPUB chapters usually are), and the reader's styles
+    /// and pager are injected once it has loaded.
+    func testPagedChapterReopensWhereItWasLeft() async throws {
+        for saved in [0.6, 0.25] {
+            let reports = Reports()
+            let (web, window) = try await hostPagedChapter(restoreFraction: saved, reports: reports)
+            defer { window.isHidden = true }
+            let count = try await number("mangoPager.count", web)
+            XCTAssertGreaterThan(count, 5)
+            let page = try await number("mangoPager.page", web)
+            XCTAssertEqual(page, (saved * (count - 1)).rounded(), accuracy: 1,
+                           "Saved at \(saved) of \(Int(count)) pages, but reopened on page \(Int(page)); reports \(reports.fractions)")
+            let offset = try await number("window.scrollX", web)
+            XCTAssertEqual(offset, page * 390, accuracy: 1, "The page shown must be the pager's page")
+            XCTAssertEqual(try XCTUnwrap(reports.fractions.last), saved, accuracy: 1.5 / (count - 1))
+            // Every report is saved as the book's progress, so a stray 0 while the chapter loads
+            // would overwrite the place the reader left, even if the page shown ends up right.
+            XCTAssertGreaterThan(reports.fractions.min() ?? 0, saved / 2,
+                                 "Progress reported while opening must not fall back to the start: \(reports.fractions)")
+        }
+    }
+
+    private func hostPagedChapter(restoreFraction: Double, reports: Reports) async throws -> (WKWebView, UIWindow) {
+        let paragraphs = (0..<150).map { "<p>Paragraph \($0). The traveler crossed the quiet garden and opened the old wooden gate.</p>" }.joined()
+        let files = [
+            "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
+            "book.opf": "<package><manifest><item id='ch' href='ch.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='ch'/></spine></package>",
+            "ch.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>One</title></head><body>\(paragraphs)</body></html>"
+        ]
+        let zip = ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) })
+        let document = try await EPUBDocument.open(reader: DataReader(zip), displayName: "Resume")
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 390, height: 700)
+        window.rootViewController = UIHostingController(rootView: PagedChapterHost(document: document, fraction: restoreFraction, reports: reports))
+        window.makeKeyAndVisible()
+        var found: WKWebView?
+        // Wait for the chapter itself to be paginated — not just for a pager to exist.
+        for _ in 0..<200 {
+            found = found ?? firstWebView(in: window)
+            if let found, (try? await found.evaluateJavaScript("document.querySelectorAll('p').length === 150 && !!window.mangoPager && mangoPager.count > 1")) as? Bool == true { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        let web = try XCTUnwrap(found, "The reader's web view never appeared")
+        // Fonts and the viewport settle after the first layout; give them time.
+        try await Task.sleep(for: .milliseconds(800))
+        return (web, window)
+    }
+
+    private func firstWebView(in view: UIView) -> WKWebView? {
+        if let web = view as? WKWebView { return web }
+        for subview in view.subviews {
+            if let web = firstWebView(in: subview) { return web }
+        }
+        return nil
     }
 
     func testIllustratedPrologueAtPhoneAndTabletSizes() async throws {

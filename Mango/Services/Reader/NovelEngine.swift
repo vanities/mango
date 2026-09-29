@@ -130,7 +130,7 @@ final class NovelEngine {
         endSession()
         persist()
         library.publishWidgetSnapshot()
-        Logger.reader.info("[novel] closed \(self.comic.title, privacy: .public) at chapter \(self.chapterIndex + 1)")
+        Logger.reader.info("[novel] closed \(self.comic.title, privacy: .public) at chapter \(self.chapterIndex + 1), \(self.scrollFraction, format: .fixed(precision: 3)) through it")
     }
 
     // MARK: Navigation
@@ -245,7 +245,12 @@ final class NovelEngine {
         lifecycleObservers = [
             NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification,
                                                    object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.commitSession() }
+                MainActor.assumeIsolated {
+                    // Save the place now rather than a second from now: the app may be
+                    // suspended, and later killed, before the debounced save runs.
+                    self?.flushProgress()
+                    self?.commitSession()
+                }
             },
             NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
                                                    object: nil, queue: .main) { [weak self] _ in
@@ -307,8 +312,14 @@ final class NovelEngine {
         }
     }
 
+    private func flushProgress() {
+        saveTask?.cancel()
+        persist()
+    }
+
     private func persist() {
         guard !chapters.isEmpty else { return }
+        Logger.reader.debug("[novel] save chapter \(self.chapterIndex + 1) at \(self.scrollFraction, format: .fixed(precision: 3))")
         library.recordNovelProgress(chapter: chapterIndex, chapterCount: chapters.count,
                                     fraction: scrollFraction, for: comic)
     }

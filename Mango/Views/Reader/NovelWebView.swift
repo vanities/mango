@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import os
 
 /// Renders one EPUB chapter, served straight out of the zip by `EPUBSchemeHandler`.
 ///
@@ -69,15 +70,25 @@ struct NovelWebView: UIViewRepresentable {
         }
         if context.coordinator.loadedPath != chapterPath {
             context.coordinator.loadedPath = chapterPath
-            context.coordinator.pendingRestore = restoreFraction
+            context.coordinator.pendingRestore = Self.clamped(restoreFraction)
+            context.coordinator.chapterLoaded = false
             guard let url = EPUBSchemeHandler.url(for: chapterPath) else { return }
             webView.load(URLRequest(url: url))
-        } else if context.coordinator.appliedStyle != styleKey {
+        } else if context.coordinator.chapterLoaded, context.coordinator.appliedStyle != styleKey {
+            // Until the chapter has loaded, the web view holds an empty placeholder page:
+            // styling it would start a pager there, which finds one page and reports the
+            // start of the chapter as the reader's place. didFinish applies the style.
             context.coordinator.applyStyle()
         }
     }
 
     private var styleKey: String { "\(fontScale)-\(dark)-\(fontFamily)-\(lineSpacing)-\(margin)-\(tapToTurn)" }
+
+    /// A position as the pager and the engine take it: 0...1, never NaN (which would also
+    /// read as an undefined `nan` once written into the script).
+    static func clamped(_ fraction: Double) -> Double {
+        fraction.isFinite ? min(1, max(0, fraction)) : 0
+    }
 
     /// Layered over the book's own stylesheet.
     var css: String {
@@ -141,7 +152,12 @@ struct NovelWebView: UIViewRepresentable {
 
     /// Keep pagination in the document's CSS coordinates. Native scroll offsets vary with the
     /// EPUB viewport; using the same coordinate space for layout and turns avoids drift.
-    var paginationScript: String {
+    ///
+    /// `fraction` is the reader's place in the chapter: it starts at `startFraction` and only a
+    /// turn or a jump changes it. Layout runs several times while a chapter settles (fonts,
+    /// images, a resize), and a pass can measure fewer pages than there are; deriving the
+    /// place from that pass would send the reader back towards the start.
+    func paginationScript(startingAt startFraction: Double) -> String {
         """
         (() => {
           const send = (action, fraction) => window.webkit.messageHandlers.mangoNavigation.postMessage({action, fraction});
@@ -150,16 +166,17 @@ struct NovelWebView: UIViewRepresentable {
             window.mangoPager.layout();
             return;
           }
-          const pager = { page: 0, count: 1, fraction: \(restoreFraction), tapEnabled: \(tapToTurn) };
+          const pager = { page: 0, count: 1, fraction: \(Self.clamped(startFraction)), tapEnabled: \(tapToTurn) };
           window.mangoPager = pager;
           const selected = () => !!window.getSelection()?.toString();
           const interactive = target => target?.closest?.('a, button, input, textarea, select, [contenteditable]');
           const show = () => {
             window.scrollTo(pager.page * window.innerWidth, 0);
-            pager.fraction = pager.count > 1 ? pager.page / (pager.count - 1) : 0;
-            send('progress', pager.fraction);
+            send('progress', pager.count > 1 ? pager.page / (pager.count - 1) : pager.fraction);
           };
           pager.layout = () => {
+            // A view being resized or snapshotted can be zero wide for a moment.
+            if (window.innerWidth < 1) return;
             // Measure fresh so a smaller font or wider viewport can reduce the page count.
             document.documentElement.style.width = '100%';
             pager.count = Math.max(1, Math.round(Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) / window.innerWidth));
@@ -174,7 +191,7 @@ struct NovelWebView: UIViewRepresentable {
             const next = pager.page + delta;
             if (next < 0) send('previous');
             else if (next >= pager.count) send('next');
-            else { pager.page = next; show(); }
+            else { pager.page = next; pager.fraction = pager.count > 1 ? next / (pager.count - 1) : 0; show(); }
           };
           let start = null, swiped = false;
           document.addEventListener('touchstart', event => {
@@ -217,7 +234,12 @@ struct NovelWebView: UIViewRepresentable {
         weak var webView: WKWebView?
         var loadedPath: String?
         var appliedStyle: String?
+        /// Where the chapter opens if it's (re)loaded now: the restore point at first, then the
+        /// place the pager last reported, so a reload after WebKit's process is killed while
+        /// in the background comes back to the same page.
         var pendingRestore: Double = 0
+        /// False while the web view still holds the page before this chapter.
+        var chapterLoaded = false
         private var reportedBottom = false
         var lastFindRequest = 0
         var lastHighlights: [NovelTextAnchor] = []
@@ -263,14 +285,20 @@ struct NovelWebView: UIViewRepresentable {
             webView.evaluateJavaScript(js) { [weak self] _, _ in
                 guard let self else { return }
                 if self.parent.paged {
-                    webView.evaluateJavaScript(self.parent.paginationScript) { [weak self] _, _ in self?.prepareTextTools() }
+                    webView.evaluateJavaScript(self.parent.paginationScript(startingAt: self.pendingRestore)) { [weak self] _, _ in self?.prepareTextTools() }
                 } else { self.prepareTextTools() }
             }
             appliedStyle = parent.styleKey
         }
 
+        /// Also covers WebKit reloading the chapter itself after its process was killed.
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            chapterLoaded = false
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             reportedBottom = false
+            chapterLoaded = true
             applyStyle()
             if parent.paged { return }
             // Restore after layout settles, or the content height is still zero.
@@ -297,7 +325,8 @@ struct NovelWebView: UIViewRepresentable {
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard message.frameInfo.isMainFrame,
+            // Only the book's own pages speak for the reader's place — never a placeholder.
+            guard message.frameInfo.isMainFrame, message.frameInfo.request.url?.scheme == EPUBSchemeHandler.scheme,
                   let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
             switch action {
             case "selection":
@@ -307,7 +336,11 @@ struct NovelWebView: UIViewRepresentable {
                                                        suffix: String((value["suffix"] as? String ?? "").prefix(32)), offset: offset))
                 }
             case "progress":
-                if let fraction = body["fraction"] as? Double { parent.onScroll(fraction) }
+                guard let reported = body["fraction"] as? Double, reported.isFinite else { return }
+                let fraction = NovelWebView.clamped(reported)
+                Logger.reader.debug("[novel:page] progress \(fraction, format: .fixed(precision: 3)) paged=\(self.parent.paged) loaded=\(self.chapterLoaded) from \(message.frameInfo.request.url?.lastPathComponent ?? "?", privacy: .public)")
+                if parent.paged { pendingRestore = fraction }
+                parent.onScroll(fraction)
             case "next": parent.onNextChapter()
             case "previous": parent.onPreviousChapter()
             case "controls": parent.onTapMiddle()

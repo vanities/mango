@@ -25,6 +25,13 @@ final class ReadingProgressTests: XCTestCase {
         XCTAssertTrue(ReadingProgress(page: 0, pageCount: 10, finished: true).isStarted)
     }
 
+    /// A novel's page is its chapter, so part-way through the first chapter is page 0 plus a
+    /// fraction. That book is in progress, and it has to reopen where it was left.
+    func testNovelPartWayThroughItsFirstChapterIsStarted() {
+        XCTAssertTrue(ReadingProgress(page: 0, pageCount: 12, fractionInChapter: 0.4).isStarted)
+        XCTAssertFalse(ReadingProgress(page: 0, pageCount: 12, fractionInChapter: 0).isStarted)
+    }
+
     func testLabels() {
         XCTAssertEqual(ReadingProgress(page: 13, pageCount: 192).label, "Page 14 of 192")
         XCTAssertEqual(ReadingProgress(page: 191, pageCount: 192, finished: true).label, "Finished")

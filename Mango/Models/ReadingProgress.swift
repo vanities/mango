@@ -30,7 +30,8 @@ struct ReadingProgress: Codable, Hashable, Sendable {
         return min(1, max(0, Double(page) / Double(pageCount - 1)))
     }
 
-    var isStarted: Bool { page > 0 || finished }
+    /// A novel part-way through its first chapter is page 0 with a fraction — that's started.
+    var isStarted: Bool { page > 0 || fractionInChapter > 0 || finished }
 
     /// "Page 14 of 192" / "Finished".
     var label: String {
