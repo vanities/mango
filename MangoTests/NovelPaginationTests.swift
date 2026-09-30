@@ -299,6 +299,179 @@ final class NovelPaginationTests: XCTestCase {
         }
     }
 
+    // MARK: The page count is the chapter's, whatever the viewport is doing
+
+    /// Shaped like a light novel's chapter: long, a heading, and no viewport tag of its own —
+    /// so it first lays out at WebKit's 980 px default page, until the reader's tag goes in.
+    private func longChapter(paragraphs: Int = 150) async throws -> EPUBDocument {
+        let text = (0..<paragraphs).map { "<p>Paragraph \($0). The traveler crossed the quiet garden and opened the old wooden gate.</p>" }.joined()
+        let files = [
+            "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
+            "book.opf": "<package><manifest><item id='ch' href='ch.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='ch'/></spine></package>",
+            "ch.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>Twenty</title></head><body><h1>Chapter 20</h1>\(text)</body></html>"
+        ]
+        let zip = ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) })
+        return try await EPUBDocument.open(reader: DataReader(zip), displayName: "Long chapter")
+    }
+
+    private let phone = CGSize(width: 402, height: 874)
+
+    private func pagedView(_ document: EPUBDocument) -> NovelWebView {
+        NovelWebView(document: document, chapterPath: "ch.xhtml", fontScale: 1, dark: true,
+                     paged: true, tapToTurn: true, fontFamily: "Georgia, serif", lineSpacing: 1.6,
+                     margin: 22, restoreFraction: 0, onScroll: { _ in }, onTapMiddle: {},
+                     onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
+    }
+
+    /// A web view that loads chapters through the EPUB scheme handler, as the reader's does.
+    private func chapterWebView(_ document: EPUBDocument, size: CGSize, messages: Messages,
+                                atDocumentStart script: String? = nil) throws -> (WKWebView, UIWindow) {
+        let config = WKWebViewConfiguration()
+        config.setURLSchemeHandler(EPUBSchemeHandler(document: document), forURLScheme: EPUBSchemeHandler.scheme)
+        config.userContentController.add(messages, name: "mangoNavigation")
+        if let script {
+            config.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
+        let web = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: config)
+        web.scrollView.contentInsetAdjustmentBehavior = .never
+        web.scrollView.isScrollEnabled = false
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.frame = web.bounds
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.view.addSubview(web)
+        window.makeKeyAndVisible()
+        return (web, window)
+    }
+
+    private func waitFor(_ condition: String, in web: WKWebView) async throws {
+        for _ in 0..<200 {
+            if (try? await web.evaluateJavaScript(condition)) as? Bool == true { return }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTFail("Timed out waiting for \(condition)")
+    }
+
+    /// How many pages of `width` the chapter's text actually fills, from where its last line ends.
+    private func pagesOfText(_ web: WKWebView, width: CGFloat) async throws -> Int {
+        let right = try await number("""
+        (() => { const r = document.createRange(); r.selectNodeContents(document.body);
+          return Math.max(...[...r.getClientRects()].map(x => x.right + window.scrollX)); })()
+        """, web)
+        return Int(((right - 1) / width).rounded(.down)) + 1
+    }
+
+    /// Taps through the chapter from its first page: every page must be shown, at a whole
+    /// page's offset, before the reader moves on to the next chapter — and then exactly once.
+    private func tapThrough(_ web: WKWebView, messages: Messages, pages: Int, width: CGFloat,
+                            file: StaticString = #filePath, line: UInt = #line) async throws {
+        messages.actions.removeAll()
+        for page in 0..<pages {
+            XCTAssertFalse(messages.actions.contains("next"),
+                           "Left the chapter after \(page) of its \(pages) pages", file: file, line: line)
+            if messages.actions.contains("next") { return }
+            let offset = try await number("window.scrollX", web)
+            XCTAssertEqual(offset, Double(page) * width, accuracy: 1, "Page \(page) must be shown whole", file: file, line: line)
+            try await tap(at: width * 0.9, web)
+        }
+        XCTAssertEqual(messages.actions.filter { $0 == "next" }.count, 1,
+                       "The turn past the last page moves on to the next chapter", file: file, line: line)
+    }
+
+    /// Reported on Redo of Healer's chapter 20: tap-to-turn jumped to the epilogue about halfway
+    /// through. Just after the reader's styles go in, `window.innerWidth` — the *visual*
+    /// viewport, which iOS updates asynchronously from the UI process — can still read WebKit's
+    /// 980 px default page while the layout viewport (and every column) is already the phone's
+    /// 402. A chapter measured then came out 9 pages long instead of 21, and WebKit sends no
+    /// resize event when the value settles, so the count stuck.
+    func testPageCountIgnoresAVisualViewportThatHasntCaughtUp() async throws {
+        let document = try await longChapter()
+        let messages = Messages()
+        let lag = """
+        (() => {
+          const real = Object.getOwnPropertyDescriptor(window, 'innerWidth') || Object.getOwnPropertyDescriptor(Window.prototype, 'innerWidth');
+          window.mangoTestViewportLags = true;
+          Object.defineProperty(window, 'innerWidth', { configurable: true, get() { return window.mangoTestViewportLags ? 980 : real.get.call(window); } });
+        })();
+        """
+        let (web, window) = try chapterWebView(document, size: phone, messages: messages, atDocumentStart: lag)
+        defer { window.isHidden = true }
+        let coordinator = pagedView(document).makeCoordinator()
+        coordinator.webView = web
+        web.navigationDelegate = coordinator
+        defer { withExtendedLifetime(coordinator) {} }
+        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        try await waitFor("!!window.mangoPager && mangoPager.count > 1", in: web)
+        // The visual viewport catches up — and, as in WebKit, nothing announces it.
+        _ = try await web.evaluateJavaScript("window.mangoTestViewportLags = false")
+        try await Task.sleep(for: .milliseconds(200))
+        let pages = try await pagesOfText(web, width: phone.width)
+        XCTAssertGreaterThan(pages, 10)
+        let count = try await number("mangoPager.count", web)
+        XCTAssertEqual(Int(count), pages, "The pager must count the pages the chapter fills")
+        try await tapThrough(web, messages: messages, pages: pages, width: phone.width)
+    }
+
+    /// The same chapter when the viewport changes after the pager has measured: laid out at
+    /// WebKit's 980 px default until the reader's viewport tag takes effect. WebKit sends no
+    /// `resize` event for that — the view itself didn't change size — so the pager has to notice
+    /// that its pages did.
+    func testPagerFollowsAViewportTagThatTakesEffectLate() async throws {
+        let document = try await longChapter()
+        let messages = Messages()
+        let (web, window) = try chapterWebView(document, size: phone, messages: messages)
+        defer { window.isHidden = true }
+        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        try await waitFor("document.readyState === 'complete' && document.querySelectorAll('p').length === 150", in: web)
+        let view = pagedView(document)
+        let css = String(data: try JSONEncoder().encode(view.css), encoding: .utf8)!
+        _ = try await web.evaluateJavaScript("const s = document.createElementNS('http://www.w3.org/1999/xhtml', 'style'); s.textContent = \(css); document.head.appendChild(s); true")
+        _ = try await web.evaluateJavaScript(view.paginationScript(startingAt: 0))
+        let wide = try await number("document.body.getBoundingClientRect().width", web)
+        XCTAssertGreaterThan(wide, phone.width * 2, "Without a viewport tag the chapter lays out at WebKit's desktop width")
+        _ = try await web.evaluateJavaScript("""
+        const m = document.createElementNS('http://www.w3.org/1999/xhtml', 'meta');
+        m.setAttribute('name', 'viewport'); m.setAttribute('content', 'width=device-width, initial-scale=1.0');
+        document.head.appendChild(m); true
+        """)
+        try await Task.sleep(for: .milliseconds(600))
+        let pages = try await pagesOfText(web, width: phone.width)
+        XCTAssertGreaterThan(pages, 10)
+        let count = try await number("mangoPager.count", web)
+        XCTAssertEqual(Int(count), pages, "The pager must re-count once the pages are the phone's")
+        try await tapThrough(web, messages: messages, pages: pages, width: phone.width)
+    }
+
+    /// Whatever else leaves the count stale (text that reflows with no event to say so), the
+    /// last tap in a chapter mustn't be the one that skips the rest of it.
+    func testChapterIsNotLeftWhileTextRemains() async throws {
+        let document = try await longChapter(paragraphs: 60)
+        let messages = Messages()
+        let (web, window) = try chapterWebView(document, size: phone, messages: messages)
+        defer { window.isHidden = true }
+        let coordinator = pagedView(document).makeCoordinator()
+        coordinator.webView = web
+        web.navigationDelegate = coordinator
+        defer { withExtendedLifetime(coordinator) {} }
+        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        try await waitFor("!!window.mangoPager && mangoPager.count > 1", in: web)
+        try await Task.sleep(for: .milliseconds(200))
+        let before = try await number("mangoPager.count", web)
+        // More text arrives without a load, font or resize event.
+        _ = try await web.evaluateJavaScript("""
+        for (let i = 60; i < 150; i++) {
+          const p = document.createElementNS('http://www.w3.org/1999/xhtml', 'p');
+          p.textContent = 'Paragraph ' + i + '. The traveler crossed the quiet garden and opened the old wooden gate.';
+          document.body.appendChild(p);
+        }
+        true
+        """)
+        let pages = try await pagesOfText(web, width: phone.width)
+        XCTAssertGreaterThan(Double(pages), before)
+        try await tapThrough(web, messages: messages, pages: pages, width: phone.width)
+    }
+
     private func tap(at x: CGFloat, _ web: WKWebView) async throws {
         _ = try await web.evaluateJavaScript("document.body.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:\(x), detail:1}))")
         // Let WebKit commit the native scroll between gestures, as it does between real taps.

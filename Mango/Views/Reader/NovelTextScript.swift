@@ -50,10 +50,11 @@ enum NovelTextScript {
           if (!r) return false;
           const rect = r.getBoundingClientRect();
           if (window.mangoPager) {
-            const p = window.mangoPager;
-            p.page = Math.max(0, Math.min(p.count - 1, Math.floor((rect.left + window.scrollX) / window.innerWidth)));
+            // Pages are the pager's width — the visual viewport can lag behind it.
+            const p = window.mangoPager, width = p.width ? p.width() : window.innerWidth;
+            p.page = Math.max(0, Math.min(p.count - 1, Math.floor((rect.left + window.scrollX) / width)));
             p.fraction = p.count > 1 ? p.page / (p.count - 1) : 0;
-            window.scrollTo(p.page * window.innerWidth, 0);
+            window.scrollTo(p.page * width, 0);
             window.webkit.messageHandlers.mangoNavigation.postMessage({action: 'progress', fraction: p.fraction});
           } else window.scrollTo(0, Math.max(0, window.scrollY + rect.top - 90));
           return true;

@@ -142,6 +142,25 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 - The page grid's thumbnails live in their own small cache in `PageLoader`, so browsing them
   never evicts the pages being read. Page tints are display-only view modifiers.
 
+### Light novels
+
+- A novel's place is a chapter (spine item) plus a fraction through it (`NovelEngine`); the
+  book's percentage weights chapters by their byte size.
+- **Turn pages like a book** lays a chapter out in CSS columns one viewport wide
+  (`NovelWebView.paginationCSS`), and the pager in `paginationScript` turns by scrolling the
+  document. **A page is the body's width, never `window.innerWidth`.** That's the visual
+  viewport, which iOS updates from the UI process after a viewport change: just after the
+  reader's viewport tag goes in (chapters don't carry one, so they load at WebKit's 980 px
+  default) it can still read 980 while every column is already the phone's 402. WebKit sends
+  no `resize` event when that settles, nor when the tag itself takes effect, so a count taken
+  then stuck — 9 pages of a 21-page chapter, and tap-to-turn skipped to the epilogue halfway
+  through. The pager re-lays out when the body resizes (`ResizeObserver`) and re-measures
+  before a turn leaves the chapter.
+- The reader's place moves only on a turn or a jump, never on a layout pass: a pass while the
+  chapter settles can count fewer pages than there are.
+- `NovelPaginationTests` runs the pager in real WebKit — chapters served by the scheme handler,
+  taps, illustrations, a lagging visual viewport, a late viewport tag.
+
 ## Covers and names from online
 
 - **Find Cover** (`CoverSearch`, `CoverPickerView`): MangaDex first — it has a cover for *each

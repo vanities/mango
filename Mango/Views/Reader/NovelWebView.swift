@@ -157,6 +157,13 @@ struct NovelWebView: UIViewRepresentable {
     /// turn or a jump changes it. Layout runs several times while a chapter settles (fonts,
     /// images, a resize), and a pass can measure fewer pages than there are; deriving the
     /// place from that pass would send the reader back towards the start.
+    ///
+    /// A page is the body, which `paginationCSS` makes one viewport wide with columns at that
+    /// pitch — never `window.innerWidth`. That's the *visual* viewport, which iOS updates from
+    /// the UI process after a viewport change: just after the reader's styles go in it can
+    /// still read WebKit's 980 px default page while every column is already the phone's
+    /// 402, and WebKit sends no resize event when it settles. A count measured then stuck at
+    /// 9 pages of a 21-page chapter, and tap-to-turn left the chapter less than halfway in.
     func paginationScript(startingAt startFraction: Double) -> String {
         """
         (() => {
@@ -168,26 +175,36 @@ struct NovelWebView: UIViewRepresentable {
           }
           const pager = { page: 0, count: 1, fraction: \(Self.clamped(startFraction)), tapEnabled: \(tapToTurn) };
           window.mangoPager = pager;
+          pager.width = () => document.body.getBoundingClientRect().width;
           const selected = () => !!window.getSelection()?.toString();
           const interactive = target => target?.closest?.('a, button, input, textarea, select, [contenteditable]');
           const show = () => {
-            window.scrollTo(pager.page * window.innerWidth, 0);
+            window.scrollTo(pager.page * pager.width(), 0);
             send('progress', pager.count > 1 ? pager.page / (pager.count - 1) : pager.fraction);
+          };
+          const measure = () => {
+            const width = pager.width(), scrolled = window.scrollX;
+            // Measure fresh so a smaller font or wider viewport can reduce the page count.
+            document.documentElement.style.width = '100%';
+            pager.count = Math.max(1, Math.round(Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) / width));
+            // Column overflow omits the final right padding. Reserve a whole last page or
+            // WebKit clamps its scroll offset and shifts the text after the tap completes.
+            document.documentElement.style.width = (pager.count * width) + 'px';
+            // Measuring shrank the document, which clamps a scroll on the last page; undo that.
+            if (window.scrollX !== scrolled) window.scrollTo(scrolled, 0);
           };
           pager.layout = () => {
             // A view being resized or snapshotted can be zero wide for a moment.
-            if (window.innerWidth < 1) return;
-            // Measure fresh so a smaller font or wider viewport can reduce the page count.
-            document.documentElement.style.width = '100%';
-            pager.count = Math.max(1, Math.round(Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) / window.innerWidth));
-            // Column overflow omits the final right padding. Reserve a whole last page or
-            // WebKit clamps its scroll offset and shifts the text after the tap completes.
-            document.documentElement.style.width = (pager.count * window.innerWidth) + 'px';
+            if (pager.width() < 1) return;
+            measure();
             pager.page = Math.min(pager.count - 1, Math.round(pager.fraction * (pager.count - 1)));
             show();
           };
           const turn = delta => {
             if (selected()) return;
+            // Leaving the chapter is the turn that skips whatever the count missed, so it's
+            // never decided on a count that may have gone stale since it was measured.
+            if (pager.page + delta >= pager.count && pager.width() >= 1) measure();
             const next = pager.page + delta;
             if (next < 0) send('previous');
             else if (next >= pager.count) send('next');
@@ -211,7 +228,7 @@ struct NovelWebView: UIViewRepresentable {
           document.addEventListener('click', event => {
             if (swiped) { swiped = false; return; }
             if (interactive(event.target) || selected() || event.detail > 1) return;
-            const x = event.clientX / window.innerWidth;
+            const x = event.clientX / pager.width();
             if (pager.tapEnabled && x <= 0.25) turn(-1);
             else if (pager.tapEnabled && x >= 0.75) turn(1);
             else send('controls');
@@ -221,9 +238,20 @@ struct NovelWebView: UIViewRepresentable {
             if (event.key === 'ArrowRight' || event.key === ' ') { event.preventDefault(); turn(1); }
             if (event.key === 'ArrowLeft') { event.preventDefault(); turn(-1); }
           });
+          // Lay out again whenever the pages or the text can have changed. The body is sized by
+          // the viewport, so it resizing is the pages resizing — including the viewport tag
+          // taking effect, which fires no window resize. The visual viewport settling can have
+          // clamped a scroll made while it read too wide; not while the reader is zoomed in.
           window.addEventListener('resize', pager.layout);
-          document.querySelectorAll('img').forEach(img => img.addEventListener('load', pager.layout));
-          document.fonts.ready.then(pager.layout);
+          new ResizeObserver(() => pager.layout()).observe(document.body);
+          window.visualViewport?.addEventListener('resize', () => {
+            if (Math.abs(window.visualViewport.scale - 1) < 0.01) pager.layout();
+          });
+          // Captured at the document, so any image that loads late re-lays out — an SVG <image>
+          // or one added later, not only the <img>s there when the pager started.
+          document.addEventListener('load', () => pager.layout(), true);
+          document.fonts.addEventListener?.('loadingdone', () => pager.layout());
+          document.fonts.ready.then(() => pager.layout());
           pager.layout();
         })();
         """
