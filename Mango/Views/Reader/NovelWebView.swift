@@ -269,12 +269,23 @@ struct NovelWebView: UIViewRepresentable {
             if (event.key === 'ArrowRight' || event.key === ' ') { event.preventDefault(); turn(1); }
             if (event.key === 'ArrowLeft') { event.preventDefault(); turn(-1); }
           });
-          // Lay out again whenever the pages or the text can have changed. The body is sized by
-          // the viewport, so it resizing is the pages resizing — including the viewport tag
-          // taking effect, which fires no window resize. The visual viewport settling to its
-          // real width can have clamped a scroll made while it read too wide. Only its width:
-          // the keyboard (Find in this chapter) changes its height, and re-showing the page
-          // then would scroll away from the match; and not while the reader is zoomed in.
+          \(Self.relayoutTriggers)
+          pager.layout();
+        })();
+        """
+    }
+
+    /// Everything that makes the pager lay out again — anything that can change the pages or
+    /// move the text. Part of `paginationScript`, where `pager` is in scope.
+    ///
+    /// The body is sized by the viewport, so it resizing is the pages resizing — including the
+    /// viewport tag taking effect, which fires no window resize. The visual viewport settling to
+    /// its real width can have clamped a scroll made while it read too wide. Only its width: the
+    /// keyboard (Find in this chapter) changes its height, and re-showing the page then would
+    /// scroll away from the match; and not while the reader is zoomed in. Loads are captured at
+    /// the document, so any image that arrives late counts — an SVG <image> or one added later,
+    /// not only the <img>s there when the pager started.
+    private static let relayoutTriggers = """
           window.addEventListener('resize', pager.layout);
           new ResizeObserver(() => pager.layout()).observe(document.body);
           let visualWidth = window.visualViewport?.width;
@@ -284,15 +295,10 @@ struct NovelWebView: UIViewRepresentable {
             visualWidth = viewport.width;
             pager.layout();
           });
-          // Captured at the document, so any image that loads late re-lays out — an SVG <image>
-          // or one added later, not only the <img>s there when the pager started.
           document.addEventListener('load', () => pager.layout(), true);
           document.fonts.addEventListener?.('loadingdone', () => pager.layout());
           document.fonts.ready.then(() => pager.layout());
-          pager.layout();
-        })();
         """
-    }
 
     final class Coordinator: NSObject, WKNavigationDelegate, UIScrollViewDelegate, UIGestureRecognizerDelegate, WKScriptMessageHandler {
         var parent: NovelWebView
