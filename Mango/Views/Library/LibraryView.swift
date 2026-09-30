@@ -24,9 +24,13 @@ struct LibraryView: View {
         sizeClass == .regular ? (170, 230) : (110, 180)
     }
 
-    private var shelves: [Series] { library.search(query, in: medium) }
+    private var shelves: [Series] { library.search(query, in: shownMedium) }
     /// Only worth showing the switch once there's something on both shelves.
     private var showsMediumPicker: Bool { library.hasNovels && library.hasComics }
+    /// What's on screen: the pick, unless only the other shelf has anything on it.
+    private var shownMedium: Medium {
+        Medium.shown(chosen: medium, hasComics: library.hasComics, hasNovels: library.hasNovels)
+    }
 
     var body: some View {
         @Bindable var settings = settings
@@ -39,9 +43,9 @@ struct LibraryView: View {
                 } else if shelves.isEmpty {
                     VStack(spacing: 16) {
                         mediumPicker
-                        ContentUnavailableView(medium == .novels ? "No novels yet" : "No manga yet",
-                                               systemImage: medium.systemImage,
-                                               description: Text(medium.emptyMessage))
+                        ContentUnavailableView(shownMedium == .novels ? "No novels yet" : "No manga yet",
+                                               systemImage: shownMedium.systemImage,
+                                               description: Text(shownMedium.emptyMessage))
                     }
                 } else {
                     shelfList
@@ -133,7 +137,7 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var continueRow: some View {
-        let inProgress = library.continueReading.filter { $0.isNovel == (medium == .novels) }
+        let inProgress = library.continueReading.filter { $0.isNovel == (shownMedium == .novels) }
         if !inProgress.isEmpty, query.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Continue Reading")

@@ -180,6 +180,16 @@ final class MediumSeparationTests: XCTestCase {
         XCTAssertEqual(shelves.count { !$0.isNovel }, 1)
     }
 
+    /// The Manga/Novels switch only shows once both shelves have books, so a library of only
+    /// light novels has to open on them — it used to open on an empty Manga shelf, stuck there.
+    func testALibraryWithOneKindOfBookShowsThatShelf() {
+        XCTAssertEqual(Medium.shown(chosen: .manga, hasComics: false, hasNovels: true), .novels)
+        XCTAssertEqual(Medium.shown(chosen: .novels, hasComics: true, hasNovels: false), .manga)
+        XCTAssertEqual(Medium.shown(chosen: .novels, hasComics: true, hasNovels: true), .novels)
+        XCTAssertEqual(Medium.shown(chosen: .manga, hasComics: true, hasNovels: true), .manga)
+        XCTAssertEqual(Medium.shown(chosen: .manga, hasComics: false, hasNovels: false), .manga)
+    }
+
     func testVolumesOfOneMediumStillMerge() {
         var second = make("novel v2", kind: .epub)
         second.volume = 2
