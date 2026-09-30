@@ -472,6 +472,27 @@ final class NovelPaginationTests: XCTestCase {
         try await tapThrough(web, messages: messages, pages: pages, width: phone.width)
     }
 
+    /// Find in this chapter scrolls to a match itself, and its keyboard resizes the visual
+    /// viewport as it comes and goes — in height only. That mustn't turn back to the page the
+    /// pager was on.
+    func testKeyboardResizingTheVisualViewportLeavesThePageAlone() async throws {
+        let document = try await longChapter()
+        let messages = Messages()
+        let (web, window) = try chapterWebView(document, size: phone, messages: messages)
+        defer { window.isHidden = true }
+        let coordinator = pagedView(document).makeCoordinator()
+        coordinator.webView = web
+        web.navigationDelegate = coordinator
+        defer { withExtendedLifetime(coordinator) {} }
+        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        try await waitFor("!!window.mangoPager && mangoPager.count > 3", in: web)
+        try await Task.sleep(for: .milliseconds(200))
+        _ = try await web.evaluateJavaScript("window.scrollTo(\(phone.width * 3), 0); visualViewport.dispatchEvent(new Event('resize')); true")
+        try await Task.sleep(for: .milliseconds(100))
+        let offset = try await number("window.scrollX", web)
+        XCTAssertEqual(offset, phone.width * 3, accuracy: 1, "The match Find scrolled to stays on screen")
+    }
+
     // MARK: Links
 
     func testLinksAreSortedByWhereTheyLead() throws {

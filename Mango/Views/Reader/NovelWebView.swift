@@ -271,12 +271,18 @@ struct NovelWebView: UIViewRepresentable {
           });
           // Lay out again whenever the pages or the text can have changed. The body is sized by
           // the viewport, so it resizing is the pages resizing — including the viewport tag
-          // taking effect, which fires no window resize. The visual viewport settling can have
-          // clamped a scroll made while it read too wide; not while the reader is zoomed in.
+          // taking effect, which fires no window resize. The visual viewport settling to its
+          // real width can have clamped a scroll made while it read too wide. Only its width:
+          // the keyboard (Find in this chapter) changes its height, and re-showing the page
+          // then would scroll away from the match; and not while the reader is zoomed in.
           window.addEventListener('resize', pager.layout);
           new ResizeObserver(() => pager.layout()).observe(document.body);
+          let visualWidth = window.visualViewport?.width;
           window.visualViewport?.addEventListener('resize', () => {
-            if (Math.abs(window.visualViewport.scale - 1) < 0.01) pager.layout();
+            const viewport = window.visualViewport;
+            if (viewport.width === visualWidth || Math.abs(viewport.scale - 1) >= 0.01) return;
+            visualWidth = viewport.width;
+            pager.layout();
           });
           // Captured at the document, so any image that loads late re-lays out — an SVG <image>
           // or one added later, not only the <img>s there when the pager started.
