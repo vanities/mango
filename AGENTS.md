@@ -158,6 +158,11 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   before a turn leaves the chapter.
 - The reader's place moves only on a turn or a jump, never on a layout pass: a pass while the
   chapter settles can count fewer pages than there are.
+- **Links never navigate the reader's web view** (`Coordinator.decidePolicyFor`): another
+  document in the book goes through `NovelEngine.openLink` like the chapter list (so Undo
+  works), an anchor in the chapter turns the pager to its page, and anything outside the book
+  opens in the browser. Left to WebKit, a book's own contents page swapped the chapter on screen
+  while the engine kept counting the old one as the place.
 - `NovelPaginationTests` runs the pager in real WebKit — chapters served by the scheme handler,
   taps, illustrations, a lagging visual viewport, a late viewport tag.
 

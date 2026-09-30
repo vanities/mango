@@ -28,6 +28,27 @@ struct NovelWebView: UIViewRepresentable {
     var onNextChapter: () -> Void
     var onPreviousChapter: () -> Void
     var onReachedBottom: () -> Void
+    /// A link to another document in the book, by its path in the zip.
+    var onOpenChapter: (String) -> Void = { _ in }
+    /// A link out of the book. Opened in the browser, never in the reader.
+    var onOpenExternal: @MainActor (URL) -> Void = { UIApplication.shared.open($0) }
+
+    /// Where a link in a chapter leads.
+    enum LinkTarget: Equatable {
+        /// This chapter; with a fragment, an anchor in it.
+        case sameChapter(fragment: String?)
+        /// Another document in the book, by its path in the zip.
+        case chapter(String)
+        /// Anything outside the book.
+        case external(URL)
+    }
+
+    nonisolated static func linkTarget(_ url: URL, chapterPath: String) -> LinkTarget {
+        guard url.scheme == EPUBSchemeHandler.scheme else { return .external(url) }
+        let path = EPUBSchemeHandler.path(from: url)
+        let fragment = url.fragment(percentEncoded: false).flatMap { $0.isEmpty ? nil : $0 }
+        return path == chapterPath ? .sameChapter(fragment: fragment) : .chapter(path)
+    }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -200,6 +221,16 @@ struct NovelWebView: UIViewRepresentable {
             pager.page = Math.min(pager.count - 1, Math.round(pager.fraction * (pager.count - 1)));
             show();
           };
+          // A link to an anchor in this chapter: turn to the page it's on.
+          pager.showElement = id => {
+            const target = document.getElementById(id) || document.getElementsByName(id)[0];
+            if (!target || pager.width() < 1) return false;
+            const left = target.getBoundingClientRect().left + window.scrollX;
+            pager.page = Math.max(0, Math.min(pager.count - 1, Math.floor(left / pager.width())));
+            pager.fraction = pager.count > 1 ? pager.page / (pager.count - 1) : 0;
+            show();
+            return true;
+          };
           const turn = delta => {
             if (selected()) return;
             // Leaving the chapter is the turn that skips whatever the count missed, so it's
@@ -317,6 +348,36 @@ struct NovelWebView: UIViewRepresentable {
                 } else { self.prepareTextTools() }
             }
             appliedStyle = parent.styleKey
+        }
+
+        /// Links in a chapter never navigate this view. Left to WebKit, the book's own contents
+        /// page replaced the chapter on screen while the reader still counted the contents page
+        /// as the place — saving progress against it, and "next chapter" leading back into the
+        /// book — and a web link loaded the site inside the reader, with no way back.
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                     decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+            guard navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+            switch NovelWebView.linkTarget(url, chapterPath: parent.chapterPath) {
+            case .sameChapter(let fragment?) where parent.paged:
+                // Scrolling follows an anchor by itself; a page has to be turned to it.
+                decisionHandler(.cancel)
+                guard let data = try? JSONEncoder().encode(fragment), let id = String(data: data, encoding: .utf8) else { return }
+                Logger.reader.info("[novel:link] anchor in this chapter, turning to its page")
+                webView.evaluateJavaScript("window.mangoPager?.showElement(\(id))")
+            case .sameChapter(let fragment):
+                decisionHandler(fragment == nil ? .cancel : .allow)
+            case .chapter(let path):
+                decisionHandler(.cancel)
+                Logger.reader.info("[novel:link] to \(path, privacy: .public) from \(self.parent.chapterPath, privacy: .public)")
+                parent.onOpenChapter(path)
+            case .external(let target):
+                decisionHandler(.cancel)
+                Logger.reader.info("[novel:link] out of the book to \(target.host() ?? target.scheme ?? "?", privacy: .public), opening in the browser")
+                parent.onOpenExternal(target)
+            }
         }
 
         /// Also covers WebKit reloading the chapter itself after its process was killed.

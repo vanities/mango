@@ -472,6 +472,103 @@ final class NovelPaginationTests: XCTestCase {
         try await tapThrough(web, messages: messages, pages: pages, width: phone.width)
     }
 
+    // MARK: Links
+
+    func testLinksAreSortedByWhereTheyLead() throws {
+        let chapter = "OEBPS/Text/section-0001.html"
+        let here = try XCTUnwrap(EPUBSchemeHandler.url(for: chapter))
+        XCTAssertEqual(NovelWebView.linkTarget(here, chapterPath: chapter), .sameChapter(fragment: nil))
+        let anchor = try XCTUnwrap(URL(string: here.absoluteString + "#note%201"))
+        XCTAssertEqual(NovelWebView.linkTarget(anchor, chapterPath: chapter), .sameChapter(fragment: "note 1"))
+        let other = try XCTUnwrap(EPUBSchemeHandler.url(for: "OEBPS/Text/section 0005.html"))
+        XCTAssertEqual(NovelWebView.linkTarget(other, chapterPath: chapter), .chapter("OEBPS/Text/section 0005.html"))
+        let web = try XCTUnwrap(URL(string: "https://www.gomanga.com/newsletter/"))
+        XCTAssertEqual(NovelWebView.linkTarget(web, chapterPath: chapter), .external(web))
+    }
+
+    private final class Links {
+        var chapters: [String] = []
+        var external: [URL] = []
+    }
+
+    private struct LinkedChapterHost: View {
+        let document: EPUBDocument
+        let paged: Bool
+        let links: Links
+
+        var body: some View {
+            NovelWebView(document: document, chapterPath: "ch1.xhtml", fontScale: 1, dark: false,
+                         paged: paged, tapToTurn: true, fontFamily: "Georgia, serif", lineSpacing: 1.6,
+                         margin: 22, restoreFraction: 0, onScroll: { _ in }, onTapMiddle: {},
+                         onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {},
+                         onOpenChapter: { links.chapters.append($0) }, onOpenExternal: { links.external.append($0) })
+                .ignoresSafeArea()
+        }
+    }
+
+    /// Seven Seas books open with their own contents page, translations link out to the web,
+    /// and notes are anchors further down. Following any of them used to load it in place of
+    /// the chapter, while the reader went on counting the old chapter as the place.
+    func testLinksNeverTakeTheChapterAway() async throws {
+        let text = (0..<150).map { "<p>Paragraph \($0). The traveler crossed the quiet garden and opened the old wooden gate.</p>" }.joined()
+        let files = [
+            "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
+            "book.opf": "<package><manifest><item id='a' href='ch1.xhtml' media-type='application/xhtml+xml'/><item id='b' href='ch2.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='a'/><itemref idref='b'/></spine></package>",
+            "ch1.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>Contents</title></head><body><p><a id='contents' href='ch2.xhtml'>Chapter Two</a></p><p><a id='web' href='https://example.com/notes'>Notes online</a></p><p><a id='down' href='#note'>1</a></p>\(text)<p id='note'>The note.</p></body></html>",
+            "ch2.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>Two</title></head><body><p>Two</p></body></html>"
+        ]
+        let zip = ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) })
+        let document = try await EPUBDocument.open(reader: DataReader(zip), displayName: "Linked")
+        for paged in [true, false] {
+            let links = Links()
+            let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(origin: .zero, size: phone)
+            window.rootViewController = UIHostingController(rootView: LinkedChapterHost(document: document, paged: paged, links: links))
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true }
+            var found: WKWebView?
+            for _ in 0..<200 where found == nil {
+                found = firstWebView(in: window)
+                if found == nil { try await Task.sleep(for: .milliseconds(50)) }
+            }
+            let web = try XCTUnwrap(found, "The reader's web view never appeared")
+            try await waitFor(paged ? "!!window.mangoPager && mangoPager.count > 1"
+                                    : "document.readyState === 'complete' && !!document.getElementById('mango-style')", in: web)
+            let stillHere = "location.pathname === '/ch1.xhtml'"
+
+            _ = try await web.evaluateJavaScript("document.getElementById('contents').click(); true")
+            for _ in 0..<40 where links.chapters.isEmpty { try await Task.sleep(for: .milliseconds(25)) }
+            XCTAssertEqual(links.chapters, ["ch2.xhtml"], "The contents page opens the chapter through the reader")
+            try await Task.sleep(for: .milliseconds(200))
+            let afterContents = try await web.evaluateJavaScript(stillHere) as? Bool
+            XCTAssertEqual(afterContents, true, "…and the chapter on screen stays")
+
+            _ = try await web.evaluateJavaScript("document.getElementById('web').click(); true")
+            for _ in 0..<40 where links.external.isEmpty { try await Task.sleep(for: .milliseconds(25)) }
+            XCTAssertEqual(links.external, [URL(string: "https://example.com/notes")!], "A web link goes to the browser")
+            try await Task.sleep(for: .milliseconds(200))
+            let afterWeb = try await web.evaluateJavaScript(stillHere) as? Bool
+            XCTAssertEqual(afterWeb, true, "…never into the reader")
+
+            _ = try await web.evaluateJavaScript("document.getElementById('down').click(); true")
+            try await Task.sleep(for: .milliseconds(300))
+            let afterAnchor = try await web.evaluateJavaScript(stillHere) as? Bool
+            XCTAssertEqual(afterAnchor, true)
+            if paged {
+                let count = try await number("mangoPager.count", web)
+                let page = try await number("mangoPager.page", web)
+                XCTAssertEqual(page, count - 1, "An anchor on the chapter's last page turns to that page")
+                let offset = try await number("window.scrollX", web)
+                XCTAssertEqual(offset, page * phone.width, accuracy: 1)
+            } else {
+                let top = try await number("document.getElementById('note').getBoundingClientRect().top", web)
+                XCTAssertLessThan(abs(top), phone.height, "Scrolling reading follows the anchor itself")
+            }
+            XCTAssertEqual(links.chapters, ["ch2.xhtml"])
+        }
+    }
+
     private func tap(at x: CGFloat, _ web: WKWebView) async throws {
         _ = try await web.evaluateJavaScript("document.body.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:\(x), detail:1}))")
         // Let WebKit commit the native scroll between gestures, as it does between real taps.

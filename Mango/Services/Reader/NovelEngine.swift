@@ -167,6 +167,17 @@ final class NovelEngine {
         chapterIndex = index
     }
 
+    /// A link in the book to another of its documents — its own contents page, usually. Goes
+    /// there as the chapter list does, so Undo brings the reader back.
+    func openLink(toPath path: String) {
+        guard let index = chapters.firstIndex(where: { $0.path == path }) else {
+            Logger.reader.info("[novel] link to \(path, privacy: .public), which isn't in the reading order; staying put")
+            return
+        }
+        Logger.reader.info("[novel] link from chapter \(self.chapterIndex + 1) to chapter \(index + 1)")
+        goToChapter(index)
+    }
+
     func notifyReachedEnd() {
         guard !reachedEnd, !isOpening, !chapters.isEmpty else { return }
         Logger.reader.info("[novel] reached the end of \(self.comic.title, privacy: .public)")

@@ -59,7 +59,8 @@ struct NovelReaderView: View {
                         onReachedBottom: {
                             // Reaching the bottom of the last chapter is the end of the book.
                             if engine.isAtLastChapter { engine.notifyReachedEnd() }
-                        }
+                        },
+                        onOpenChapter: { engine.openLink(toPath: $0) }
                     )
                     .ignoresSafeArea()
                     .id("\(chapter.path)-\(settings.novelPaged)-\(engine.jumpID)")
