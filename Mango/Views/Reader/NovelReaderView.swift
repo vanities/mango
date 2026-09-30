@@ -257,8 +257,10 @@ struct NovelControls: View {
                 if engine.jumpOrigin != nil {
                     button("arrow.uturn.backward", label: "Undo position jump") { engine.undoJump() }
                 }
+                // Chapters, not pages: VoiceOver would otherwise read the symbols as Back and Forward.
                 Button { engine.previousChapter() } label: { Image(systemName: "chevron.left") }
                     .disabled(engine.chapterIndex <= 0)
+                    .accessibilityLabel("Previous chapter")
                 VStack(spacing: 2) {
                     Text(engine.positionLabel).font(.caption.weight(.medium)).monospacedDigit()
                     if settings.showReadingEstimates, let minutes = engine.chapterMinutesRemaining {
@@ -267,6 +269,7 @@ struct NovelControls: View {
                     }
                 }.foregroundStyle(.secondary).frame(maxWidth: .infinity)
                 Button { engine.nextChapter() } label: { Image(systemName: "chevron.right") }
+                    .accessibilityLabel("Next chapter")
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
