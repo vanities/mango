@@ -44,6 +44,13 @@ struct ReadingProgress: Codable, Hashable, Sendable {
         return pageCount > 0 ? "Chapter \(page + 1) of \(pageCount)" : "Chapter \(page + 1)"
     }
 
+    /// The same by the book's own chapter names once they're known — `titles` as saved from its
+    /// table of contents (`NovelContents`) — so it says "Chapter 20", not "Chapter 23 of 26".
+    func novelLabel(titles: [String?]?) -> String {
+        if finished { return "Finished" }
+        return NovelContents.name(of: page, titles: titles) ?? novelLabel
+    }
+
     init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         page = try c.decodeIfPresent(Int.self, forKey: .page) ?? 0

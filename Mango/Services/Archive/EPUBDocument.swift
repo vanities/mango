@@ -57,6 +57,33 @@ actor EPUBDocument {
         return try? await ZipReader.read(entry, from: reader)
     }
 
+    private var tableOfContentsCache: [EPUBTOCEntry]?
+
+    /// The book's own table of contents, read the first time it's asked for — the reader wants
+    /// it, the library's cover backfill doesn't. EPUB 3's navigation document first, then the
+    /// NCX, which EPUB 3 books often carry as well and is all an EPUB 2 book has. Empty when
+    /// neither names anything in the reading order.
+    func tableOfContents() async -> [EPUBTOCEntry] {
+        if let tableOfContentsCache { return tableOfContentsCache }
+        let sw = Stopwatch()
+        let spinePaths = Set(package.spine.map(\.path))
+        var entries: [EPUBTOCEntry] = []
+        var source = "none"
+        if let path = package.navPath, let data = await data(at: path) {
+            entries = EPUBParser.parseNav(data, navPath: path)
+            source = "nav"
+        }
+        if !entries.contains(where: { spinePaths.contains($0.path) }), let path = package.ncxPath,
+           let data = await data(at: path) {
+            entries = EPUBParser.parseNCX(data, ncxPath: path)
+            source = "ncx"
+        }
+        tableOfContentsCache = entries
+        let named = entries.filter { spinePaths.contains($0.path) }.count
+        Logger.archive.info("[epub] contents of \(self.displayName, privacy: .public): \(entries.count) entries from \(source, privacy: .public), \(named) in the reading order, in \(sw.ms, format: .fixed(precision: 0))ms")
+        return entries
+    }
+
     func chapterHTML(at index: Int) async -> Data? {
         guard package.spine.indices.contains(index) else { return nil }
         return await data(at: package.spine[index].path)

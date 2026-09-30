@@ -47,6 +47,7 @@ final class LibraryStateCompatTests: XCTestCase {
         XCTAssertTrue(state.seriesDirection.isEmpty)
         XCTAssertTrue(state.longStripComicIDs.isEmpty, "a library from before long-strip detection")
         XCTAssertTrue(state.seriesMode.isEmpty)
+        XCTAssertTrue(state.novelChapterTitles.isEmpty, "a library from before novels' chapter names were kept")
     }
 
     func testRoundTrips() throws {
@@ -57,6 +58,7 @@ final class LibraryStateCompatTests: XCTestCase {
         state.hiddenComicIDs = ["b"]
         state.longStripComicIDs = ["w"]
         state.seriesMode["rooftop garden"] = .continuous
+        state.novelChapterTitles["LN/Healer v01.epub"] = [nil, "Prologue", nil, "Chapter 1"]
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -70,6 +72,8 @@ final class LibraryStateCompatTests: XCTestCase {
         XCTAssertEqual(round.hiddenComicIDs, ["b"])
         XCTAssertEqual(round.longStripComicIDs, ["w"])
         XCTAssertEqual(round.seriesMode["rooftop garden"], .continuous)
+        XCTAssertEqual(round.novelChapterTitles["LN/Healer v01.epub"], [nil, "Prologue", nil, "Chapter 1"],
+                       "Unnamed documents keep their place, so names stay lined up with the reading order")
     }
 
     // MARK: Salvage

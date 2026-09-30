@@ -13,13 +13,18 @@ struct BookmarkSearchView: View {
     private struct Result: Identifiable {
         let book: Comic
         let mark: Bookmark
+        /// A novel's chapter by the book's own name once it's been opened here ("Chapter 20"),
+        /// else by number.
+        let location: String
         var id: String { "\(book.id)|\(mark.id)" }
-        var location: String { mark.label(isNovel: book.isNovel) }
     }
     private var results: [Result] {
         let words = query.split(whereSeparator: \.isWhitespace).map(String.init)
         return library.visibleComics.flatMap { book in
-            library.bookmarks(for: book).map { Result(book: book, mark: $0) }
+            library.bookmarks(for: book).map { mark in
+                let name = book.isNovel ? NovelContents.name(of: mark.page, titles: library.chapterTitles(for: book)) : nil
+                return Result(book: book, mark: mark, location: name ?? mark.label(isNovel: book.isNovel))
+            }
         }.filter { result in
             let text = [result.book.title, result.book.series ?? "", result.book.author ?? "", result.mark.note, result.mark.anchor?.quote ?? "", result.location].joined(separator: " ")
             return words.allSatisfy { text.localizedStandardContains($0) }

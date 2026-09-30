@@ -17,6 +17,8 @@ final class NovelEngine {
     private(set) var isOpening = true
     private(set) var openError: String?
     private(set) var chapters: [EPUBSpineItem] = []
+    /// The chapters by the book's own names, from its table of contents (numbered without one).
+    private(set) var contents = NovelContents(titles: [])
     private(set) var bookTitle: String?
     private(set) var author: String?
 
@@ -83,10 +85,17 @@ final class NovelEngine {
         return min(1, max(0, before + weights[chapterIndex] * scrollFraction))
     }
 
-    var positionLabel: String {
+    /// The book's own name for where you are ("Chapter 20"), or, for a book whose contents don't
+    /// name its chapters, the place in its reading order ("Chapter 23 of 26").
+    var chapterLabel: String {
         guard chapterCount > 0 else { return "" }
-        return "Chapter \(chapterIndex + 1) of \(chapterCount) · \(Int(progressFraction * 100))%"
+        return contents.isNamed ? contents.name(of: chapterIndex) : "Chapter \(chapterIndex + 1) of \(chapterCount)"
     }
+
+    var percentLabel: String { "\(Int(progressFraction * 100))%" }
+
+    /// "Chapter 20 · 88%".
+    var positionLabel: String { chapterCount > 0 ? "\(chapterLabel) · \(percentLabel)" : "" }
 
     var currentChapter: EPUBSpineItem? {
         chapters.indices.contains(chapterIndex) ? chapters[chapterIndex] : nil
@@ -105,6 +114,8 @@ final class NovelEngine {
             bookTitle = document.package.title
             author = document.package.creator
             weights = await document.chapterWeights()
+            contents = NovelContents(spine: document.spine, toc: await document.tableOfContents())
+            library.rememberChapterTitles(contents.titles, for: comic)
 
             // Resume: page holds the chapter, and the fraction rides along in the override.
             if let saved = library.progress(for: comic), saved.isStarted, !saved.finished,
@@ -114,7 +125,7 @@ final class NovelEngine {
             }
             countChapterWords()
             isOpening = false
-            Logger.reader.info("[novel] opened \(self.comic.title, privacy: .public) chapters=\(self.chapters.count) in \(sw.ms, format: .fixed(precision: 0))ms")
+            Logger.reader.info("[novel] opened \(self.comic.title, privacy: .public) chapters=\(self.chapters.count) named=\(self.contents.isNamed) in \(sw.ms, format: .fixed(precision: 0))ms")
             keepControlsAwake()
             beginSession(at: chapterIndex)
         } catch {

@@ -62,7 +62,7 @@ extension LibraryModel {
             comicID: comic.id,
             title: [comic.numberLabel, comic.subtitle].compactMap { $0 }.joined(separator: " · ").nilIfEmpty ?? comic.title,
             series: comic.displaySeries,
-            positionLabel: progress.map { comic.isNovel ? $0.novelLabel : $0.label } ?? "Not started",
+            positionLabel: progress.map { comic.isNovel ? novelPositionLabel($0, in: comic) : $0.label } ?? "Not started",
             fraction: progress?.fraction ?? 0,
             isNovel: comic.isNovel,
             updatedAt: progress?.updatedAt ?? .now

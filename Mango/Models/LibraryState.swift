@@ -55,6 +55,11 @@ struct LibraryState: Codable, Sendable {
     /// Layout chosen for a whole series, keyed like `seriesDirection`. A webtoon sliced into short
     /// pages is never detected, so picking a layout once has to hold for every chapter.
     var seriesMode: [String: ReaderMode] = [:]
+    /// A light novel's chapter names by `syncKey`: one per document in its reading order, nil where
+    /// the book names none (`NovelContents`). Read from its table of contents when the reader opens
+    /// it, so the library, the widget and bookmark search can say "Chapter 20" without opening the
+    /// book again. Derived from the file, so it's kept on this device only.
+    var novelChapterTitles: [String: [String?]] = [:]
 
     init(sources: [LibrarySource] = [], comics: [Comic] = [], progress: [String: ReadingProgress] = [:],
          hiddenComicIDs: Set<String> = [], lastComicID: String? = nil, nasServers: [NASServer] = [],
@@ -118,6 +123,7 @@ struct LibraryState: Codable, Sendable {
         for (key, value) in old.coverChoices where coverChoices[key] == nil { coverChoices[key] = value }
         longStripComicIDs.formUnion(old.longStripComicIDs)
         for (key, value) in old.seriesMode where seriesMode[key] == nil { seriesMode[key] = value }
+        for (key, value) in old.novelChapterTitles where novelChapterTitles[key] == nil { novelChapterTitles[key] = value }
         if lastComicID == nil { lastComicID = old.lastComicID }
     }
 
@@ -125,7 +131,7 @@ struct LibraryState: Codable, Sendable {
         case tools, schemaVersion, sources, comics, progress, hiddenComicIDs, lastComicID, nasServers,
              customCovers, overrides, seriesDirection, comicInfo, bookmarks, ratings, readingLog, sessions,
              longStripComicIDs, seriesMode, hiddenSeries, seriesGroups, readingLists, coverChoices,
-             ratingDates, deletedBookmarks
+             ratingDates, deletedBookmarks, novelChapterTitles
     }
 
     init(from decoder: any Decoder) throws {
@@ -154,6 +160,7 @@ struct LibraryState: Codable, Sendable {
         coverChoices = try c.decodeIfPresent([String: CoverChoice].self, forKey: .coverChoices) ?? [:]
         ratingDates = try c.decodeIfPresent([String: Date].self, forKey: .ratingDates) ?? [:]
         deletedBookmarks = try c.decodeIfPresent(Tombstones.self, forKey: .deletedBookmarks) ?? Tombstones()
+        novelChapterTitles = try c.decodeIfPresent([String: [String?]].self, forKey: .novelChapterTitles) ?? [:]
     }
 }
 

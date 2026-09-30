@@ -262,7 +262,13 @@ struct NovelControls: View {
                     .disabled(engine.chapterIndex <= 0)
                     .accessibilityLabel("Previous chapter")
                 VStack(spacing: 2) {
-                    Text(engine.positionLabel).font(.caption.weight(.medium)).monospacedDigit()
+                    // A long chapter name gives way; the percentage always shows.
+                    HStack(spacing: 0) {
+                        Text(engine.chapterLabel).lineLimit(1)
+                        if !engine.chapterLabel.isEmpty { Text(" · \(engine.percentLabel)").fixedSize() }
+                    }
+                    .font(.caption.weight(.medium)).monospacedDigit()
+                    .accessibilityElement(children: .combine)
                     if settings.showReadingEstimates, let minutes = engine.chapterMinutesRemaining {
                         Text("~\(minutes) min left in chapter").font(.caption2)
                             .accessibilityLabel("About \(minutes) minutes left, estimated at 220 words per minute")
@@ -337,7 +343,7 @@ struct ChapterListView: View {
                             } label: {
                                 HStack {
                                     VStack(alignment: .leading) {
-                                        Label(mark.label(isNovel: true), systemImage: mark.anchor == nil ? "bookmark.fill" : "highlighter")
+                                        Label(engine.contents.name(of: mark.page), systemImage: mark.anchor == nil ? "bookmark.fill" : "highlighter")
                                         if let anchor = mark.anchor { Text(anchor.quote).font(.caption).lineLimit(3) }
                                         if !mark.note.isEmpty { Text(mark.note).font(.caption).foregroundStyle(.secondary) }
                                     }
@@ -351,21 +357,24 @@ struct ChapterListView: View {
                     }
                 }
                 Section("Chapters") {
-                ForEach(Array(engine.chapters.enumerated()), id: \.offset) { index, chapter in
-                    Button {
-                        engine.goToChapter(index)
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Text(chapter.title ?? "Chapter \(index + 1)")
-                                .foregroundStyle(index == engine.chapterIndex ? Color.accentColor : .primary)
-                            Spacer()
-                            if index == engine.chapterIndex {
-                                Image(systemName: "book.fill").foregroundStyle(Color.accentColor)
+                    // The book's own contents: a chapter split across documents, or with an
+                    // illustration page inside it, is one entry, current wherever in it you are.
+                    let current = engine.contents.entry(containing: engine.chapterIndex)?.index
+                    ForEach(engine.contents.entries, id: \.index) { entry in
+                        Button {
+                            engine.goToChapter(entry.index)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(entry.title)
+                                    .foregroundStyle(entry.index == current ? Color.accentColor : .primary)
+                                Spacer()
+                                if entry.index == current {
+                                    Image(systemName: "book.fill").foregroundStyle(Color.accentColor)
+                                }
                             }
                         }
                     }
-                }
                 }
             }
             .navigationTitle("Reading")

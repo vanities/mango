@@ -146,6 +146,14 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 
 - A novel's place is a chapter (spine item) plus a fraction through it (`NovelEngine`); the
   book's percentage weights chapters by their byte size.
+- **Chapters go by the book's own names** (`NovelContents`), read from its table of contents —
+  EPUB 3's nav document, else the NCX (`EPUBDocument.tableOfContents`, lazily: the cover
+  backfill doesn't pay for it). Spine documents the contents skip continue the named one before
+  them (split chapters, illustration pages); anything before the first name is "Beginning". A
+  book naming fewer than two documents keeps "Chapter N of M" — a scan's only entry can be its
+  scan notes. Names are cached per `syncKey` in `LibraryState.novelChapterTitles` (local,
+  derived) so cards, the widget and bookmark search say "Chapter 20" too. Numbering documents
+  said "Chapter 23 of 26" on a page headed "Chapter 20".
 - **Turn pages like a book** lays a chapter out in CSS columns one viewport wide
   (`NovelWebView.paginationCSS`), and the pager in `paginationScript` turns by scrolling the
   document. **A page is the body's width, never `window.innerWidth`.** That's the visual
