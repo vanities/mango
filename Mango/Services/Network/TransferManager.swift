@@ -293,7 +293,7 @@ final class TransferManager {
             let jobID = job.id
             let cancelled = self.cancelled
             do {
-                try await client.download(file.path, to: partial) { bytes, _ in
+                try await client.download(file.path, to: partial) { [weak self] bytes, _ in
                     Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = base + bytes } }
                     return !cancelled.withLock { $0.contains(jobID) }
                 }
@@ -342,7 +342,7 @@ final class TransferManager {
             let jobID = job.id
             let cancelled = self.cancelled
             do {
-                try await client.upload(file.url, to: file.remotePath) { bytes, _ in
+                try await client.upload(file.url, to: file.remotePath) { [weak self] bytes, _ in
                     Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = base + bytes } }
                     return !cancelled.withLock { $0.contains(jobID) }
                 }
@@ -376,11 +376,13 @@ final class TransferManager {
         let jobID = job.id, cancelled = self.cancelled
         // Folders the move empties go too, up to — never including — the folder the user picked.
         let pickedRoot = library.state.sources.first { $0.id == comic.sourceID }.flatMap { library.root(for: $0) }
+        let reportProgress: @Sendable (Int64) -> Void = { [weak self] bytes in
+            Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = bytes } }
+        }
         let outcome: Result<Void, any Error> = await Task.detached(priority: .userInitiated) {
             Result {
-                try LocalMove.run(files, into: "Mango", pruningUpTo: pickedRoot, progress: { bytes in
-                    Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = bytes } }
-                }, isCancelled: { cancelled.withLock { $0.contains(jobID) } })
+                try LocalMove.run(files, into: "Mango", pruningUpTo: pickedRoot, progress: reportProgress,
+                                  isCancelled: { cancelled.withLock { $0.contains(jobID) } })
             }
         }.value
         var originalsNote: String?
