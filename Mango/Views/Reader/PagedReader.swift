@@ -57,6 +57,10 @@ struct PagedReader: View {
                     }
             )
         }
+        // Artwork and tap regions use the same full reader viewport. Native vertical
+        // toolbars can retain a horizontal safe-area inset after their chrome is hidden;
+        // keeping it would shrink each page and expose its neighbor after a turn.
+        .ignoresSafeArea(.container, edges: .horizontal)
         .coordinateSpace(.named(Self.space))
         .onAppear { scrollPosition = engine.groupIndex }
         // Two-way: the slider and tap-to-turn drive the scroll view, and scrolling drives the
