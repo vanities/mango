@@ -95,6 +95,45 @@ final class NovelPaginationTests: XCTestCase {
         return try XCTUnwrap(value as? NSNumber).doubleValue
     }
 
+    func testFractionalFacingPageWidthDoesNotCreateAnEmptySpread() async throws {
+        let files = [
+            "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
+            "book.opf": "<package><manifest><item id='ch' href='ch.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='ch'/></spine></package>",
+            "ch.xhtml": "<html><body>Fixture</body></html>"
+        ]
+        let zip = ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) })
+        let document = try await EPUBDocument.open(reader: DataReader(zip), displayName: "Fractional viewport")
+        let view = NovelWebView(document: document, chapterPath: "ch.xhtml", fontScale: 1, dark: false,
+                                paged: true, tapToTurn: true, fontFamily: "Georgia, serif", lineSpacing: 1.6,
+                                margin: 22, restoreFraction: 0, onScroll: { _ in }, onTapMiddle: {},
+                                onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
+        let messages = Messages()
+        let config = WKWebViewConfiguration()
+        config.userContentController.add(messages, name: "mangoNavigation")
+        let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 951, height: 635), configuration: config)
+        let window = UIWindow(windowScene: try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene))
+        window.frame = web.bounds
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.view.addSubview(web)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        // WebKit's integer scrollWidth may round above the fractional CSS body width.
+        // A chapter that fits must advance to the next chapter, never to a blank spread.
+        let css = view.css + "body { width: calc(100vw - 0.5px) !important; }"
+        web.loadHTMLString("<html><head><meta name='viewport' content='width=device-width, initial-scale=1'/><style>\(css)</style></head><body><p>The last words of this short chapter.</p></body></html>", baseURL: nil)
+        for _ in 0..<100 {
+            if !web.isLoading, (try? await web.evaluateJavaScript("!!document.querySelector('p')")) as? Bool == true { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        _ = try await web.evaluateJavaScript(view.paginationScript(startingAt: 0))
+        let count = try await number("mangoPager.count", web)
+        XCTAssertEqual(count, 1, "Subpixel rounding must not add a second, empty spread")
+        _ = try await web.evaluateJavaScript("document.dispatchEvent(new KeyboardEvent('keydown', {key:'ArrowRight'}))")
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertTrue(messages.actions.contains("next"))
+    }
+
     private final class Reports {
         var fractions: [Double] = []
     }
@@ -105,11 +144,12 @@ final class NovelPaginationTests: XCTestCase {
         let document: EPUBDocument
         @State var fraction: Double
         let reports: Reports
+        var widePageMargin: Double? = nil
 
         var body: some View {
             NovelWebView(document: document, chapterPath: "ch.xhtml", fontScale: 1, dark: false,
                          paged: true, tapToTurn: true, fontFamily: "Georgia, serif", lineSpacing: 1.6,
-                         margin: 22, restoreFraction: fraction,
+                         margin: 22, widePageMargin: widePageMargin, restoreFraction: fraction,
                          onScroll: { fraction = $0; reports.fractions.append($0) },
                          onTapMiddle: {}, onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
                 .ignoresSafeArea()
@@ -140,7 +180,46 @@ final class NovelPaginationTests: XCTestCase {
         }
     }
 
-    private func hostPagedChapter(restoreFraction: Double, reports: Reports) async throws -> (WKWebView, UIWindow) {
+    func testChapterKeepsItsPlaceAcrossWideNarrowAndShortWindows() async throws {
+        let saved = 0.47
+        let reports = Reports()
+        let (web, window) = try await hostPagedChapter(restoreFraction: saved, reports: reports, widePageMargin: 72)
+        defer { window.isHidden = true }
+        for size in [CGSize(width: 720, height: 640), CGSize(width: 320, height: 640),
+                     CGSize(width: 640, height: 320), CGSize(width: 390, height: 700)] {
+            window.frame.size = size
+            window.layoutIfNeeded()
+            for _ in 0..<100 {
+                if abs((try await number("mangoPager.width()", web)) - size.width) < 1 { break }
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            try await Task.sleep(for: .milliseconds(200))
+            let width = try await number("mangoPager.width()", web)
+            let count = try await number("mangoPager.count", web)
+            let page = try await number("mangoPager.page", web)
+            XCTAssertEqual(width, size.width, accuracy: 1)
+            XCTAssertGreaterThan(count, 1)
+            let columnWidth = try await number("parseFloat(getComputedStyle(document.body).columnWidth)", web)
+            if size.width >= 700 && size.width > size.height {
+                XCTAssertLessThan(columnWidth, size.width * 0.6, "The open reader shows two facing text pages")
+                let gap = try await number("parseFloat(getComputedStyle(document.body).columnGap)", web)
+                XCTAssertEqual(gap, 144, accuracy: 1, "The fold clearance applies to the gutter")
+            } else {
+                XCTAssertGreaterThan(columnWidth, size.width * 0.7, "The compact reader shows one text page")
+            }
+            let fraction = try await number("mangoPager.fraction", web)
+            XCTAssertEqual(fraction, saved, accuracy: 2 / (count - 1))
+            let offset = try await number("window.scrollX", web)
+            XCTAssertEqual(offset, page * width, accuracy: 1)
+            let before = page
+            _ = try await web.evaluateJavaScript("document.dispatchEvent(new KeyboardEvent('keydown', {key:'ArrowRight'}))")
+            let after = try await number("mangoPager.page", web)
+            XCTAssertEqual(after, before + 1, "Turning after resize must advance one page")
+            _ = try await web.evaluateJavaScript("mangoPager.fraction=\(saved); mangoPager.layout()")
+        }
+    }
+
+    private func hostPagedChapter(restoreFraction: Double, reports: Reports, widePageMargin: Double? = nil) async throws -> (WKWebView, UIWindow) {
         let paragraphs = (0..<150).map { "<p>Paragraph \($0). The traveler crossed the quiet garden and opened the old wooden gate.</p>" }.joined()
         let files = [
             "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
@@ -152,7 +231,7 @@ final class NovelPaginationTests: XCTestCase {
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 700)
-        window.rootViewController = UIHostingController(rootView: PagedChapterHost(document: document, fraction: restoreFraction, reports: reports))
+        window.rootViewController = UIHostingController(rootView: PagedChapterHost(document: document, fraction: restoreFraction, reports: reports, widePageMargin: widePageMargin))
         window.makeKeyAndVisible()
         var found: WKWebView?
         // Wait for the chapter itself to be paginated — not just for a pager to exist.
@@ -271,8 +350,12 @@ final class NovelPaginationTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(50))
             messages.actions.removeAll()
             let count = Int(try await number("mangoPager.count", web))
-            XCTAssertGreaterThan(count, 1)
-            if endsNearBottom { XCTAssertEqual(count, 2, "The final paragraph's margin must not create a third, blank page") }
+            if endsNearBottom {
+                let facing = size.width >= 700 && size.width > size.height
+                XCTAssertEqual(count, facing ? 1 : 2, "The final paragraph's margin must not create a blank page or spread")
+            } else {
+                XCTAssertGreaterThan(count, 1)
+            }
             if scale == 1 {
                 if let normalPageCount { XCTAssertEqual(count, normalPageCount, "Shrinking the font must remove the extra pages") }
                 normalPageCount = count

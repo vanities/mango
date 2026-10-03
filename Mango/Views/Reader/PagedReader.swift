@@ -17,6 +17,7 @@ struct PagedReader: View {
 
     @State private var scrollPosition: Int?
     @State private var isZoomed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let space = "mango.pager"
 
@@ -40,6 +41,7 @@ struct PagedReader: View {
             }
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $scrollPosition, anchor: .center)
+            .accessibilityIdentifier("ComicPager")
             .scrollIndicators(.hidden)
             // The whole point of not using TabView: while zoomed, the drag belongs to the page.
             .scrollDisabled(isZoomed)
@@ -56,12 +58,13 @@ struct PagedReader: View {
             )
         }
         .coordinateSpace(.named(Self.space))
-        .ignoresSafeArea()
         .onAppear { scrollPosition = engine.groupIndex }
         // Two-way: the slider and tap-to-turn drive the scroll view, and scrolling drives the
         // engine. Both sides check before writing so they can't ping-pong.
         .onChange(of: engine.groupIndex) { _, new in
-            if scrollPosition != new { scrollPosition = new }
+            if scrollPosition != new {
+                withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) { scrollPosition = new }
+            }
         }
         .onChange(of: scrollPosition) { _, new in
             guard let new else { return }
@@ -84,11 +87,38 @@ struct PagedReader: View {
             if group.count == 1 {
                 PageImageView(index: group[0], engine: engine, fit: fit)
             } else {
-                HStack(spacing: 0) {
-                    ForEach(group, id: \.self) { index in
-                        PageImageView(index: index, engine: engine, fit: fit)
+                GeometryReader { geometry in
+#if IPHONE_DUO_LAYOUTS
+                    if #available(iOS 27.1, *),
+                       let fold = geometry.reservedRegions(kind: .division).first(where: {
+                           $0.frame.height > $0.frame.width && $0.frame.minX > 0 && $0.frame.maxX < geometry.size.width
+                       }) {
+                        // Keep the scrolling pages clear of the fold without nesting an
+                        // arrangement container inside the pager's scroll view.
+                        let leadingWidth = max(0, fold.frame.minX - fold.margins.leading)
+                        let trailingWidth = max(0, geometry.size.width - fold.frame.maxX - fold.margins.trailing)
+                        HStack(spacing: geometry.size.width - leadingWidth - trailingWidth) {
+                            PageImageView(index: group[0], engine: engine, fit: fit)
+                                .frame(width: leadingWidth)
+                            PageImageView(index: group[1], engine: engine, fit: fit)
+                                .frame(width: trailingWidth)
+                        }
+                    } else {
+                        facingPages(group)
                     }
+#else
+                    facingPages(group)
+#endif
                 }
+            }
+        }
+    }
+
+    private func facingPages(_ group: [Int]) -> some View {
+        HStack(spacing: 12) {
+            ForEach(group, id: \.self) { index in
+                PageImageView(index: index, engine: engine, fit: fit)
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: index == group.first ? 4 : -4)
             }
         }
     }

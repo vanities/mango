@@ -33,6 +33,19 @@ struct ReaderControls: View {
     // MARK: Top
 
     private var topBar: some View {
+        ViewThatFits(in: .horizontal) {
+            expandedTopBar
+            compactTopBar
+        }
+        .padding(.leading, 4)
+        .padding(.trailing, 8)
+        .padding(.vertical, 4)
+        .glassEffect(in: .capsule)
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+    }
+
+    private var expandedTopBar: some View {
         HStack(spacing: 10) {
             button("chevron.left", label: "Close", action: onClose)
 
@@ -65,12 +78,39 @@ struct ReaderControls: View {
                 engine.keepControlsAwake()
             }
         }
-        .padding(.leading, 4)
-        .padding(.trailing, 8)
-        .padding(.vertical, 4)
-        .glassEffect(in: .capsule)
-        .padding(.horizontal, 12)
-        .padding(.top, 4)
+    }
+
+    private var compactTopBar: some View {
+        HStack(spacing: 10) {
+            button("chevron.left", label: "Close", action: onClose)
+            Text(engine.comic.numberLabel ?? engine.comic.title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            downloadButton
+            Menu {
+                Button("All pages", systemImage: "square.grid.2x2") {
+                    showingPages = true
+                    engine.keepControlsAwake()
+                }
+                Button(engine.isCurrentPageBookmarked ? "Remove bookmark" : "Bookmark this page",
+                       systemImage: engine.isCurrentPageBookmarked ? "bookmark.fill" : "bookmark") {
+                    engine.toggleBookmark()
+                }
+                Button("Reading direction: \(engine.direction.label)", systemImage: engine.direction.systemImage) {
+                    engine.direction = engine.direction == .rightToLeft ? .leftToRight : .rightToLeft
+                    engine.keepControlsAwake()
+                }
+                Button("Reader settings", systemImage: engine.mode.systemImage) {
+                    showingSettings = true
+                    engine.keepControlsAwake()
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Reading actions")
+        }
     }
 
     /// Reading off the NAS: one tap keeps a copy on this device, downloading while you read. A
@@ -108,8 +148,8 @@ struct ReaderControls: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .semibold))
-                // 44pt: this gets used one-handed, often in bed.
-                .frame(width: 40, height: 40)
+                // This gets used one-handed, often in bed.
+                .frame(width: 44, height: 44)
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)

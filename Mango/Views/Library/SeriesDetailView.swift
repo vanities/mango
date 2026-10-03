@@ -142,48 +142,44 @@ struct SeriesDetailView: View {
         .navigationTitle(shelf.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    if let first = shelf.comics.first {
-                        Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { coverTarget = (first, true) }
-                        if library.hasCustomCover(first) {
-                            Button("Use Original Cover", systemImage: "arrow.uturn.backward") {
-                                library.useOriginalCover(for: first)
-                            }
+            OverflowToolbar {
+                if let first = shelf.comics.first {
+                    Button("Find Cover…", systemImage: "photo.badge.magnifyingglass") { coverTarget = (first, true) }
+                    if library.hasCustomCover(first) {
+                        Button("Use Original Cover", systemImage: "arrow.uturn.backward") {
+                            library.useOriginalCover(for: first)
                         }
                     }
-                    let downloaded = shelf.comics.compactMap { library.downloadedCopy(of: $0) }
-                    let onlyOnNAS = shelf.comics.filter { $0.isRemote(in: library) && library.downloadedCopy(of: $0) == nil }
-                    if !onlyOnNAS.isEmpty {
-                        Button("Download All (\(onlyOnNAS.count))", systemImage: "arrow.down.circle") {
-                            onlyOnNAS.forEach(transfers.download)
-                        }
+                }
+                let downloaded = shelf.comics.compactMap { library.downloadedCopy(of: $0) }
+                let onlyOnNAS = shelf.comics.filter { $0.isRemote(in: library) && library.downloadedCopy(of: $0) == nil }
+                if !onlyOnNAS.isEmpty {
+                    Button("Download All (\(onlyOnNAS.count))", systemImage: "arrow.down.circle") {
+                        onlyOnNAS.forEach(transfers.download)
                     }
-                    if !downloaded.isEmpty {
-                        Button("Remove Downloads (\(Formatting.bytes(downloaded.reduce(0) { $0 + $1.totalBytes })))",
-                               systemImage: "trash") {
-                            library.removeDownloads(downloaded)
-                        }
+                }
+                if !downloaded.isEmpty {
+                    Button("Remove Downloads (\(Formatting.bytes(downloaded.reduce(0) { $0 + $1.totalBytes })))",
+                           systemImage: "trash") {
+                        library.removeDownloads(downloaded)
                     }
-                    Divider()
-                    Button("Add to List…", systemImage: "text.badge.plus") {
-                        listing = (ReadingList.Item(shelf), shelf.name)
+                }
+                Divider()
+                Button("Add to List…", systemImage: "text.badge.plus") {
+                    listing = (ReadingList.Item(shelf), shelf.name)
+                }
+                Button("Look Up Series…", systemImage: "text.magnifyingglass") { lookingUp = true }
+                if let stack = library.group(containing: shelf) {
+                    Button("Remove From \(stack.name)", systemImage: "square.stack.3d.up.slash") {
+                        library.setGroup("", for: shelf)
                     }
-                    Button("Look Up Series…", systemImage: "text.magnifyingglass") { lookingUp = true }
-                    if let stack = library.group(containing: shelf) {
-                        Button("Remove From \(stack.name)", systemImage: "square.stack.3d.up.slash") {
-                            library.setGroup("", for: shelf)
-                        }
-                    } else {
-                        Button("Group With…", systemImage: "square.stack") { grouping = true }
-                    }
-                    Divider()
-                    Button("Hide Series", systemImage: "eye.slash", role: .destructive) {
-                        library.setSeriesHidden(true, shelf)
-                        dismiss()
-                    }
-                } label: {
-                    Label("Series", systemImage: "ellipsis.circle")
+                } else {
+                    Button("Group With…", systemImage: "square.stack") { grouping = true }
+                }
+                Divider()
+                Button("Hide Series", systemImage: "eye.slash", role: .destructive) {
+                    library.setSeriesHidden(true, shelf)
+                    dismiss()
                 }
             }
         }

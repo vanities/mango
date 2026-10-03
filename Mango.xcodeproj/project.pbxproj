@@ -26,6 +26,7 @@
 		18A0874A8A9262995AA06B79 /* ReadingListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EAFA568AFDF3AD92E89998 /* ReadingListTests.swift */; };
 		1924E9749CEEFC7742C80C21 /* EPUBDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8390791BBCCC9E5AF85AA31 /* EPUBDocument.swift */; };
 		193EA59E97D58CA126B13639 /* LibraryModel+Downloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8323EA12C42BC791D2DA5AE2 /* LibraryModel+Downloads.swift */; };
+		1C0579252AE05F6E630A6B77 /* OverflowToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C4BE763C5D0E9901D6D923 /* OverflowToolbar.swift */; };
 		1CA325F976C4153490FA28C9 /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B9A316341A29ECD770C9B3 /* LibraryStore.swift */; };
 		1E1FB06091ED33989CC94ED2 /* Comic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56CE48B6D8D5E95D44165066 /* Comic.swift */; };
 		1F8B4C51525EF5A3EB6D199B /* TallPageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B84550A723DC7845833093 /* TallPageTests.swift */; };
@@ -68,6 +69,7 @@
 		5DF226C2A1C3424F18D2E805 /* OfflineLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41DCDE12545C2C994C032700 /* OfflineLibraryView.swift */; };
 		5EADF99A0BC4E7461D0A5088 /* FolderComicArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3284629D6CAAA335706A95 /* FolderComicArchive.swift */; };
 		5EE271DB76EAEA73BC3D6AE1 /* LibraryModel+Cloud.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB67B9882FA01B52EB157A50 /* LibraryModel+Cloud.swift */; };
+		5F0CDBC09FC10B3BC3C1957B /* ReaderResizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45890A4E741E00E70A895F80 /* ReaderResizeTests.swift */; };
 		5F71713CAE5BA27A1FAC5898 /* LibraryModel+Lists.swift in Sources */ = {isa = PBXBuildFile; fileRef = 998EB466840EB739C25A87CF /* LibraryModel+Lists.swift */; };
 		63C6976051DFDFD096FDA943 /* LibraryModel+Covers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E6FB1934259E6CD959E312 /* LibraryModel+Covers.swift */; };
 		6411CD46D2EA2745797CAF7D /* SeriesLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BCBE724BC92E84C93A4BEF /* SeriesLookup.swift */; };
@@ -240,6 +242,7 @@
 		41DCDE12545C2C994C032700 /* OfflineLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineLibraryView.swift; sourceTree = "<group>"; };
 		42485FBA788C6193A9316BE4 /* Logger+Mango.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Logger+Mango.swift"; sourceTree = "<group>"; };
 		44619CC2962880BD4E8D99E1 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		45890A4E741E00E70A895F80 /* ReaderResizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderResizeTests.swift; sourceTree = "<group>"; };
 		4B06416E4617517422661FDB /* ActivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityTests.swift; sourceTree = "<group>"; };
 		4B776B2F21827D7431E5CBFA /* Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatting.swift; sourceTree = "<group>"; };
 		511423CB28C41497EDEC78FA /* ReadingStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingStats.swift; sourceTree = "<group>"; };
@@ -332,6 +335,7 @@
 		E1DB10EBC6722F798E65631B /* StarRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarRating.swift; sourceTree = "<group>"; };
 		E1EBD15EB842F94ECD940379 /* PageImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageImageView.swift; sourceTree = "<group>"; };
 		E2F566B617E174309B35650D /* ComicOverride.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicOverride.swift; sourceTree = "<group>"; };
+		E3C4BE763C5D0E9901D6D923 /* OverflowToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverflowToolbar.swift; sourceTree = "<group>"; };
 		E57AF5756D814DC395CD5C15 /* NASSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NASSetupView.swift; sourceTree = "<group>"; };
 		E60A997093BFA7B394CEE8B8 /* EPUBSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBSchemeHandler.swift; sourceTree = "<group>"; };
 		EB90731D0ADEC569ABD5A528 /* FormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattingTests.swift; sourceTree = "<group>"; };
@@ -587,6 +591,7 @@
 			isa = PBXGroup;
 			children = (
 				62E2977C1BEE925EC6FC8241 /* CoverView.swift */,
+				E3C4BE763C5D0E9901D6D923 /* OverflowToolbar.swift */,
 				1CF622583A273B4A3A99D811 /* ProgressBar.swift */,
 				E1DB10EBC6722F798E65631B /* StarRating.swift */,
 				325D381D34D7FDA3BB22F566 /* ZoomableView.swift */,
@@ -628,6 +633,7 @@
 				C5CB768FE03E7909A66F0B1C /* PortableBackupTests.swift */,
 				24796FD8CB3E0F662C2447CE /* PrivacyTests.swift */,
 				BC2EFD6C20BA6E555039AFAA /* ProgressSyncTests.swift */,
+				45890A4E741E00E70A895F80 /* ReaderResizeTests.swift */,
 				76EAFA568AFDF3AD92E89998 /* ReadingListTests.swift */,
 				85921FD3FFCD762D8FA54844 /* ReadingProgressTests.swift */,
 				747A47D14AE7DC50D8E00674 /* SeriesGapsTests.swift */,
@@ -905,6 +911,7 @@
 				FEA8265626E0BD690F0A40A7 /* NovelTextScript.swift in Sources */,
 				D7D9F2B4F4A47D0C08EA3F9B /* NovelWebView.swift in Sources */,
 				5DF226C2A1C3424F18D2E805 /* OfflineLibraryView.swift in Sources */,
+				1C0579252AE05F6E630A6B77 /* OverflowToolbar.swift in Sources */,
 				917E4E3DC5C681AA99A5391E /* PDFComicArchive.swift in Sources */,
 				D79AD8B4E718D3199E07D488 /* PageGridView.swift in Sources */,
 				DBC61DFB82845F137593A8DE /* PageImageView.swift in Sources */,
@@ -975,6 +982,7 @@
 				F2A1890CD43CEB16D63B3353 /* PortableBackupTests.swift in Sources */,
 				CD74E2D67275C4D4494B2968 /* PrivacyTests.swift in Sources */,
 				0E364AED4B40B9190BE38F3A /* ProgressSyncTests.swift in Sources */,
+				5F0CDBC09FC10B3BC3C1957B /* ReaderResizeTests.swift in Sources */,
 				18A0874A8A9262995AA06B79 /* ReadingListTests.swift in Sources */,
 				75AF01A0C58A179BDBAEB1C6 /* ReadingProgressTests.swift in Sources */,
 				55176FC9F8A3B6BE0CFF01B8 /* SeriesGapsTests.swift in Sources */,
@@ -1039,6 +1047,10 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1127,6 +1139,10 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.1]" = "$(inherited) IPHONE_DUO_LAYOUTS";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.2]" = "$(inherited) IPHONE_DUO_LAYOUTS";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

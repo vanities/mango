@@ -40,16 +40,11 @@ struct ReaderView: View {
                     } else if let error = engine.openError {
                         errorState(error)
                     } else {
-                        content(engine: engine)
-                            .background { keys(engine) }
-                        ReaderControls(engine: engine, showingSettings: $showingSettings, showingPages: $showingPages, onClose: close)
+                        readerSurface(engine: engine)
                     }
                 } else {
                     ProgressView()
                 }
-            }
-            .onChange(of: geometry.size) { _, new in
-                engine?.isLandscape = new.width > new.height
             }
             // Keyed on the open volume: rolling on to the next one rebuilds the engine.
             .task(id: openComic.id) {
@@ -80,6 +75,21 @@ struct ReaderView: View {
             engine?.close()
             UIApplication.shared.isIdleTimerDisabled = false
         }
+    }
+
+    private func readerSurface(engine: ReaderEngine) -> some View {
+        ZStack {
+            readerPages(engine: engine)
+            ReaderControls(engine: engine, showingSettings: $showingSettings, showingPages: $showingPages, onClose: close)
+        }
+    }
+
+    private func readerPages(engine: ReaderEngine) -> some View {
+        content(engine: engine)
+            .background { keys(engine) }
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+                engine.updateViewport(CGSize(width: size.width * displayScale, height: size.height * displayScale))
+            }
     }
 
     private var background: Color {
