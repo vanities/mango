@@ -2,7 +2,8 @@
 
 An open-source manga, comic and light novel reader for iPhone and iPad.
 
-**[Join the TestFlight beta →](https://testflight.apple.com/join/nEjBWtgp)**
+**[Get Mango on the App Store →](https://apps.apple.com/us/app/mango-personal-manga-reader/id6814299186)** Free, no in-app purchases.
+Want builds before they ship? [Join the TestFlight beta](https://testflight.apple.com/join/nEjBWtgp).
 
 It reads the manga, comics and light novels you already have — in the Files app, in a folder you
 picked, or straight off your NAS — and it never copies, moves, or renames a single one of them
