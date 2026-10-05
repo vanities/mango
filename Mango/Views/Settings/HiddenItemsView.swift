@@ -1,28 +1,22 @@
 import SwiftUI
 import ShelfKit
 
-/// Everything hidden, and the way back. Behind Face ID when the lock is on — otherwise the list
-/// of what's hidden would give it away.
+/// Hidden names stay behind the shared session unlock, with authentication when App Lock is on.
 struct HiddenItemsView: View {
     @Environment(LibraryModel.self) private var library
-    @Environment(AppSettings.self) private var settings
-    @State private var revealed = false
-
-    private var needsUnlock: Bool { settings.lockMode != .off && !revealed }
+    private var needsUnlock: Bool { !library.hiddenSession.isUnlocked }
 
     var body: some View {
         List {
             if needsUnlock {
                 Section {
-                    Button("Show Hidden Items") {
-                        Task { revealed = await AppLock.authenticate(reason: "Show hidden items") }
-                    }
+                    HiddenSessionButton()
                 } footer: {
-                    Text("Hidden items stay behind Face ID while the lock is on.")
+                    Text("Unlock reveals hidden manga and novels in the library and Continue Reading. They hide again when Mango enters the background or after three hours without activity. Face ID is used when App Lock is on.")
                 }
             } else if library.hiddenShelves.isEmpty && library.hiddenVolumes.isEmpty {
                 ContentUnavailableView("Nothing Hidden", systemImage: "eye",
-                                       description: Text("Hide a series from its ••• menu, or a volume by touching and holding it."))
+                                       description: Text("Choose Hide titles… in the library menu, hide a series from its ••• menu, or touch and hold a volume."))
             } else {
                 if !library.hiddenShelves.isEmpty {
                     Section("Series") {
@@ -34,7 +28,8 @@ struct HiddenItemsView: View {
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button("Show") { library.unhideShelf(id: shelf.id) }
+                                Button("Unhide") { library.unhideShelf(id: shelf.id) }
+                                    .accessibilityLabel("Permanently unhide \(shelf.name)")
                                     .buttonStyle(.bordered)
                             }
                         }
@@ -51,7 +46,8 @@ struct HiddenItemsView: View {
                                     }
                                 }
                                 Spacer()
-                                Button("Show") { library.setHidden(false, for: comic) }
+                                Button("Unhide") { library.setHidden(false, for: comic) }
+                                    .accessibilityLabel("Permanently unhide \(comic.title)")
                                     .buttonStyle(.bordered)
                             }
                         }
@@ -60,5 +56,10 @@ struct HiddenItemsView: View {
             }
         }
         .navigationTitle("Hidden")
+        .toolbar {
+            if library.hiddenSession.isUnlocked {
+                ToolbarItem(placement: .topBarTrailing) { HiddenSessionButton() }
+            }
+        }
     }
 }

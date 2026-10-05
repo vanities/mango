@@ -25,13 +25,13 @@ struct ComicEntity: AppEntity, Identifiable {
 struct ComicEntityQuery: EntityQuery, EntityStringQuery {
     @MainActor func entities(for identifiers: [String]) async throws -> [ComicEntity] {
         let library = AppEnvironment.shared.library
-        return identifiers.compactMap { library.comic(id: $0).map(ComicEntity.init) }
+        return identifiers.compactMap { id in library.publicComics.first { $0.id == id }.map(ComicEntity.init) }
     }
 
     /// Spoken or typed names match series and titles, loosely.
     @MainActor func entities(matching string: String) async throws -> [ComicEntity] {
         let needle = string.normalizedForMatching
-        return AppEnvironment.shared.library.visibleComics
+        return AppEnvironment.shared.library.publicComics
             .filter { $0.title.normalizedForMatching.contains(needle) || ($0.series?.normalizedForMatching.contains(needle) ?? false) }
             .prefix(20)
             .map(ComicEntity.init)
@@ -40,8 +40,8 @@ struct ComicEntityQuery: EntityQuery, EntityStringQuery {
     /// What you're in the middle of shows up first as a suggestion.
     @MainActor func suggestedEntities() async throws -> [ComicEntity] {
         let library = AppEnvironment.shared.library
-        let reading = library.continueReading
-        let pool = reading.isEmpty ? Array(library.visibleComics.prefix(10)) : reading
+        let reading = library.publicContinueReading
+        let pool = reading.isEmpty ? Array(library.publicComics.prefix(10)) : reading
         return pool.prefix(10).map(ComicEntity.init)
     }
 }
@@ -56,7 +56,7 @@ struct ContinueReadingIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let library = AppEnvironment.shared.library
-        guard let comic = library.lastRead else {
+        guard let comic = library.publicLastRead else {
             return .result(dialog: "You haven't started anything in Mango yet.")
         }
         library.requestedComic = comic
@@ -75,7 +75,7 @@ struct OpenComicIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        guard let match = AppEnvironment.shared.library.comic(id: comic.id) else {
+        guard let match = AppEnvironment.shared.library.publicComics.first(where: { $0.id == comic.id }) else {
             throw $comic.needsValueError("Which book?")
         }
         AppEnvironment.shared.library.requestedComic = match

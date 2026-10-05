@@ -17,6 +17,7 @@ struct LibraryView: View {
     @State private var showingOffline = false
     @State private var showingBookmarks = false
     @State private var showingPicker = false
+    @State private var showingHidePicker = false
 
     /// Covers should be about the same physical size on both devices, not the same point size —
     /// phone-sized cards on a 13" iPad leave a sea of white and make the shelf look empty.
@@ -65,10 +66,15 @@ struct LibraryView: View {
             // The same two buttons as Earmark's Library: the lists, and one menu for how the
             // shelf looks and for bringing comics in.
             .toolbar {
+                if library.hasHiddenItems {
+                    ToolbarItem(placement: .topBarLeading) { HiddenSessionButton() }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Reading Lists", systemImage: "list.bullet.rectangle") { showingLists = true }
                 }
                 OverflowToolbar {
+                    Button("Hide titles…", systemImage: "eye.slash") { showingHidePicker = true }
+                    Divider()
                     Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
                     Button("Library tools…", systemImage: "suitcase") { showingTools = true }
                     Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
@@ -88,6 +94,7 @@ struct LibraryView: View {
                     Button("Add Folder…", systemImage: "folder.badge.plus") { showingPicker = true }
                 }
             }
+            .sheet(isPresented: $showingHidePicker) { HideSeriesPickerView() }
             .sheet(isPresented: $showingTools) { NavigationStack { LibraryToolsView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingTools = false } } } } }
             .sheet(isPresented: $showingOffline) { OfflineLibraryView() }
             .sheet(isPresented: $showingBookmarks) { BookmarkSearchView() }
@@ -128,6 +135,9 @@ struct LibraryView: View {
                 if settings.libraryLayout == .grid { grid } else { list }
             }
             .padding(.vertical, 8)
+        }
+        .onScrollPhaseChange { _, phase in
+            if phase != .idle { library.noteHiddenActivity() }
         }
     }
 

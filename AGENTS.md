@@ -250,6 +250,19 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   `notifyutil -p com.apple.BiometricKit.enrollmentChanged`; `notifyutil -p
   com.apple.BiometricKit_Sim.pearl.match` passes a prompt. Set the lock back to Off afterwards.
 
+## Hidden titles
+
+Read [docs/hidden-titles.md](docs/hidden-titles.md) for bulk manga/novel selection,
+session visibility, external surfaces, and verification. Saved hide flags remain in
+`LibraryState`; the shared `HiddenContentSession` unlock must never be persisted.
+Backgrounding relocks immediately, and three hours without activity also relocks.
+Check expiry before recording return activity. `.inactive` covers snapshots but
+must not relock during authentication. Readers and series pages must conceal on
+relock; widgets and Siri must always use the public-only library. Keep the separate
+shield window below ShelfKit's App Lock window. New volumes in a hidden series stay
+hidden, and hiding must preserve the files and reading state. Cover these rules in
+`HiddenContentSessionTests` and `HiddenLibraryTests`.
+
 ## Sources browser
 
 - `SourceBrowserView` is a row per series (stacks as in the library, members by short name)
@@ -271,6 +284,11 @@ both the internal and external TestFlight groups automatically, so don't also up
 that just makes a duplicate build number.
 
 Manual builds are for when Xcode Cloud isn't an option: `make archive && make upload`.
+
+Pull requests run `.github/workflows/build_and_test.yml`: regenerate the project,
+resolve the pinned packages, and run the full Mango suite on an iPhone simulator.
+The job uploads the build log and result bundle. Merge only after this check passes;
+Xcode Cloud remains the archive and TestFlight distribution path.
 
 `make upload` deliberately does **not** pass the App Store Connect API key. With it, export uses
 cloud signing, which that key isn't permitted for ("Cloud signing permission error / No profiles

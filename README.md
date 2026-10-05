@@ -102,6 +102,15 @@ you're still halfway through it.
 
 ## Library tools and reading additions
 
+**Hide titles in bulk:** Library → ••• → Hide titles… lets you select manga and
+novel series together. They disappear from Library and Continue Reading, including
+new volumes added to a hidden series. **Unlock Hidden** reveals them for the current
+session; backgrounding Mango or three hours without activity hides them again.
+With App Lock on, unlocking uses device authentication. Settings → Privacy → Hidden
+lets you permanently unhide selections. Files and reading positions stay intact;
+widgets and Siri always exclude hidden titles. See [hidden titles](docs/hidden-titles.md)
+for details.
+
 Library's menu and Settings both offer:
 
 - **Prepare for a trip:** select books, reading lists, Continue Reading or the next three

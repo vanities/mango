@@ -65,6 +65,13 @@ struct BookmarkSearchView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .fullScreenCover(item: $selected) { result in ReaderRouter(comic: result.book, startAt: result.mark) }
+            .onChange(of: library.hiddenSession.isUnlocked) { _, unlocked in
+                if !unlocked, let editing, library.isHidden(editing.book) {
+                    self.editing = nil
+                    note = ""
+                    showsNoteEditor = false
+                }
+            }
         }
     }
 }

@@ -85,7 +85,7 @@ struct SourceBrowserView: View {
 
     private var shelves: [Series] {
         let comics = library.state.comics.filter {
-            $0.sourceID == source.id && !library.state.hiddenComicIDs.contains($0.id)
+            $0.sourceID == source.id && !library.isConcealed($0)
         }
         return SeriesGrouper.group(comics).sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }

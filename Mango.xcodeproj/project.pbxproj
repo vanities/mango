@@ -16,11 +16,13 @@
 		0BAF908FCB6FB42BE1D48A97 /* LibraryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D51D5B1DE8F484A69F39007 /* LibraryState.swift */; };
 		0BEDD78A6A9331BA177FADD8 /* SeriesGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD101EBBCAB3F82E3801B42 /* SeriesGrouping.swift */; };
 		0CCAC2CE8AD4247739B359D5 /* MangoIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51A4C22B927834AC3B1622C /* MangoIntents.swift */; };
+		0DCF1F089B2CF96BD066C05E /* HiddenSessionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34600DE1C557309319C6F5EA /* HiddenSessionButton.swift */; };
 		0E364AED4B40B9190BE38F3A /* ProgressSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC2EFD6C20BA6E555039AFAA /* ProgressSyncTests.swift */; };
 		0E54541EF5B1F8FEE3188963 /* SeriesGroupingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32BE28E382903FEDB78351D /* SeriesGroupingTests.swift */; };
 		11CCD056FD5F5373A1DBA305 /* ContinueReadingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214D4908892151334CD4F41C /* ContinueReadingWidget.swift */; };
 		12813B77331E752D003817E0 /* SeriesLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26C4AE90A771FAA6E3435BF /* SeriesLookupView.swift */; };
 		1358E9CC3620763CDE121733 /* PortableBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05615BE9F8D70AFAA64838CB /* PortableBackup.swift */; };
+		15029C0ACFC5BBB504EA650A /* HiddenLibraryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCBF0A86307096DE620BB09 /* HiddenLibraryTests.swift */; };
 		15513CB13312CF24252B7011 /* SpreadLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA84693BDBFE301D5B451EE1 /* SpreadLayout.swift */; };
 		172479C23085DECA8F6691E4 /* LibraryModel+Novels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B00A8E8904F1689984E280 /* LibraryModel+Novels.swift */; };
 		18A0874A8A9262995AA06B79 /* ReadingListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76EAFA568AFDF3AD92E89998 /* ReadingListTests.swift */; };
@@ -99,6 +101,7 @@
 		A386113E43DCC5EED6AE8E24 /* LibraryToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E0ACBE1E111488067348CA /* LibraryToolsView.swift */; };
 		A48E40900A8CE7FFE289018A /* ZipComicArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 286002CD921891FB1A7F3E6D /* ZipComicArchive.swift */; };
 		A516D8370CF24A0D3AA47F5D /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44619CC2962880BD4E8D99E1 /* RootView.swift */; };
+		A83FB48EB23C49007C0D9507 /* HiddenContentShield.swift in Sources */ = {isa = PBXBuildFile; fileRef = D182FA48BC84AAC628A42394 /* HiddenContentShield.swift */; };
 		A879A73ADCA490313F8B9855 /* ReadingSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1FE7A94B46C464EFF6CC7AE /* ReadingSnapshot.swift */; };
 		A916C492D86724DF8ABD3631 /* LiveTextPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D1B59147426AA5ACFC1F999 /* LiveTextPageView.swift */; };
 		AA92EA8A0D661E3D085E4EF3 /* LibraryModel+Maintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 394B5B6D130D06F27DB86AAC /* LibraryModel+Maintenance.swift */; };
@@ -126,8 +129,10 @@
 		CDCEF7988033DF75517F4C23 /* MangoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC2AC268EA1C8E1CF75CA368 /* MangoApp.swift */; };
 		CDD1430589F87BB8D8DE1CC8 /* NovelHighlightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90EAAA48952471FA11E48CA1 /* NovelHighlightTests.swift */; };
 		D1D822EED879532B3C216B32 /* ContinuousReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EDB6EF0D7054153A973A8E /* ContinuousReader.swift */; };
+		D2D9A27349B7101ADCED68C8 /* HiddenContentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2294F90B37DE9FAF7735A47 /* HiddenContentSession.swift */; };
 		D495C434078280922149AB10 /* Bookmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D0DD540F9B4F1C140FFFEB /* Bookmark.swift */; };
 		D508B82A18D2E1905472B7AF /* ComicArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9274137EF5F45522B05449F0 /* ComicArchive.swift */; };
+		D6237CD55D5E77D25ACB199D /* HideSeriesPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FEAEA352DB6C624669B0F19 /* HideSeriesPickerView.swift */; };
 		D789FF35D794EAD467F8952E /* ReadingProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2974B430DBCFE54A0EF63FD8 /* ReadingProgress.swift */; };
 		D79AD8B4E718D3199E07D488 /* PageGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D925098055994BDE9E061AF6 /* PageGridView.swift */; };
 		D7B44E7622448145958BC5EF /* StarRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1DB10EBC6722F798E65631B /* StarRating.swift */; };
@@ -143,6 +148,7 @@
 		E7FAD448E27D74B868922398 /* LibraryModel+Queries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64D1437EE22CDECEFBB9EDBE /* LibraryModel+Queries.swift */; };
 		E7FF7F3B09A83CA8D98826BC /* SeriesGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945AA080C5059CBFA8EC193E /* SeriesGrouper.swift */; };
 		F192315A3D6C9D600E16B297 /* ImageFileTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED7B90B431D4C975A4C010D5 /* ImageFileTypes.swift */; };
+		F1E567760E3CD1E866AA1380 /* HiddenContentSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4DD201A8132D9B23C2F38CA /* HiddenContentSessionTests.swift */; };
 		F23E2E8C735C360AB2DFD6B6 /* BookmarksRatingsLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A3054D3D409674E41BCE15F /* BookmarksRatingsLogTests.swift */; };
 		F2A1890CD43CEB16D63B3353 /* PortableBackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5CB768FE03E7909A66F0B1C /* PortableBackupTests.swift */; };
 		F410B53CCE3203D3EE6629CF /* LibraryModel+Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 723563DC65C2696DDC209DB1 /* LibraryModel+Tools.swift */; };
@@ -229,6 +235,7 @@
 		2C9630492B5EBB059EB50BD9 /* Mango.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Mango.entitlements; sourceTree = "<group>"; };
 		325D381D34D7FDA3BB22F566 /* ZoomableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableView.swift; sourceTree = "<group>"; };
 		336D3CBFDD5F7B32EB852C83 /* PageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageLoader.swift; sourceTree = "<group>"; };
+		34600DE1C557309319C6F5EA /* HiddenSessionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenSessionButton.swift; sourceTree = "<group>"; };
 		362D971ABFBB071048A85123 /* ReaderControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderControls.swift; sourceTree = "<group>"; };
 		3651C7A2C034113FC75C60B6 /* ImageDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDecoder.swift; sourceTree = "<group>"; };
 		36AC28FAAD4AF3A319F39B7F /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
@@ -255,6 +262,7 @@
 		59A997DD640808822EC0749B /* ReaderRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderRouter.swift; sourceTree = "<group>"; };
 		59DED834948B52DAB8B08E36 /* ReaderEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderEngine.swift; sourceTree = "<group>"; };
 		5BBA58843B1A01AFA181EEDE /* HiddenItemsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenItemsView.swift; sourceTree = "<group>"; };
+		5FEAEA352DB6C624669B0F19 /* HideSeriesPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HideSeriesPickerView.swift; sourceTree = "<group>"; };
 		62E2977C1BEE925EC6FC8241 /* CoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverView.swift; sourceTree = "<group>"; };
 		64D1437EE22CDECEFBB9EDBE /* LibraryModel+Queries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryModel+Queries.swift"; sourceTree = "<group>"; };
 		64DA8C0B607CD4E583D0C856 /* Mango.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Mango.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -311,14 +319,17 @@
 		AD8F2E8E80FB0993478DF232 /* CoverPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPickerView.swift; sourceTree = "<group>"; };
 		B06B9CBA09D73930A4A09130 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		B489CE47BB85964BFF93D2C4 /* NovelReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelReaderView.swift; sourceTree = "<group>"; };
+		B4DD201A8132D9B23C2F38CA /* HiddenContentSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenContentSessionTests.swift; sourceTree = "<group>"; };
 		B735B2CD88FDF644B2D5BA90 /* ReadingListViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingListViews.swift; sourceTree = "<group>"; };
 		B975EBDBB03B4433A8AC8B60 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		BA405EC9A776C2390E20E31B /* ReaderOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderOptions.swift; sourceTree = "<group>"; };
 		BB8F0D00CBE3A4C34A9C6523 /* ZipReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipReader.swift; sourceTree = "<group>"; };
+		BBCBF0A86307096DE620BB09 /* HiddenLibraryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenLibraryTests.swift; sourceTree = "<group>"; };
 		BC2AC268EA1C8E1CF75CA368 /* MangoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MangoApp.swift; sourceTree = "<group>"; };
 		BC2EFD6C20BA6E555039AFAA /* ProgressSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressSyncTests.swift; sourceTree = "<group>"; };
 		BF2F935AE9FA6A286AD20F8B /* NovelContentsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelContentsTests.swift; sourceTree = "<group>"; };
 		C1E84DFA84ABCFCD7B9EED53 /* ZipTestBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipTestBuilder.swift; sourceTree = "<group>"; };
+		C2294F90B37DE9FAF7735A47 /* HiddenContentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenContentSession.swift; sourceTree = "<group>"; };
 		C5CB768FE03E7909A66F0B1C /* PortableBackupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortableBackupTests.swift; sourceTree = "<group>"; };
 		C70EF425E4FF75BB5101480D /* MangoWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MangoWidgets.entitlements; sourceTree = "<group>"; };
 		CAD101EBBCAB3F82E3801B42 /* SeriesGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesGrouping.swift; sourceTree = "<group>"; };
@@ -326,6 +337,7 @@
 		CE47EE3C1EA02385C3A31110 /* ComicInfoTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComicInfoTests.swift; sourceTree = "<group>"; };
 		CE60B793852685818B543F0A /* EPUBPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EPUBPackage.swift; sourceTree = "<group>"; };
 		D0BCBE724BC92E84C93A4BEF /* SeriesLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesLookup.swift; sourceTree = "<group>"; };
+		D182FA48BC84AAC628A42394 /* HiddenContentShield.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenContentShield.swift; sourceTree = "<group>"; };
 		D4BBB23D14477800DA91E716 /* CoverSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearch.swift; sourceTree = "<group>"; };
 		D70FF12616B7B0556B3D5012 /* LibraryBackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryBackupView.swift; sourceTree = "<group>"; };
 		D730F7D8E2A6D38421BBD0BC /* DuplicateFinderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateFinderTests.swift; sourceTree = "<group>"; };
@@ -388,6 +400,7 @@
 		14B6E61C4D74694EBD23B616 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				D182FA48BC84AAC628A42394 /* HiddenContentShield.swift */,
 				BB40DE1397B1782534319A8E /* Archive */,
 				3402F743FCCB0B6D41ED3CE5 /* Library */,
 				4C78E39B195BD0F7DB2BAA5A /* Network */,
@@ -439,6 +452,7 @@
 				5790A59118AC629FDEA20B87 /* BookmarkSearchView.swift */,
 				AD8F2E8E80FB0993478DF232 /* CoverPickerView.swift */,
 				38F577D1086DFE59CA7E30B2 /* EditComicView.swift */,
+				5FEAEA352DB6C624669B0F19 /* HideSeriesPickerView.swift */,
 				D70FF12616B7B0556B3D5012 /* LibraryBackupView.swift */,
 				58E0ACBE1E111488067348CA /* LibraryToolsView.swift */,
 				B975EBDBB03B4433A8AC8B60 /* LibraryView.swift */,
@@ -572,6 +586,7 @@
 				80D0DD540F9B4F1C140FFFEB /* Bookmark.swift */,
 				56CE48B6D8D5E95D44165066 /* Comic.swift */,
 				E2F566B617E174309B35650D /* ComicOverride.swift */,
+				C2294F90B37DE9FAF7735A47 /* HiddenContentSession.swift */,
 				A2A384731307B7811C0770F0 /* LibrarySource.swift */,
 				6D51D5B1DE8F484A69F39007 /* LibraryState.swift */,
 				02FBB3EBD95E817A4A91C379 /* Medium.swift */,
@@ -591,6 +606,7 @@
 			isa = PBXGroup;
 			children = (
 				62E2977C1BEE925EC6FC8241 /* CoverView.swift */,
+				34600DE1C557309319C6F5EA /* HiddenSessionButton.swift */,
 				E3C4BE763C5D0E9901D6D923 /* OverflowToolbar.swift */,
 				1CF622583A273B4A3A99D811 /* ProgressBar.swift */,
 				E1DB10EBC6722F798E65631B /* StarRating.swift */,
@@ -620,6 +636,8 @@
 				D730F7D8E2A6D38421BBD0BC /* DuplicateFinderTests.swift */,
 				78276097E6A829F0AC4CD49D /* EPUBParserTests.swift */,
 				EB90731D0ADEC569ABD5A528 /* FormattingTests.swift */,
+				B4DD201A8132D9B23C2F38CA /* HiddenContentSessionTests.swift */,
+				BBCBF0A86307096DE620BB09 /* HiddenLibraryTests.swift */,
 				6747821B217F74AF74367821 /* LibraryArrivalsTests.swift */,
 				3A85E21BB8D5171D55FE9A20 /* LibraryDedupeTests.swift */,
 				A17AB6483034DA771F4463F6 /* LibraryScannerTests.swift */,
@@ -869,7 +887,11 @@
 				5EADF99A0BC4E7461D0A5088 /* FolderComicArchive.swift in Sources */,
 				90325F5BEF0219C3C4B4A92F /* Formatting.swift in Sources */,
 				FD6358CECEDB5760D6F825D0 /* GoalEditor.swift in Sources */,
+				D2D9A27349B7101ADCED68C8 /* HiddenContentSession.swift in Sources */,
+				A83FB48EB23C49007C0D9507 /* HiddenContentShield.swift in Sources */,
 				D85B30966CA0BDE6E553197F /* HiddenItemsView.swift in Sources */,
+				0DCF1F089B2CF96BD066C05E /* HiddenSessionButton.swift in Sources */,
+				D6237CD55D5E77D25ACB199D /* HideSeriesPickerView.swift in Sources */,
 				5548CAC19C29E6F0452FA475 /* ImageDecoder.swift in Sources */,
 				F192315A3D6C9D600E16B297 /* ImageFileTypes.swift in Sources */,
 				79322B57C7A8725C4404152D /* KeychainStore.swift in Sources */,
@@ -969,6 +991,8 @@
 				F671A4C5396FF5D5973042F2 /* DuplicateFinderTests.swift in Sources */,
 				AB28A5731170DC087470C2F0 /* EPUBParserTests.swift in Sources */,
 				595E16DCFBDC9F0F39DE7608 /* FormattingTests.swift in Sources */,
+				F1E567760E3CD1E866AA1380 /* HiddenContentSessionTests.swift in Sources */,
+				15029C0ACFC5BBB504EA650A /* HiddenLibraryTests.swift in Sources */,
 				68CD5195999AD7AAF5F772CF /* LibraryArrivalsTests.swift in Sources */,
 				E49A315243AB05D42E84C95F /* LibraryDedupeTests.swift in Sources */,
 				C743992ED21F4D11C8C4D5CD /* LibraryScannerTests.swift in Sources */,
@@ -1015,7 +1039,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MangoWidgets/MangoWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MangoWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
@@ -1035,7 +1059,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Mango/Resources/Mango.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Mango/Resources/Info.plist;
@@ -1127,7 +1151,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Mango/Resources/Mango.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Mango/Resources/Info.plist;
@@ -1151,7 +1175,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = MangoWidgets/MangoWidgets.entitlements;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = MangoWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";

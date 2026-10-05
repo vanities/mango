@@ -18,6 +18,10 @@ final class LibraryModel {
     var requestedComic: Comic?
     private(set) var scanStatus: String?
     var lastError: String?
+    var hiddenSession = HiddenContentSession()
+    @ObservationIgnored var hiddenExpirationTask: Task<Void, Never>?
+    @ObservationIgnored var hiddenAuthenticationGeneration = 0
+    @ObservationIgnored let hiddenShield = HiddenContentShield()
 
     @ObservationIgnored let store: LibraryStore
     @ObservationIgnored let covers: CoverStore
@@ -288,7 +292,9 @@ final class LibraryModel {
 
     /// What the user should actually see: a downloaded copy replaces its remote twin.
     var visibleComics: [Comic] {
-        LibraryDedupe.visible(comics: state.comics, remoteSourceIDs: remoteSourceIDs, hidden: state.hiddenComicIDs, hiddenSeries: state.hiddenSeries)
+        LibraryDedupe.visible(comics: state.comics, remoteSourceIDs: remoteSourceIDs,
+                             hidden: hiddenSession.isUnlocked ? [] : state.hiddenComicIDs,
+                             hiddenSeries: hiddenSession.isUnlocked ? [] : state.hiddenSeries)
     }
 
     /// True when this comic is a local copy of something that also lives on a share.
@@ -296,7 +302,7 @@ final class LibraryModel {
         LibraryDedupe.isDownloadedCopy(comic, comics: state.comics, remoteSourceIDs: remoteSourceIDs)
     }
 
-    private func rebuildSeries() {
+    func rebuildSeries() {
         series = SeriesGrouper.group(visibleComics)
     }
 
@@ -351,6 +357,7 @@ final class LibraryModel {
     }
 
     func recordNovelProgress(chapter: Int, chapterCount: Int, fraction: Double, for comic: Comic) {
+        noteHiddenActivity()
         var entry = state.progress[comic.id] ?? ReadingProgress()
         guard entry.page != chapter || abs(entry.fractionInChapter - fraction) > 0.005 else { return }
         entry.page = chapter
@@ -499,6 +506,7 @@ final class LibraryModel {
     func progress(for comic: Comic) -> ReadingProgress? { state.progress[comic.id] }
 
     func recordProgress(_ page: Int, pageCount: Int, for comic: Comic) {
+        noteHiddenActivity()
         var entry = state.progress[comic.id] ?? ReadingProgress()
         guard entry.page != page || entry.pageCount != pageCount else { return }
         entry.page = page
@@ -583,12 +591,6 @@ final class LibraryModel {
         if let index = state.comics.firstIndex(where: { $0.id == comic.id }) {
             state.comics[index] = override.applied(to: state.comics[index])
         }
-        save()
-        rebuildSeries()
-    }
-
-    func setHidden(_ hidden: Bool, for comic: Comic) {
-        if hidden { state.hiddenComicIDs.insert(comic.id) } else { state.hiddenComicIDs.remove(comic.id) }
         save()
         rebuildSeries()
     }

@@ -6,12 +6,33 @@ import SwiftUI
 struct ReaderRouter: View {
     let comic: Comic
     var startAt: Bookmark?
+    @Environment(LibraryModel.self) private var library
+    @Environment(\.dismiss) private var dismiss
+
+    private var activeComic: Comic {
+        guard let current = library.state.comics.first(where: { $0.id == library.state.lastComicID }),
+              SeriesGrouper.key(for: current) == SeriesGrouper.key(for: comic) else { return comic }
+        return current
+    }
 
     var body: some View {
-        if comic.isNovel {
-            NovelReaderView(comic: comic, startAt: startAt)
-        } else {
-            ReaderView(comic: comic, startAt: startAt)
+        Group {
+            if library.isConcealed(activeComic) {
+                ContentUnavailableView {
+                    Label("Hidden Title", systemImage: "eye.slash")
+                } description: {
+                    Text("Unlock hidden titles from the library to continue reading.")
+                } actions: {
+                    Button("Back to Library") { dismiss() }
+                }
+            } else if comic.isNovel {
+                NovelReaderView(comic: comic, startAt: startAt)
+            } else {
+                ReaderView(comic: comic, startAt: startAt)
+            }
+        }
+        .onChange(of: library.isConcealed(activeComic)) { _, concealed in
+            if concealed { dismiss() }
         }
     }
 }

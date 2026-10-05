@@ -21,6 +21,32 @@ struct SeriesDetailView: View {
     private var shelf: Series { library.shelf(id: series.id) ?? series }
 
     var body: some View {
+        Group {
+            if !library.hiddenSession.isUnlocked,
+               library.state.hiddenSeries.contains(series.id) || shelf.comics.allSatisfy({ library.isConcealed($0) }) {
+                ContentUnavailableView {
+                    Label("Hidden Series", systemImage: "eye.slash")
+                } description: {
+                    Text("Unlock hidden titles to view this series.")
+                } actions: {
+                    HiddenSessionButton()
+                }
+                .navigationTitle("Hidden")
+            } else {
+                content
+            }
+        }
+        .onChange(of: library.hiddenSession.isUnlocked) { _, unlocked in
+            guard !unlocked else { return }
+            editing = nil
+            coverTarget = nil
+            lookingUp = false
+            grouping = false
+            listing = nil
+        }
+    }
+
+    private var content: some View {
         List {
             Section {
                 header

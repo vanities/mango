@@ -25,10 +25,10 @@ extension LibraryModel {
         Logger.ui.info("[deeplink] \(url.absoluteString, privacy: .public)")
         switch url.host {
         case "continue":
-            requestedComic = lastRead
+            requestedComic = publicLastRead
         case "open":
             let id = String(url.path.dropFirst()).removingPercentEncoding ?? String(url.path.dropFirst())
-            requestedComic = visibleComics.first { $0.id == id }
+            requestedComic = publicComics.first { $0.id == id }
         default:
             break
         }
@@ -41,7 +41,7 @@ extension LibraryModel {
     /// Hands the widget what you're reading. Called when a book closes rather than on every
     /// page turn: the widget is what you look at when you're *not* in the app.
     func publishWidgetSnapshot() {
-        guard let comic = lastRead else {
+        guard let comic = publicLastRead else {
             SharedReading.write(nil)
             SharedReading.writeCover(nil)
             WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
@@ -69,6 +69,8 @@ extension LibraryModel {
         ))
         if let coverID = comic.coverID {
             SharedReading.writeCover(try? Data(contentsOf: covers.url(for: coverID)))
+        } else {
+            SharedReading.writeCover(nil)
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
         Logger.ui.info("[widget] published \(comic.title, privacy: .public)")

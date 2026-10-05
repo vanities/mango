@@ -45,13 +45,14 @@ struct GroupDetailView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var group: SeriesGroup { library.group(id: groupID) ?? fallback }
+    private var members: [Series] { group.members.compactMap { library.shelf(id: $0.id) } }
 
     var body: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeClass == .regular ? 150 : 104,
                                                    maximum: sizeClass == .regular ? 200 : 140), spacing: 16)],
                       spacing: 22) {
-                ForEach(group.members) { shelf in
+                ForEach(members) { shelf in
                     NavigationLink(value: shelf.id) {
                         SeriesCardView(series: shelf, title: SeriesGrouping.shortName(of: shelf.name, in: group.name))
                     }
@@ -65,7 +66,18 @@ struct GroupDetailView: View {
             }
             .padding()
         }
-        .navigationTitle(group.name)
+        .overlay {
+            if members.isEmpty {
+                ContentUnavailableView {
+                    Label("Hidden Series", systemImage: "eye.slash")
+                } description: {
+                    Text("Unlock hidden titles to view this stack.")
+                } actions: {
+                    HiddenSessionButton()
+                }
+            }
+        }
+        .navigationTitle(members.isEmpty ? "Hidden" : group.name)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

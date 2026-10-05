@@ -30,12 +30,14 @@ struct RootView: View {
         // full-screen reader, so a page showed straight through the lock. `initial` puts it up
         // at launch.
         .onChange(of: scenePhase, initial: true) { _, phase in
+            library.hiddenSceneChanged(to: phase)
             lock.sceneChanged(to: phase)
             if phase == .active {
                 library.sceneBecameActive()
                 openRequestedComic()
             }
         }
+        .simultaneousGesture(TapGesture().onEnded { library.noteHiddenActivity() })
         .onChange(of: library.requestedComic) { _, _ in openRequestedComic() }
         .fullScreenCover(item: $openedComic) { ReaderRouter(comic: $0) }
     }
