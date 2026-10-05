@@ -12,6 +12,9 @@ struct ReaderControls: View {
     @Binding var showingSettings: Bool
     @Binding var showingPages: Bool
     var onClose: () -> Void
+    var alwaysVisible = false
+
+    private var controlsVisible: Bool { alwaysVisible || engine.showsControls }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,12 +25,12 @@ struct ReaderControls: View {
         // The reader is a black room. Render the chrome for that room rather than for the
         // system appearance, or the glass comes out milky grey against the page.
         .environment(\.colorScheme, .dark)
-        .opacity(engine.showsControls ? 1 : 0)
-        .allowsHitTesting(engine.showsControls)
+        .opacity(controlsVisible ? 1 : 0)
+        .allowsHitTesting(controlsVisible)
         // Opacity alone leaves the buttons in the accessibility tree, so VoiceOver would offer
         // controls that can't be hit. Take them out of the tree while they're faded away.
-        .accessibilityHidden(!engine.showsControls)
-        .animation(.smooth(duration: 0.25), value: engine.showsControls)
+        .accessibilityHidden(!controlsVisible)
+        .animation(.smooth(duration: 0.25), value: controlsVisible)
     }
 
     // MARK: Top

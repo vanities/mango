@@ -22,6 +22,7 @@ struct ReaderView: View {
     @State private var showingPages = false
     /// Shown after the last page: finished this one, what now?
     @State private var atEnd = false
+    @State private var hasHorizontalFold = false
     /// Space freed by removing this volume's download at the end, to say so.
     @State private var freed: Int64?
 
@@ -57,8 +58,9 @@ struct ReaderView: View {
                 if openComic.id == comic.id, let startAt { created.goToPage(startAt.page) }
             }
         }
-        .statusBarHidden(!(engine?.showsControls ?? true))
-        .persistentSystemOverlays(engine?.showsControls ?? true ? .automatic : .hidden)
+        .onGeometryChange(for: Bool.self) { $0.hasHorizontalReadingFold } action: { hasHorizontalFold = $0 }
+        .statusBarHidden(!(hasHorizontalFold || (engine?.showsControls ?? true)))
+        .persistentSystemOverlays(hasHorizontalFold || (engine?.showsControls ?? true) ? .automatic : .hidden)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingPages) {
@@ -78,6 +80,28 @@ struct ReaderView: View {
     }
 
     private func readerSurface(engine: ReaderEngine) -> some View {
+        GeometryReader { geometry in
+#if IPHONE_DUO_LAYOUTS
+            if #available(iOS 27.1, *), geometry.hasHorizontalReadingFold {
+                ArrangementView {
+                    readerPages(engine: engine)
+                        .padding(.bottom, geometry.horizontalReadingFoldMargins?.before ?? 0)
+                } secondary: {
+                    ReaderControls(engine: engine, showingSettings: $showingSettings, showingPages: $showingPages,
+                                   onClose: close, alwaysVisible: true)
+                        .padding(.top, geometry.horizontalReadingFoldMargins?.after ?? 0)
+                }
+                .arrangementViewStyle(.split)
+            } else {
+                floatingReaderSurface(engine: engine)
+            }
+#else
+            floatingReaderSurface(engine: engine)
+#endif
+        }
+    }
+
+    private func floatingReaderSurface(engine: ReaderEngine) -> some View {
         ZStack {
             readerPages(engine: engine)
             ReaderControls(engine: engine, showingSettings: $showingSettings, showingPages: $showingPages, onClose: close)
@@ -248,5 +272,23 @@ struct ReaderView: View {
     private func close() {
         engine?.close()
         dismiss()
+    }
+}
+
+extension GeometryProxy {
+    var hasHorizontalReadingFold: Bool {
+        horizontalReadingFoldMargins != nil
+    }
+
+    var horizontalReadingFoldMargins: (before: CGFloat, after: CGFloat)? {
+#if IPHONE_DUO_LAYOUTS
+        if #available(iOS 27.1, *),
+           let fold = reservedRegions(kind: .division).first(where: {
+                $0.frame.width > $0.frame.height && $0.frame.minY > 0 && $0.frame.maxY < size.height
+           }) {
+            return (fold.margins.top, fold.margins.bottom)
+        }
+#endif
+        return nil
     }
 }

@@ -25,7 +25,7 @@ final class NovelPaginationTests: XCTestCase {
                                 margin: 22, restoreFraction: 0, onScroll: { _ in }, onTapMiddle: {},
                                 onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
         let messages = Messages()
-        let config = WKWebViewConfiguration()
+        let config = NovelWebView.chapterConfiguration()
         config.userContentController.add(messages, name: "mangoNavigation")
         let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 700), configuration: config)
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
@@ -108,7 +108,7 @@ final class NovelPaginationTests: XCTestCase {
                                 margin: 22, restoreFraction: 0, onScroll: { _ in }, onTapMiddle: {},
                                 onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
         let messages = Messages()
-        let config = WKWebViewConfiguration()
+        let config = NovelWebView.chapterConfiguration()
         config.userContentController.add(messages, name: "mangoNavigation")
         let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 951, height: 635), configuration: config)
         let window = UIWindow(windowScene: try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene))
@@ -280,7 +280,7 @@ final class NovelPaginationTests: XCTestCase {
     }
 
     private var pageSizes: [CGSize] {
-        [CGSize(width: 390, height: 700), CGSize(width: 700, height: 390), CGSize(width: 1024, height: 768)]
+        [CGSize(width: 390, height: 700), CGSize(width: 700, height: 390), CGSize(width: 1024, height: 768), CGSize(width: 1024, height: 1366)]
     }
 
     private func illustration(width: CGFloat, height: CGFloat) -> String {
@@ -306,7 +306,7 @@ final class NovelPaginationTests: XCTestCase {
                                 margin: 22, restoreFraction: 0, onScroll: { _ in }, onTapMiddle: {},
                                 onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
         let messages = Messages()
-        let config = WKWebViewConfiguration()
+        let config = NovelWebView.chapterConfiguration()
         config.userContentController.add(messages, name: "mangoNavigation")
         let web = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: config)
         web.scrollView.contentInsetAdjustmentBehavior = .never
@@ -351,7 +351,7 @@ final class NovelPaginationTests: XCTestCase {
             messages.actions.removeAll()
             let count = Int(try await number("mangoPager.count", web))
             if endsNearBottom {
-                let facing = size.width >= 700 && size.width > size.height
+                let facing = size.width >= 900 || (size.width >= 700 && size.width > size.height)
                 XCTAssertEqual(count, facing ? 1 : 2, "The final paragraph's margin must not create a blank page or spread")
             } else {
                 XCTAssertGreaterThan(count, 1)
@@ -409,7 +409,7 @@ final class NovelPaginationTests: XCTestCase {
     /// A web view that loads chapters through the EPUB scheme handler, as the reader's does.
     private func chapterWebView(_ document: EPUBDocument, size: CGSize, messages: Messages,
                                 atDocumentStart script: String? = nil) throws -> (WKWebView, UIWindow) {
-        let config = WKWebViewConfiguration()
+        let config = NovelWebView.chapterConfiguration()
         config.setURLSchemeHandler(EPUBSchemeHandler(document: document), forURLScheme: EPUBSchemeHandler.scheme)
         config.userContentController.add(messages, name: "mangoNavigation")
         if let script {

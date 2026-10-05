@@ -54,8 +54,16 @@ struct NovelWebView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
-    func makeUIView(context: Context) -> WKWebView {
+    /// EPUB pages follow the reader's viewport on every iPad. The platform's
+    /// recommended desktop mode on larger iPads overrides that viewport contract.
+    static func chapterConfiguration() -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.preferredContentMode = .mobile
+        return configuration
+    }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let configuration = Self.chapterConfiguration()
         configuration.setURLSchemeHandler(EPUBSchemeHandler(document: document), forURLScheme: EPUBSchemeHandler.scheme)
         configuration.suppressesIncrementalRendering = false
         configuration.userContentController.add(context.coordinator, name: "mangoNavigation")
@@ -167,7 +175,7 @@ struct NovelWebView: UIViewRepresentable {
           overflow: visible !important;
         }
         img, svg { max-height: calc(100vh - 128px) !important; break-inside: avoid; }
-        @media (min-width: 700px) and (orientation: landscape) {
+        @media (min-width: 900px), (min-width: 700px) and (orientation: landscape) {
           body {
             padding: 64px \(widePageMargin ?? margin)px !important;
             column-width: calc((100vw - \((widePageMargin ?? margin) * 4)px) / 2) !important;
@@ -221,7 +229,7 @@ struct NovelWebView: UIViewRepresentable {
             document.documentElement.style.width = '100%';
             const contentWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
             const extent = contentWidth / width;
-            const facing = window.matchMedia('(min-width: 700px) and (orientation: landscape)').matches;
+            const facing = window.matchMedia('(min-width: 900px), (min-width: 700px) and (orientation: landscape)').matches;
             // scrollWidth is integral; a fractional body width can round one pixel above
             // a full spread. That rounding is not another page of content.
             pager.count = Math.max(1, facing ? Math.ceil((contentWidth - 1) / width) : Math.round(extent));

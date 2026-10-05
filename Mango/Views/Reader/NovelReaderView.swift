@@ -18,6 +18,7 @@ struct NovelReaderView: View {
     @State private var showingChapters = false
     @State private var findAfterChaptersDismiss = false
     @State private var atEnd = false
+    @State private var hasHorizontalFold = false
     @State private var selection: NovelTextAnchor?
     @State private var highlightNote = ""
     @State private var addingHighlight = false
@@ -54,8 +55,9 @@ struct NovelReaderView: View {
             Button("Cancel", role: .cancel) {}
         }
         .onChange(of: engine?.chapterIndex) { selection = nil }
-        .statusBarHidden(!(engine?.showsControls ?? true))
-        .persistentSystemOverlays(engine?.showsControls ?? true ? .automatic : .hidden)
+        .onGeometryChange(for: Bool.self) { $0.hasHorizontalReadingFold } action: { hasHorizontalFold = $0 }
+        .statusBarHidden(!(hasHorizontalFold || (engine?.showsControls ?? true)))
+        .persistentSystemOverlays(hasHorizontalFold || (engine?.showsControls ?? true) ? .automatic : .hidden)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .task(id: openComic.id) {
@@ -83,16 +85,40 @@ struct NovelReaderView: View {
     }
 
     private func novelSurface(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {
-        ZStack {
-            GeometryReader { geometry in
-                chapterContent(engine: engine, document: document, chapterPath: chapterPath,
-                               widePageMargin: facingPageMargin(in: geometry))
+        GeometryReader { geometry in
+#if IPHONE_DUO_LAYOUTS
+            if #available(iOS 27.1, *), geometry.hasHorizontalReadingFold {
+                ArrangementView {
+                    novelPages(engine: engine, document: document, chapterPath: chapterPath)
+                        .padding(.bottom, geometry.horizontalReadingFoldMargins?.before ?? 0)
+                } secondary: {
+                    novelChrome(engine: engine, alwaysVisible: true)
+                        .padding(.top, geometry.horizontalReadingFoldMargins?.after ?? 0)
+                }
+                .arrangementViewStyle(.split)
+            } else {
+                floatingNovelSurface(engine: engine, document: document, chapterPath: chapterPath)
             }
-            // Measure the full reader viewport for facing pages; floating controls
-            // retain the system safe area so the status region cannot cover them.
-            .ignoresSafeArea(.container, edges: .horizontal)
+#else
+            floatingNovelSurface(engine: engine, document: document, chapterPath: chapterPath)
+#endif
+        }
+    }
+
+    private func floatingNovelSurface(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {
+        ZStack {
+            novelPages(engine: engine, document: document, chapterPath: chapterPath)
             novelChrome(engine: engine)
         }
+    }
+
+    private func novelPages(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {
+        GeometryReader { geometry in
+            chapterContent(engine: engine, document: document, chapterPath: chapterPath,
+                           widePageMargin: facingPageMargin(in: geometry))
+        }
+        // Content uses the full page width; controls retain the system safe area.
+        .ignoresSafeArea(.container, edges: .horizontal)
     }
 
     private func facingPageMargin(in geometry: GeometryProxy) -> Double {
@@ -137,7 +163,7 @@ struct NovelReaderView: View {
 
     }
 
-    private func novelChrome(engine: NovelEngine) -> some View {
+    private func novelChrome(engine: NovelEngine, alwaysVisible: Bool = false) -> some View {
         ZStack {
             if selection != nil {
                 VStack { Spacer(); HStack {
@@ -147,7 +173,7 @@ struct NovelReaderView: View {
                     Button { selection = nil } label: { Text("Cancel").frame(minHeight: 44) }
                 }.padding().glassEffect(in: .capsule).padding(.bottom, 70) }
             }
-            NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close)
+            NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close, alwaysVisible: alwaysVisible)
         }
     }
 
@@ -244,6 +270,9 @@ struct NovelControls: View {
     @Bindable var engine: NovelEngine
     @Binding var showingChapters: Bool
     var onClose: () -> Void
+    var alwaysVisible = false
+
+    private var controlsVisible: Bool { alwaysVisible || engine.showsControls }
 
     @Environment(AppSettings.self) private var settings
 
@@ -324,10 +353,10 @@ struct NovelControls: View {
                 .padding(.bottom, 4)
             }
         }
-        .opacity(engine.showsControls ? 1 : 0)
-        .allowsHitTesting(engine.showsControls)
-        .accessibilityHidden(!engine.showsControls)
-        .animation(.smooth(duration: 0.25), value: engine.showsControls)
+        .opacity(controlsVisible ? 1 : 0)
+        .allowsHitTesting(controlsVisible)
+        .accessibilityHidden(!controlsVisible)
+        .animation(.smooth(duration: 0.25), value: controlsVisible)
     }
 
     private func foldClearWidths(in geometry: GeometryProxy) -> (title: CGFloat, position: CGFloat)? {
