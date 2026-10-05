@@ -9,6 +9,14 @@ already have, where they are — including straight off a NAS, without downloadi
 It is Earmark's sibling (`../earmark`, the audiobook player) and deliberately shares its
 architecture: derived library, JSON state keyed by stable ids, SMB via AMSMB2, xcodegen.
 
+## iPad testing
+
+Read [docs/ipad-testing.md](docs/ipad-testing.md) for regular-width reading/workspaces, native orientation preparation, fixture safety, and simulator videos. Check iPad mini portrait and iPad Pro landscape, and adapt to the available window. Capture native main display 1 and verify actual window/PNG geometry. Use `uv run` for Python helpers; keep `CLAUDE.md` linked to this file.
+
+## iPhone Duo testing
+
+Read [docs/iphone-duo-testing.md](docs/iphone-duo-testing.md) before Duo layout, pose, or recording work. Native `agent-device@0.21.20` hinge control is verified for open, book, and closed; use the scoped Duo toolchain and confirm angle plus app-visible geometry. A manual tabletop quarter-turn is verified; automated physical rotation remains unverified. Capture the lit panel explicitly and distinguish live continuity from saved-state reopening. Use `uv run` for Python helpers. Keep `CLAUDE.md` as the compatibility symlink to this file.
+
 ## Non-negotiables
 
 - **Never copy, move, or rename the user's comics.** Sources are security-scoped bookmarks
@@ -291,8 +299,13 @@ series, generated pages, generated EPUBs, a long-strip series (Rooftop Garden), 
 
 **Never put the Sources screen in a store screenshot** — it prints the NAS host address.
 
-iPad landscape shots need two workarounds. `simctl io screenshot` captures the raw framebuffer
-without applying device rotation, so a landscape app still returns portrait dimensions —
-rotate the PNG afterwards with `sips -r 90`. And the simulator can't be rotated from here (no
-xcodebuildmcp preset, System Events keystrokes don't land), so temporarily narrow
-`UISupportedInterfaceOrientations~ipad` to landscape only, build, capture, then restore it.
+The earlier iPad screenshot workflow used two workarounds: when `simctl io screenshot`
+returned a portrait framebuffer for a landscape app, rotate the PNG with `sips -r 90`; when
+rotation was unavailable, temporarily narrow `UISupportedInterfaceOrientations~ipad` to
+landscape only, build, capture, then restore it. These are device-specific workarounds, not a
+claim that all simulator pose control is unavailable. For Duo, use the verified native hinge
+commands and explicit display capture in [docs/iphone-duo-testing.md](docs/iphone-duo-testing.md).
+Duo's manual physical quarter-turn is verified, including a native horizontal division.
+Automated physical rotation remains unverified; image rotation does not rotate the device.
+The current iPad capture prepares and verifies native orientation before recording; prefer
+that workflow over the historical workarounds above.

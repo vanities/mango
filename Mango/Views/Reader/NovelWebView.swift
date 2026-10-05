@@ -17,6 +17,8 @@ struct NovelWebView: UIViewRepresentable {
     var fontFamily: String
     var lineSpacing: Double
     var margin: Double
+    /// Additional space for facing pages when the fold is offset by a vertical bar.
+    var widePageMargin: Double? = nil
     /// Where in the chapter to restore to, 0...1. Applied once per chapter load.
     var restoreFraction: Double
     var highlights: [NovelTextAnchor] = []
@@ -52,8 +54,16 @@ struct NovelWebView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
-    func makeUIView(context: Context) -> WKWebView {
+    /// EPUB pages follow the reader's viewport on every iPad. The platform's
+    /// recommended desktop mode on larger iPads overrides that viewport contract.
+    static func chapterConfiguration() -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.preferredContentMode = .mobile
+        return configuration
+    }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let configuration = Self.chapterConfiguration()
         configuration.setURLSchemeHandler(EPUBSchemeHandler(document: document), forURLScheme: EPUBSchemeHandler.scheme)
         configuration.suppressesIncrementalRendering = false
         configuration.userContentController.add(context.coordinator, name: "mangoNavigation")
@@ -62,9 +72,8 @@ struct NovelWebView: UIViewRepresentable {
         webView.isFindInteractionEnabled = true
         webView.navigationDelegate = context.coordinator
         webView.scrollView.delegate = context.coordinator
-        // .always, not .never: a comic page should run under the notch, but a line of prose
-        // must not. The view itself still reaches the screen edges so the background is
-        // full-bleed — only the text is inset.
+        // SwiftUI keeps the text viewport inside each safe-area edge. Scrolling prose may
+        // also need UIKit's adjusted insets when a system presentation changes its bounds.
         webView.scrollView.contentInsetAdjustmentBehavior = paged ? .never : .always
         webView.scrollView.isScrollEnabled = !paged
         webView.isOpaque = false
@@ -103,7 +112,7 @@ struct NovelWebView: UIViewRepresentable {
         }
     }
 
-    private var styleKey: String { "\(fontScale)-\(dark)-\(fontFamily)-\(lineSpacing)-\(margin)-\(tapToTurn)" }
+    private var styleKey: String { "\(fontScale)-\(dark)-\(fontFamily)-\(lineSpacing)-\(margin)-\(widePageMargin ?? margin)-\(tapToTurn)" }
 
     /// A position as the pager and the engine take it: 0...1, never NaN (which would also
     /// read as an undefined `nan` once written into the script).
@@ -126,7 +135,7 @@ struct NovelWebView: UIViewRepresentable {
           margin: 0 auto !important;
           /* Extra top room so the first line clears the floating chrome while it's up,
              and bottom room so the last line isn't hidden behind the bottom capsule. */
-          padding: 16px \(margin)px 120px !important;
+          padding: 64px \(margin)px 120px !important;
           max-width: 40em !important;
           text-rendering: optimizeLegibility;
           hyphens: auto;
@@ -166,6 +175,17 @@ struct NovelWebView: UIViewRepresentable {
           overflow: visible !important;
         }
         img, svg { max-height: calc(100vh - 128px) !important; break-inside: avoid; }
+        @media (min-width: 900px), (min-width: 700px) and (orientation: landscape) {
+          body {
+            padding: 64px \(widePageMargin ?? margin)px !important;
+            column-width: calc((100vw - \((widePageMargin ?? margin) * 4)px) / 2) !important;
+            column-gap: \((widePageMargin ?? margin) * 2)px !important;
+          }
+          html::after {
+            content: ''; position: fixed; left: 50%; top: 64px; bottom: 64px;
+            width: 1px; background: \(dark ? "#ffffff20" : "#00000018"); pointer-events: none;
+          }
+        }
         /* A final paragraph's margin can overflow into an otherwise empty column. */
         body > :last-child { margin-bottom: 0 !important; }
         """
@@ -207,7 +227,12 @@ struct NovelWebView: UIViewRepresentable {
             const width = pager.width(), scrolled = window.scrollX;
             // Measure fresh so a smaller font or wider viewport can reduce the page count.
             document.documentElement.style.width = '100%';
-            pager.count = Math.max(1, Math.round(Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) / width));
+            const contentWidth = Math.max(document.body.scrollWidth, document.documentElement.scrollWidth);
+            const extent = contentWidth / width;
+            const facing = window.matchMedia('(min-width: 900px), (min-width: 700px) and (orientation: landscape)').matches;
+            // scrollWidth is integral; a fractional body width can round one pixel above
+            // a full spread. That rounding is not another page of content.
+            pager.count = Math.max(1, facing ? Math.ceil((contentWidth - 1) / width) : Math.round(extent));
             // Column overflow omits the final right padding. Reserve a whole last page or
             // WebKit clamps its scroll offset and shifts the text after the tap completes.
             document.documentElement.style.width = (pager.count * width) + 'px';
@@ -217,8 +242,20 @@ struct NovelWebView: UIViewRepresentable {
           pager.layout = () => {
             // A view being resized or snapshotted can be zero wide for a moment.
             if (pager.width() < 1) return;
+            const style = getComputedStyle(document.body);
+            const signature = [pager.width(), document.body.getBoundingClientRect().height,
+              style.columnWidth, style.fontSize, style.lineHeight, style.fontFamily].join('|');
+            const keepPage = pager.hasTurned && signature === pager.layoutSignature && pager.fraction === pager.turnFraction;
+            const currentPage = pager.page;
+            const previousCount = pager.count;
             measure();
-            pager.page = Math.min(pager.count - 1, Math.round(pager.fraction * (pager.count - 1)));
+            pager.page = Math.min(pager.count - 1, keepPage ? currentPage : Math.round(pager.fraction * (pager.count - 1)));
+            if (keepPage && pager.count !== previousCount) {
+              pager.fraction = pager.count > 1 ? pager.page / (pager.count - 1) : 0;
+              pager.turnFraction = pager.fraction;
+            }
+            if (signature !== pager.layoutSignature) pager.hasTurned = false;
+            pager.layoutSignature = signature;
             show();
           };
           // A link to an anchor in this chapter: turn to the page it's on.
@@ -227,7 +264,9 @@ struct NovelWebView: UIViewRepresentable {
             if (!target || pager.width() < 1) return false;
             const left = target.getBoundingClientRect().left + window.scrollX;
             pager.page = Math.max(0, Math.min(pager.count - 1, Math.floor(left / pager.width())));
+            pager.hasTurned = true;
             pager.fraction = pager.count > 1 ? pager.page / (pager.count - 1) : 0;
+            pager.turnFraction = pager.fraction;
             show();
             return true;
           };
@@ -239,7 +278,7 @@ struct NovelWebView: UIViewRepresentable {
             const next = pager.page + delta;
             if (next < 0) send('previous');
             else if (next >= pager.count) send('next');
-            else { pager.page = next; pager.fraction = pager.count > 1 ? next / (pager.count - 1) : 0; show(); }
+            else { pager.hasTurned = true; pager.page = next; pager.fraction = pager.count > 1 ? next / (pager.count - 1) : 0; pager.turnFraction = pager.fraction; show(); }
           };
           let start = null, swiped = false;
           document.addEventListener('touchstart', event => {

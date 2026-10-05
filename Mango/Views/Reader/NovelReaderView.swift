@@ -18,6 +18,7 @@ struct NovelReaderView: View {
     @State private var showingChapters = false
     @State private var findAfterChaptersDismiss = false
     @State private var atEnd = false
+    @State private var hasHorizontalFold = false
     @State private var selection: NovelTextAnchor?
     @State private var highlightNote = ""
     @State private var addingHighlight = false
@@ -37,43 +38,7 @@ struct NovelReaderView: View {
                 } else if let error = engine.openError {
                     failure(error)
                 } else if let document = engine.document, let chapter = engine.currentChapter {
-                    NovelWebView(
-                        document: document,
-                        chapterPath: chapter.path,
-                        fontScale: settings.novelFontScale,
-                        dark: dark,
-                        paged: settings.novelPaged,
-                        tapToTurn: settings.tapToTurn,
-                        fontFamily: settings.novelFont == .publisher ? "" : settings.novelFont.css,
-                        lineSpacing: settings.novelLineSpacing,
-                        margin: settings.novelMargin,
-                        restoreFraction: engine.pendingJumpFraction > 0 ? engine.pendingJumpFraction : engine.scrollFraction,
-                        highlights: engine.bookmarks.filter { $0.page == engine.chapterIndex }.compactMap(\.anchor),
-                        jumpAnchor: engine.pendingTextAnchor,
-                        findRequest: engine.findRequest,
-                        onSelection: { selection = $0 },
-                        onScroll: { engine.scrollFraction = $0 },
-                        onTapMiddle: { engine.toggleControls() },
-                        onNextChapter: { engine.nextChapter() },
-                        onPreviousChapter: { engine.previousChapter(atEnd: true) },
-                        onReachedBottom: {
-                            // Reaching the bottom of the last chapter is the end of the book.
-                            if engine.isAtLastChapter { engine.notifyReachedEnd() }
-                        },
-                        onOpenChapter: { engine.openLink(toPath: $0) }
-                    )
-                    .ignoresSafeArea()
-                    .id("\(chapter.path)-\(settings.novelPaged)-\(engine.jumpID)")
-
-                    if selection != nil {
-                        VStack { Spacer(); HStack {
-                            Button { highlightNote = ""; addingHighlight = true } label: {
-                                Label("Save highlight", systemImage: "highlighter").frame(minHeight: 44)
-                            }
-                            Button { selection = nil } label: { Text("Cancel").frame(minHeight: 44) }
-                        }.padding().glassEffect(in: .capsule).padding(.bottom, 70) }
-                    }
-                    NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close)
+                    novelSurface(engine: engine, document: document, chapterPath: chapter.path)
                 }
             } else {
                 ProgressView()
@@ -90,8 +55,9 @@ struct NovelReaderView: View {
             Button("Cancel", role: .cancel) {}
         }
         .onChange(of: engine?.chapterIndex) { selection = nil }
-        .statusBarHidden(!(engine?.showsControls ?? true))
-        .persistentSystemOverlays(engine?.showsControls ?? true ? .automatic : .hidden)
+        .onGeometryChange(for: Bool.self) { $0.hasHorizontalReadingFold } action: { hasHorizontalFold = $0 }
+        .statusBarHidden(!(hasHorizontalFold || (engine?.showsControls ?? true)))
+        .persistentSystemOverlays(hasHorizontalFold || (engine?.showsControls ?? true) ? .automatic : .hidden)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .task(id: openComic.id) {
@@ -115,6 +81,99 @@ struct NovelReaderView: View {
         .onDisappear {
             engine?.close()
             UIApplication.shared.isIdleTimerDisabled = false
+        }
+    }
+
+    private func novelSurface(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {
+        GeometryReader { geometry in
+#if IPHONE_DUO_LAYOUTS
+            if #available(iOS 27.1, *), geometry.hasHorizontalReadingFold {
+                ArrangementView {
+                    novelPages(engine: engine, document: document, chapterPath: chapterPath)
+                        .padding(.bottom, geometry.horizontalReadingFoldMargins?.before ?? 0)
+                } secondary: {
+                    novelChrome(engine: engine, alwaysVisible: true)
+                        .padding(.top, geometry.horizontalReadingFoldMargins?.after ?? 0)
+                }
+                .arrangementViewStyle(.split)
+            } else {
+                floatingNovelSurface(engine: engine, document: document, chapterPath: chapterPath)
+            }
+#else
+            floatingNovelSurface(engine: engine, document: document, chapterPath: chapterPath)
+#endif
+        }
+    }
+
+    private func floatingNovelSurface(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {
+        ZStack {
+            novelPages(engine: engine, document: document, chapterPath: chapterPath)
+            novelChrome(engine: engine)
+        }
+    }
+
+    private func novelPages(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {
+        GeometryReader { geometry in
+            chapterContent(engine: engine, document: document, chapterPath: chapterPath,
+                           widePageMargin: facingPageMargin(in: geometry))
+        }
+        // Content uses the full page width; controls retain the system safe area.
+        .ignoresSafeArea(.container, edges: .horizontal)
+    }
+
+    private func facingPageMargin(in geometry: GeometryProxy) -> Double {
+#if IPHONE_DUO_LAYOUTS
+        if #available(iOS 27.1, *), let fold = geometry.reservedRegions(kind: .division).first(where: { $0.frame.height > $0.frame.width }) {
+            let clearance = abs(fold.frame.midX - geometry.size.width / 2) + fold.frame.width / 2
+                + max(fold.margins.leading, fold.margins.trailing) + 12
+            return max(settings.novelMargin, clearance)
+        }
+#endif
+        return settings.novelMargin
+    }
+
+    private func chapterContent(engine: NovelEngine, document: EPUBDocument, chapterPath: String, widePageMargin: Double) -> some View {
+        NovelWebView(
+            document: document,
+            chapterPath: chapterPath,
+            fontScale: settings.novelFontScale,
+            dark: dark,
+            paged: settings.novelPaged,
+            tapToTurn: settings.tapToTurn,
+            fontFamily: settings.novelFont == .publisher ? "" : settings.novelFont.css,
+            lineSpacing: settings.novelLineSpacing,
+            margin: settings.novelMargin,
+            widePageMargin: widePageMargin,
+            restoreFraction: engine.pendingJumpFraction > 0 ? engine.pendingJumpFraction : engine.scrollFraction,
+            highlights: engine.bookmarks.filter { $0.page == engine.chapterIndex }.compactMap(\.anchor),
+            jumpAnchor: engine.pendingTextAnchor,
+            findRequest: engine.findRequest,
+            onSelection: { selection = $0 },
+            onScroll: { engine.scrollFraction = $0 },
+            onTapMiddle: { engine.toggleControls() },
+            onNextChapter: { engine.nextChapter() },
+            onPreviousChapter: { engine.previousChapter(atEnd: true) },
+            onReachedBottom: {
+                // Reaching the bottom of the last chapter is the end of the book.
+                if engine.isAtLastChapter { engine.notifyReachedEnd() }
+            },
+            onOpenChapter: { engine.openLink(toPath: $0) }
+        )
+        .id("\(chapterPath)-\(settings.novelPaged)-\(engine.jumpID)")
+
+    }
+
+    private func novelChrome(engine: NovelEngine, alwaysVisible: Bool = false) -> some View {
+        ZStack {
+            if selection != nil {
+                VStack { Spacer(); HStack {
+                    Button { highlightNote = ""; addingHighlight = true } label: {
+                        Label("Save highlight", systemImage: "highlighter").frame(minHeight: 44)
+                    }
+                    Button { selection = nil } label: { Text("Cancel").frame(minHeight: 44) }
+                }.padding().glassEffect(in: .capsule).padding(.bottom, 70) }
+            }
+            NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close, alwaysVisible: alwaysVisible)
         }
     }
 
@@ -211,89 +270,119 @@ struct NovelControls: View {
     @Bindable var engine: NovelEngine
     @Binding var showingChapters: Bool
     var onClose: () -> Void
+    var alwaysVisible = false
+
+    private var controlsVisible: Bool { alwaysVisible || engine.showsControls }
 
     @Environment(AppSettings.self) private var settings
 
     var body: some View {
         @Bindable var settings = settings
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                button("chevron.left", label: "Close", action: onClose)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(engine.comic.numberLabel ?? engine.comic.title)
-                        .font(.subheadline.weight(.semibold)).lineLimit(1)
-                    Text(engine.comic.series ?? engine.bookTitle ?? "")
-                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                button("textformat.size.smaller", label: "Smaller text") {
-                    settings.novelFontScale = max(0.7, settings.novelFontScale - 0.1)
-                    engine.keepControlsAwake()
-                }
-                button("textformat.size.larger", label: "Larger text") {
-                    settings.novelFontScale = min(2.0, settings.novelFontScale + 0.1)
-                    engine.keepControlsAwake()
-                }
-                button(engine.isHereBookmarked ? "bookmark.fill" : "bookmark",
-                       label: engine.isHereBookmarked ? "Remove bookmark" : "Bookmark this spot") {
-                    engine.toggleBookmark()
-                }
-                button("list.bullet", label: "Chapters and reading settings") {
-                    showingChapters = true
-                    engine.keepControlsAwake()
-                }
-            }
-            .padding(.leading, 4)
-            .padding(.trailing, 8)
-            .padding(.vertical, 4)
-            .glassEffect(in: .capsule)
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 12) {
-                if engine.jumpOrigin != nil {
-                    button("arrow.uturn.backward", label: "Undo position jump") { engine.undoJump() }
-                }
-                // Chapters, not pages: VoiceOver would otherwise read the symbols as Back and Forward.
-                Button { engine.previousChapter() } label: { Image(systemName: "chevron.left") }
-                    .disabled(engine.chapterIndex <= 0)
-                    .accessibilityLabel("Previous chapter")
-                VStack(spacing: 2) {
-                    // A long chapter name gives way; the percentage always shows.
-                    HStack(spacing: 0) {
-                        Text(engine.chapterLabel).lineLimit(1)
-                        if !engine.chapterLabel.isEmpty { Text(" · \(engine.percentLabel)").fixedSize() }
+        GeometryReader { geometry in
+            let widths = foldClearWidths(in: geometry)
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    button("chevron.left", label: "Close", action: onClose)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(engine.comic.numberLabel ?? engine.comic.title)
+                            .font(.subheadline.weight(.semibold)).lineLimit(1)
+                        Text(engine.comic.series ?? engine.bookTitle ?? "")
+                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    .font(.caption.weight(.medium)).monospacedDigit()
-                    .accessibilityElement(children: .combine)
-                    if settings.showReadingEstimates, let minutes = engine.chapterMinutesRemaining {
-                        Text("~\(minutes) min left in chapter").font(.caption2)
-                            .accessibilityLabel("About \(minutes) minutes left, estimated at 220 words per minute")
+                    .frame(width: widths?.title, alignment: .leading)
+                    .frame(maxWidth: widths == nil ? .infinity : nil, alignment: .leading)
+
+                    if widths != nil { Spacer(minLength: 0) }
+
+                    button("textformat.size.smaller", label: "Smaller text") {
+                        settings.novelFontScale = max(0.7, settings.novelFontScale - 0.1)
+                        engine.keepControlsAwake()
                     }
-                }.foregroundStyle(.secondary).frame(maxWidth: .infinity)
-                Button { engine.nextChapter() } label: { Image(systemName: "chevron.right") }
-                    .accessibilityLabel("Next chapter")
+                    button("textformat.size.larger", label: "Larger text") {
+                        settings.novelFontScale = min(2.0, settings.novelFontScale + 0.1)
+                        engine.keepControlsAwake()
+                    }
+                    button(engine.isHereBookmarked ? "bookmark.fill" : "bookmark",
+                           label: engine.isHereBookmarked ? "Remove bookmark" : "Bookmark this spot") {
+                        engine.toggleBookmark()
+                    }
+                    button("list.bullet", label: "Chapters and reading settings") {
+                        showingChapters = true
+                        engine.keepControlsAwake()
+                    }
+                }
+                .padding(.leading, 4)
+                .padding(.trailing, 8)
+                .padding(.vertical, 4)
+                .glassEffect(in: .capsule)
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 12) {
+                    if engine.jumpOrigin != nil {
+                        button("arrow.uturn.backward", label: "Undo position jump") { engine.undoJump() }
+                    }
+                    // Chapters, not pages: VoiceOver would otherwise read the symbols as Back and Forward.
+                    button("chevron.left", label: "Previous chapter") { engine.previousChapter() }
+                        .disabled(engine.chapterIndex <= 0)
+                    if widths != nil { Spacer(minLength: 0) }
+                    VStack(spacing: 2) {
+                        // A long chapter name gives way; the percentage always shows.
+                        HStack(spacing: 0) {
+                            Text(engine.chapterLabel).lineLimit(1)
+                            if !engine.chapterLabel.isEmpty { Text(" · \(engine.percentLabel)").fixedSize() }
+                        }
+                        .font(.caption.weight(.medium)).monospacedDigit()
+                        .accessibilityElement(children: .combine)
+                        if settings.showReadingEstimates, let minutes = engine.chapterMinutesRemaining {
+                            Text("~\(minutes) min left in chapter").font(.caption2)
+                                .accessibilityLabel("About \(minutes) minutes left, estimated at 220 words per minute")
+                        }
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(width: widths?.position)
+                    .frame(maxWidth: widths == nil ? .infinity : nil)
+                    button("chevron.right", label: "Next chapter") { engine.nextChapter() }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 6)
+                .glassEffect(in: .capsule)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 4)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .glassEffect(in: .capsule)
-            .padding(.horizontal, 12)
-            .padding(.bottom, 4)
         }
-        .opacity(engine.showsControls ? 1 : 0)
-        .allowsHitTesting(engine.showsControls)
-        .accessibilityHidden(!engine.showsControls)
-        .animation(.smooth(duration: 0.25), value: engine.showsControls)
+        .opacity(controlsVisible ? 1 : 0)
+        .allowsHitTesting(controlsVisible)
+        .accessibilityHidden(!controlsVisible)
+        .animation(.smooth(duration: 0.25), value: controlsVisible)
+    }
+
+    private func foldClearWidths(in geometry: GeometryProxy) -> (title: CGFloat, position: CGFloat)? {
+#if IPHONE_DUO_LAYOUTS
+        if #available(iOS 27.1, *),
+           let fold = geometry.reservedRegions(kind: .division).first(where: {
+               $0.frame.height > $0.frame.width && $0.frame.minX > 0 && $0.frame.maxX < geometry.size.width
+           }) {
+            // The title stays on the leading page; reading position stays on the
+            // trailing page. Include capsule padding, adjacent buttons and spacing.
+            let titleInset: CGFloat = 12 + 4 + 44 + 10
+            let positionInset: CGFloat = 12 + 18 + 44 + 12
+            return (
+                title: max(0, fold.frame.minX - fold.margins.leading - titleInset),
+                position: max(0, geometry.size.width - fold.frame.maxX - fold.margins.trailing - positionInset)
+            )
+        }
+#endif
+        return nil
     }
 
     private func button(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 15, weight: .semibold))
-                .frame(width: 40, height: 40)
+                .frame(width: 44, height: 44)
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)

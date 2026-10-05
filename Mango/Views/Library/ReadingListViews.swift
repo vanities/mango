@@ -70,16 +70,12 @@ struct ReadingListView: View {
         }
         .navigationTitle(list?.name ?? "List")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Rename…", systemImage: "pencil") {
-                        newName = list?.name ?? ""
-                        renaming = true
-                    }
-                    EditButton()
-                } label: {
-                    Label("List", systemImage: "ellipsis.circle")
+            OverflowToolbar {
+                Button("Rename…", systemImage: "pencil") {
+                    newName = list?.name ?? ""
+                    renaming = true
                 }
+                EditButton()
             }
         }
         .alert("Rename List", isPresented: $renaming) {

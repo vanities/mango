@@ -42,10 +42,10 @@ final class ReaderEngine {
     @ObservationIgnored private let library: LibraryModel
     @ObservationIgnored private let settings: AppSettings
     @ObservationIgnored private var loader: PageLoader?
-    /// Screen geometry, for sizing decodes: longest edge for a page, width for a strip.
-    @ObservationIgnored private var screenPixels = CGSize(width: 1200, height: 2600)
+    /// Viewport geometry, for image decodes: longest edge for a page, width for a strip.
+    private var screenPixels = CGSize(width: 1200, height: 2600)
 
-    private var sizing: PageSizing {
+    var imageSizing: PageSizing {
         switch mode {
         case .paged:
             // Headroom so a pinch-zoom doesn't go soft straight away; capped in ImageDecoder.
@@ -250,7 +250,7 @@ final class ReaderEngine {
     func image(at index: Int) async -> CGImage? {
         guard let loader, index >= 0, index < pageCount else { return nil }
         do {
-            let image = try await loader.page(at: index, sizing: sizing, trim: cropsMargins)
+            let image = try await loader.page(at: index, sizing: imageSizing, trim: cropsMargins)
             let aspect = Double(image.height) / Double(max(1, image.width))
             pageAspects[index] = aspect
             lastAspect = aspect
@@ -420,16 +420,35 @@ final class ReaderEngine {
 
     // MARK: Internals
 
-    private func rebuildGroups() {
-        let page = currentPage
+    private func rebuildGroups(keeping page: Int? = nil) {
+        let page = page ?? currentPage
         let spreads = mode == .paged && spreadsEnabled
         groups = SpreadLayout.groups(pageCount: pageCount, wide: widePages, enabled: spreads)
         groupIndex = SpreadLayout.groupIndex(containing: page, in: groups)
     }
 
-    /// Spreads only make sense when the screen is wider than it is tall. The view keeps this in
-    /// sync as the device rotates.
-    var isLandscape = false { didSet { if isLandscape != oldValue { rebuildGroups() } } }
+    /// A display transition changes the decode size as well as the page arrangement.
+    /// Keep the same page; sizing is part of PageLoader's cache key, so images from the old
+    /// viewport never replace a sharper decode for the new one.
+    func updateViewport(_ pixels: CGSize) {
+        guard pixels.width > 0, pixels.height > 0, pixels != screenPixels else { return }
+        screenPixels = pixels
+        isLandscape = pixels.width > pixels.height
+        prefetchAround()
+    }
+
+    @ObservationIgnored private var resizePage: Int?
+
+    /// Pairing a page can put it second in a spread. Remember that page until the reader
+    /// actually turns, so returning to a single-page viewport does not go back one page.
+    var isLandscape = false {
+        didSet {
+            guard isLandscape != oldValue else { return }
+            let page = resizePage ?? currentPage
+            rebuildGroups(keeping: page)
+            resizePage = page
+        }
+    }
 
     private var spreadsEnabled: Bool {
         switch settings.spreadMode {
@@ -440,6 +459,7 @@ final class ReaderEngine {
     }
 
     private func onGroupChanged() {
+        resizePage = nil
         recorder?.tick(page: currentPage)
         prefetchAround()
         scheduleSave()
@@ -450,9 +470,9 @@ final class ReaderEngine {
         guard let loader else { return }
         let page = currentPage
         let ahead = settings.prefetchCount
-        let sizing = self.sizing
+        let imageSizing = self.imageSizing
         let trim = cropsMargins
-        Task { await loader.prefetch(around: page, ahead: ahead, sizing: sizing, trim: trim) }
+        Task { await loader.prefetch(around: page, ahead: ahead, sizing: imageSizing, trim: trim) }
     }
 
     /// Writing the library JSON on every page turn would hammer the disk during a fast read.

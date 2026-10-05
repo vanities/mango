@@ -68,28 +68,24 @@ struct LibraryView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Reading Lists", systemImage: "list.bullet.rectangle") { showingLists = true }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
-                        Button("Library tools…", systemImage: "suitcase") { showingTools = true }
-                        Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
-                        Divider()
-                        Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: $settings.librarySort) {
-                            ForEach(LibrarySort.allCases, id: \.self) { Text($0.title).tag($0) }
-                        }
-                        .pickerStyle(.menu)
-                        Picker("Layout", selection: $settings.libraryLayout) {
-                            ForEach(LibraryLayout.allCases, id: \.self) {
-                                Label($0 == .grid ? "Grid" : "List", systemImage: $0.systemImage).tag($0)
-                            }
-                        }
-                        Toggle("Show Finished", isOn: $settings.showFinished)
-                        Divider()
-                        Button("Rescan", systemImage: "arrow.clockwise") { Task { await library.scan() } }
-                        Button("Add Folder…", systemImage: "folder.badge.plus") { showingPicker = true }
-                    } label: {
-                        Label("More", systemImage: "ellipsis")
+                OverflowToolbar {
+                    Button("Bookmarks & notes…", systemImage: "bookmark") { showingBookmarks = true }
+                    Button("Library tools…", systemImage: "suitcase") { showingTools = true }
+                    Button("Ready for offline…", systemImage: "checkmark.icloud") { showingOffline = true }
+                    Divider()
+                    Picker("Sort By", systemImage: "arrow.up.arrow.down", selection: $settings.librarySort) {
+                        ForEach(LibrarySort.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
+                    .pickerStyle(.menu)
+                    Picker("Layout", selection: $settings.libraryLayout) {
+                        ForEach(LibraryLayout.allCases, id: \.self) {
+                            Label($0 == .grid ? "Grid" : "List", systemImage: $0.systemImage).tag($0)
+                        }
+                    }
+                    Toggle("Show Finished", isOn: $settings.showFinished)
+                    Divider()
+                    Button("Rescan", systemImage: "arrow.clockwise") { Task { await library.scan() } }
+                    Button("Add Folder…", systemImage: "folder.badge.plus") { showingPicker = true }
                 }
             }
             .sheet(isPresented: $showingTools) { NavigationStack { LibraryToolsView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showingTools = false } } } } }

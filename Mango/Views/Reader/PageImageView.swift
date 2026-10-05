@@ -20,6 +20,7 @@ struct PageImageView: View {
     private struct Load: Hashable {
         let index: Int
         let trim: Bool
+        let sizing: PageSizing
     }
 
     var body: some View {
@@ -38,7 +39,11 @@ struct PageImageView: View {
         }
         .pageFilter(settings.pageFilter)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .task(id: Load(index: index, trim: engine.cropsMargins)) { await load() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Page \(index + 1)")
+        .accessibilityValue(failed ? "Could not open" : image == nil && tiles.isEmpty ? "Loading" : "")
+        .accessibilityIdentifier("ComicPage\(index + 1)")
+        .task(id: Load(index: index, trim: engine.cropsMargins, sizing: engine.imageSizing)) { await load() }
         // A strip page is tens of megabytes decoded. Once it's scrolled away, let it go — the
         // loader still has it if it's recent, and its known shape holds its place meanwhile.
         .onDisappear {

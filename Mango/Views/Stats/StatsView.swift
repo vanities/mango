@@ -45,13 +45,9 @@ struct StatsView: View {
             .navigationTitle("Stats")
             // The same ••• menu as Earmark's Stats.
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Log a Book Read Elsewhere", systemImage: "plus") { logging = true }
-                        Button("Change Yearly Goal…", systemImage: "target") { editingGoal = true }
-                    } label: {
-                        Label("More", systemImage: "ellipsis")
-                    }
+                OverflowToolbar {
+                    Button("Log a Book Read Elsewhere", systemImage: "plus") { logging = true }
+                    Button("Change Yearly Goal…", systemImage: "target") { editingGoal = true }
                 }
             }
             .sheet(isPresented: $logging) { LogBookView() }
