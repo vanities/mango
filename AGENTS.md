@@ -255,6 +255,10 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
 Read [docs/hidden-titles.md](docs/hidden-titles.md) for bulk manga/novel selection,
 session visibility, external surfaces, and verification. Saved hide flags remain in
 `LibraryState`; the shared `HiddenContentSession` unlock must never be persisted.
+Every hidden-title unlock must authenticate, independently of `settings.lockMode`.
+Production uses ShelfKit's native authentication; injected authenticators are for
+tests. Failed/cancelled authentication and backgrounding during a pending prompt
+must leave titles concealed. Keep the Face ID usage description accurate.
 Backgrounding relocks immediately, and three hours without activity also relocks.
 Check expiry before recording return activity. `.inactive` covers snapshots but
 must not relock during authentication. Readers and series pages must conceal on

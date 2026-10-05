@@ -7,7 +7,7 @@ struct HiddenSessionButton: View {
 
     var body: some View {
         Button(library.hiddenSession.isUnlocked ? "Hide Hidden Titles" : "Unlock Hidden",
-               systemImage: library.hiddenSession.isUnlocked ? "eye.slash" : "lock.open") {
+               systemImage: library.hiddenSession.isUnlocked ? "eye.slash" : "faceid") {
             if library.hiddenSession.isUnlocked {
                 library.lockHiddenItems()
             } else {

@@ -87,7 +87,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Privacy")
                 } footer: {
-                    Text("Hidden titles stay out of the library and Continue Reading until you unlock them. They hide again on background or after three hours without activity; the widget never reveals them.")
+                    Text("Hidden titles require Face ID or device authentication to unlock, even with App Lock off. They hide again on background or after three hours without activity; the widget never reveals them.")
                     Text(AppLock.canLock
                          ? "With the lock on, Mango asks for Face ID when it opens, covers itself in the app switcher, and the widget stops showing what you're reading."
                          : "Set a passcode for this device to use the lock.")

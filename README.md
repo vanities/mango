@@ -106,7 +106,8 @@ you're still halfway through it.
 novel series together. They disappear from Library and Continue Reading, including
 new volumes added to a hidden series. **Unlock Hidden** reveals them for the current
 session; backgrounding Mango or three hours without activity hides them again.
-With App Lock on, unlocking uses device authentication. Settings → Privacy → Hidden
+Unlocking always requires Face ID or device authentication, even with App Lock off.
+Settings → Privacy → Hidden
 lets you permanently unhide selections. Files and reading positions stay intact;
 widgets and Siri always exclude hidden titles. See [hidden titles](docs/hidden-titles.md)
 for details.

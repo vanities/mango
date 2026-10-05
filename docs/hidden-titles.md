@@ -18,8 +18,11 @@ hidden individually.
 
 **Unlock Hidden** appears in Library when there are hidden titles. It temporarily
 reveals them in Library, Continue Reading, search, reading lists, and the source
-browser. Settings → Privacy → Hidden uses the same unlock. When App Lock is on,
-unlocking requires the device's authentication; with App Lock off, it takes one tap.
+browser. Settings → Privacy → Hidden uses the same unlock. Every unlock requires
+Face ID or the device's authentication, even when the whole-app App Lock is off.
+The system uses Touch ID on supported devices and offers the device passcode as a
+fallback. Without configured device authentication, titles stay hidden. Cancelled
+or failed authentication does not reveal them.
 
 Hidden selections remain saved while unlocked. **Hide Hidden Titles** relocks
 immediately. Titles also hide again:
@@ -67,6 +70,10 @@ unchanged progress and selections, inactive/background transitions, queued-reade
 expiry, public widget/Siri candidates, fresh-launch locking, new volumes, individual
 volume hiding, and hiding another title while already unlocked.
 Metadata changes are also checked so renaming a hidden title cannot reveal it.
+Authentication tests check denial and approval with App Lock off and backgrounding
+while authentication is pending. Library tests inject an authenticator; production
+always defaults to ShelfKit's native device authentication. There is no UI or saved
+setting that bypasses the hidden-title authentication.
 
 Before release, run the Mango suite and check the picker, unlock, manga and novel
 readers, background/return, and App Lock authentication on a simulator or device.

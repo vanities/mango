@@ -1,7 +1,7 @@
 import SwiftUI
 import ShelfKit
 
-/// Hidden names stay behind the shared session unlock, with authentication when App Lock is on.
+/// Hidden names always require device authentication, independently of the whole-app lock.
 struct HiddenItemsView: View {
     @Environment(LibraryModel.self) private var library
     private var needsUnlock: Bool { !library.hiddenSession.isUnlocked }
@@ -12,7 +12,7 @@ struct HiddenItemsView: View {
                 Section {
                     HiddenSessionButton()
                 } footer: {
-                    Text("Unlock reveals hidden manga and novels in the library and Continue Reading. They hide again when Mango enters the background or after three hours without activity. Face ID is used when App Lock is on.")
+                    Text("Unlock with Face ID to reveal hidden manga and novels in the library and Continue Reading. Device authentication is always required, even with App Lock off. They hide again when Mango enters the background or after three hours without activity.")
                 }
             } else if library.hiddenShelves.isEmpty && library.hiddenVolumes.isEmpty {
                 ContentUnavailableView("Nothing Hidden", systemImage: "eye",

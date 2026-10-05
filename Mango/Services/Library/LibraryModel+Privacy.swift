@@ -68,9 +68,7 @@ extension LibraryModel {
     @discardableResult
     func unlockHiddenItems() async -> Bool {
         let generation = hiddenAuthenticationGeneration
-        if settings.lockMode != .off {
-            guard await AppLock.authenticate(reason: "Unlock hidden titles for this session") else { return false }
-        }
+        guard await authenticateHidden("Unlock hidden titles for this session") else { return false }
         guard generation == hiddenAuthenticationGeneration else { return false }
         hiddenSession.unlock()
         rebuildSeries()

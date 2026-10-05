@@ -8,9 +8,11 @@ final class HiddenLibraryTests: XCTestCase {
     private var manga: Comic!
     private var novel: Comic!
     private var publicBook: Comic!
+    private var authentication: HiddenAuthenticationStub!
 
     override func setUp() async throws {
         directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        authentication = HiddenAuthenticationStub()
         manga = book("Private Manga/v01.cbz", series: "Private Manga")
         novel = book("Private Novel/v01.epub", series: "Private Novel", kind: .epub)
         publicBook = book("Garden/v01.cbz", series: "Garden")
@@ -26,7 +28,9 @@ final class HiddenLibraryTests: XCTestCase {
 
     override func tearDown() async throws {
         model.lockHiddenItems()
+        model.hiddenSceneChanged(to: .active)
         model = nil
+        authentication = nil
         try? FileManager.default.removeItem(at: directory)
     }
 
@@ -61,6 +65,38 @@ final class HiddenLibraryTests: XCTestCase {
         model.hiddenSceneChanged(to: .active)
         XCTAssertFalse(model.hiddenSession.isUnlocked)
         XCTAssertFalse(model.continueReading.contains { $0.id == manga.id })
+    }
+
+    func testHiddenUnlockRequiresAuthenticationWithAppLockOff() async {
+        XCTAssertEqual(model.settings.lockMode, .off)
+        model.hideSeries(ids: [SeriesGrouper.key(for: manga), SeriesGrouper.key(for: novel)])
+        authentication.allowed = false
+        let denied = await model.unlockHiddenItems()
+        XCTAssertFalse(denied)
+        XCTAssertEqual(authentication.reasons.count, 1)
+        XCTAssertFalse(model.hiddenSession.isUnlocked)
+        XCTAssertEqual(model.visibleComics.map(\.id), [publicBook.id])
+        XCTAssertEqual(model.continueReading.map(\.id), [publicBook.id])
+        authentication.allowed = true
+        let approved = await model.unlockHiddenItems()
+        XCTAssertTrue(approved)
+        XCTAssertEqual(authentication.reasons.count, 2)
+        XCTAssertTrue(model.hiddenSession.isUnlocked)
+        XCTAssertTrue(model.visibleComics.contains { $0.id == manga.id })
+        XCTAssertTrue(model.visibleComics.contains { $0.id == novel.id })
+    }
+
+    func testBackgroundingDuringAuthenticationRejectsTheStaleUnlock() async {
+        model.hideSeries(ids: [SeriesGrouper.key(for: manga)])
+        authentication.beforeResult = { [weak model] in model?.hiddenSceneChanged(to: .background) }
+        let approved = await model.unlockHiddenItems()
+        XCTAssertFalse(approved)
+        model.hiddenSceneChanged(to: .active)
+        XCTAssertFalse(model.hiddenSession.isUnlocked)
+        XCTAssertEqual(model.visibleComics.map(\.id), [novel.id, publicBook.id])
+        authentication.beforeResult = nil
+        let freshApproval = await model.unlockHiddenItems()
+        XCTAssertTrue(freshApproval)
     }
 
     func testIdleExpiryClearsAQueuedPrivateReader() async {
@@ -140,7 +176,10 @@ final class HiddenLibraryTests: XCTestCase {
         LibraryModel(store: LibraryStore(directory: directory.appending(path: "State")),
                      covers: CoverStore(directory: directory.appending(path: "Covers"),
                                         customDirectory: directory.appending(path: "Custom")),
-                     settings: AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!))
+                     settings: AppSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!),
+                     hiddenAuthenticator: { [authentication = authentication!] reason in
+                         await authentication.authenticate(reason: reason)
+                     })
     }
 
     private func book(_ path: String, series: String, kind: Comic.Kind = .archive) -> Comic {
@@ -148,5 +187,18 @@ final class HiddenLibraryTests: XCTestCase {
         return Comic(id: Comic.makeID(sourceID: source, relativePath: path), sourceID: source, relativePath: path,
                      kind: kind, title: (path as NSString).lastPathComponent, series: series, volume: 1, chapter: nil,
                      author: nil, year: nil, subtitle: nil, pageCount: 10, totalBytes: 1, addedAt: Date(), coverID: "fixture")
+    }
+}
+
+@MainActor
+private final class HiddenAuthenticationStub {
+    var allowed = true
+    var reasons: [String] = []
+    var beforeResult: (() -> Void)?
+
+    func authenticate(reason: String) async -> Bool {
+        reasons.append(reason)
+        beforeResult?()
+        return allowed
     }
 }

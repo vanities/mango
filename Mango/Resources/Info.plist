@@ -69,7 +69,7 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Mango uses Face ID to unlock your library when you turn on the lock in Settings.</string>
+	<string>Mango uses Face ID to unlock hidden titles and, when enabled in Settings, your library.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Mango connects to your NAS or file server on the local network to browse, read, and download your comics.</string>
 	<key>UIBackgroundModes</key>

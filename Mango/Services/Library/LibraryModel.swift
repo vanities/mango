@@ -22,6 +22,7 @@ final class LibraryModel {
     @ObservationIgnored var hiddenExpirationTask: Task<Void, Never>?
     @ObservationIgnored var hiddenAuthenticationGeneration = 0
     @ObservationIgnored let hiddenShield = HiddenContentShield()
+    @ObservationIgnored let authenticateHidden: @MainActor (String) async -> Bool
 
     @ObservationIgnored let store: LibraryStore
     @ObservationIgnored let covers: CoverStore
@@ -40,10 +41,12 @@ final class LibraryModel {
     @ObservationIgnored private var coverTask: Task<Void, Never>?
     @ObservationIgnored let cloud = CloudSync()
 
-    init(store: LibraryStore = LibraryStore(), covers: CoverStore = CoverStore(), settings: AppSettings) {
+    init(store: LibraryStore = LibraryStore(), covers: CoverStore = CoverStore(), settings: AppSettings,
+         hiddenAuthenticator: @escaping @MainActor (String) async -> Bool = { await AppLock.authenticate(reason: $0) }) {
         self.store = store
         self.covers = covers
         self.settings = settings
+        self.authenticateHidden = hiddenAuthenticator
         self.state = store.loadLibrary()
         ensureDocumentsSource()
         cloud.onExternalChange = { [weak self] in self?.mergeFromCloud() }
