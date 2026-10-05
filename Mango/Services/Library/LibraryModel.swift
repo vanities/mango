@@ -388,6 +388,9 @@ final class LibraryModel {
         if let index = state.comics.firstIndex(where: { $0.id == comic.id }) {
             var updated = info.applied(to: state.comics[index])
             if let override = state.overrides[comic.id] { updated = override.applied(to: updated) }
+            if isHidden(state.comics[index]), SeriesGrouper.key(for: updated) != SeriesGrouper.key(for: state.comics[index]) {
+                state.hiddenComicIDs.insert(comic.id)
+            }
             state.comics[index] = updated
         }
         Logger.archive.info("[comicinfo] \(comic.title, privacy: .public): series=\(info.series ?? "-", privacy: .public) vol=\(info.volume.map { Formatting.number($0) } ?? "-", privacy: .public) manga=\(info.manga?.rawValue ?? "-", privacy: .public)")
@@ -580,19 +583,6 @@ final class LibraryModel {
         state.chooseMode(mode, for: comic)
         Logger.reader.info("[reader] layout \(mode.rawValue, privacy: .public) chosen for \(comic.series ?? comic.title, privacy: .public)")
         save()
-    }
-
-    func setOverride(_ override: ComicOverride, for comic: Comic) {
-        if override.isEmpty {
-            state.overrides[comic.id] = nil
-        } else {
-            state.overrides[comic.id] = override
-        }
-        if let index = state.comics.firstIndex(where: { $0.id == comic.id }) {
-            state.comics[index] = override.applied(to: state.comics[index])
-        }
-        save()
-        rebuildSeries()
     }
 
     // MARK: Persistence

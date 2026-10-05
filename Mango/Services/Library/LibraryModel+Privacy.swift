@@ -6,6 +6,19 @@ import ShelfKit
 // MARK: - Hidden shelves and volumes
 
 extension LibraryModel {
+    /// Editing a title's shelf cannot silently remove a saved hide selection.
+    func setOverride(_ override: ComicOverride, for comic: Comic) {
+        let hiddenIdentityChanged = isHidden(comic)
+            && SeriesGrouper.key(for: override.applied(to: comic)) != SeriesGrouper.key(for: comic)
+        mutateState { state in
+            if hiddenIdentityChanged { state.hiddenComicIDs.insert(comic.id) }
+            state.overrides[comic.id] = override.isEmpty ? nil : override
+            if let index = state.comics.firstIndex(where: { $0.id == comic.id }) {
+                state.comics[index] = override.applied(to: state.comics[index])
+            }
+        }
+    }
+
     func setHidden(_ hidden: Bool, for comic: Comic) {
         mutateState {
             if hidden { $0.hiddenComicIDs.insert(comic.id) } else { $0.hiddenComicIDs.remove(comic.id) }
@@ -126,8 +139,10 @@ extension LibraryModel {
     /// Hidden shelves, named from the comics on them (a hidden shelf isn't in `series`).
     var hiddenShelves: [HiddenShelf] {
         let byShelf = Dictionary(grouping: state.comics) { SeriesGrouper.key(for: $0) }
-        return state.hiddenSeries.compactMap { id -> HiddenShelf? in
-            guard let comics = byShelf[id], let first = comics.first else { return nil }
+        return state.hiddenSeries.map { id in
+            guard let comics = byShelf[id], let first = comics.first else {
+                return HiddenShelf(id: id, name: String(id.split(separator: "|", maxSplits: 1).last ?? "Unknown series"), count: 0)
+            }
             return HiddenShelf(id: id, name: first.series ?? first.title, count: comics.count)
         }
         .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }

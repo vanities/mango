@@ -8,6 +8,11 @@ keeps previous selections. **Hide N** hides all selected series together.
 The existing **Hide Series** menu and a volume's **Hide** action still work. Hiding
 a series also hides volumes added to it later. Hiding never moves, deletes, or
 changes the source files, and preserves progress, bookmarks, notes, and covers.
+Renaming a hidden series keeps both the new and original series names hidden so
+later volumes using the original name remain protected. Hidden settings also lists
+saved series with zero current books, allowing those selections to be removed.
+Moving a volume to another series through a metadata correction keeps that volume
+hidden individually.
 
 ## Unlocking and rehiding
 
@@ -61,6 +66,7 @@ activity renewal, expiry before return activity, and explicit relocking.
 unchanged progress and selections, inactive/background transitions, queued-reader
 expiry, public widget/Siri candidates, fresh-launch locking, new volumes, individual
 volume hiding, and hiding another title while already unlocked.
+Metadata changes are also checked so renaming a hidden title cannot reveal it.
 
 Before release, run the Mango suite and check the picker, unlock, manga and novel
 readers, background/return, and App Lock authentication on a simulator or device.

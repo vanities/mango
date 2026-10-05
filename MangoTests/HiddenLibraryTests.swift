@@ -121,6 +121,21 @@ final class HiddenLibraryTests: XCTestCase {
         XCTAssertTrue(model.visibleComics.isEmpty)
     }
 
+    func testMetadataEditsCannotRevealAHiddenTitle() async {
+        model.hideSeries(ids: [SeriesGrouper.key(for: manga), SeriesGrouper.key(for: novel)])
+        _ = await model.unlockHiddenItems()
+        model.setOverride(ComicOverride(series: "New Manga Name"), for: manga)
+        model.renameSeries(SeriesGrouper.group([novel])[0], to: "New Novel Name", author: nil)
+        model.lockHiddenItems()
+        XCTAssertEqual(model.visibleComics.map(\.id), [publicBook.id])
+        XCTAssertTrue(model.state.hiddenComicIDs.contains(manga.id))
+        let changedNovel = model.state.comics.first { $0.id == novel.id }!
+        XCTAssertTrue(model.state.hiddenSeries.contains(SeriesGrouper.key(for: changedNovel)))
+        XCTAssertEqual(model.hiddenShelves.count, model.state.hiddenSeries.count)
+        model.mutateState { $0.comics.append(book("Private Novel/v02.epub", series: "Private Novel", kind: .epub)) }
+        XCTAssertEqual(model.visibleComics.map(\.id), [publicBook.id])
+    }
+
     private func makeModel() -> LibraryModel {
         LibraryModel(store: LibraryStore(directory: directory.appending(path: "State")),
                      covers: CoverStore(directory: directory.appending(path: "Covers"),

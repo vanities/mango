@@ -65,8 +65,12 @@ extension LibraryModel {
     func renameSeries(_ series: Series, to newName: String, author: String?) {
         let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+        let hiddenIDs = Set(series.comics.filter { state.hiddenSeries.contains(SeriesGrouper.key(for: $0)) }.map(\.id))
         mutateState { state in
             state.renameSeries(series.comics.map(\.id), from: series.name, to: name, author: author)
+            for comic in state.comics where hiddenIDs.contains(comic.id) {
+                state.hiddenSeries.insert(SeriesGrouper.key(for: comic))
+            }
         }
         if let moved = series.comics.first.flatMap({ comic in self.series.first { $0.comics.contains { $0.id == comic.id } } }),
            moved.id != series.id {
