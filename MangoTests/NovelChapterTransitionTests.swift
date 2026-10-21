@@ -59,21 +59,12 @@ final class NovelChapterTransitionTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTAssertEqual(try XCTUnwrap(reading.fractions.last), expectedFraction, accuracy: 0.001)
-        // WebKit's own test SPI is confined to this simulator test bundle. Terminate the
-        // real child process rather than merely invoking a navigation delegate callback.
-        let terminate = NSSelectorFromString("_killWebContentProcess")
-        guard web.responds(to: terminate) else {
-            XCTFail("This runtime must support the real process-termination probe")
-            return
-        }
-        let oldPID = try XCTUnwrap(web.value(forKey: "_webProcessIdentifier") as? Int)
-        XCTAssertGreaterThan(oldPID, 0)
-        web.perform(terminate)
+        let oldPID = try await WebContentProcessProbe.terminate(web)
         var restored = false
         for _ in 0..<400 {
+            let ready = (try? await web.evaluateJavaScript("!!window.mangoPager")) as? Bool == true
             let newPID = web.value(forKey: "_webProcessIdentifier") as? Int ?? 0
-            if newPID > 0, newPID != oldPID,
-               (try? await web.evaluateJavaScript("!!window.mangoPager")) as? Bool == true {
+            if WebContentProcessProbe.hasExited(oldPID), newPID > 0, newPID != oldPID, ready {
                 restored = true
                 break
             }
@@ -91,16 +82,24 @@ final class NovelChapterTransitionTests: XCTestCase {
     }
 
     func testScrollingChapterRecoversItsPositionAfterWebContentProcessTermination() async throws {
+        try await exerciseScrollingRecovery(document: transitionDocument())
+    }
+
+    func testScrollingChapterWaitsForDelayedLayoutAfterProcessTermination() async throws {
+        try await exerciseScrollingRecovery(document: transitionDocument(delayedLayout: true))
+    }
+
+    private func exerciseScrollingRecovery(document: EPUBDocument) async throws {
 #if targetEnvironment(simulator)
         let reading = Reading()
-        let document = try await transitionDocument()
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 700)
         window.rootViewController = UIHostingController(rootView: Reader(document: document, reading: reading, paged: false))
         window.makeKeyAndVisible()
         defer { window.isHidden = true; window.rootViewController = nil }
-        for _ in 0..<200 {
+        let layoutDeadline = ContinuousClock.now.advanced(by: .seconds(20))
+        while ContinuousClock.now < layoutDeadline {
             if let web = findWeb(in: window),
                (web.navigationDelegate as? NovelWebView.Coordinator)?.chapterLoaded == true,
                web.scrollView.contentSize.height > web.scrollView.bounds.height * 2 { break }
@@ -117,18 +116,18 @@ final class NovelChapterTransitionTests: XCTestCase {
         }
         XCTAssertEqual(try XCTUnwrap(reading.fractions.last), 0.55, accuracy: 0.01)
         let reportsBeforeTermination = reading.fractions.count
-        let terminate = NSSelectorFromString("_killWebContentProcess")
-        guard web.responds(to: terminate) else {
-            XCTFail("This runtime must support the real process-termination probe")
-            return
-        }
-        let oldPID = try XCTUnwrap(web.value(forKey: "_webProcessIdentifier") as? Int)
-        XCTAssertGreaterThan(oldPID, 0)
-        web.perform(terminate)
+        let oldNavigation = try XCTUnwrap((web.navigationDelegate as? NovelWebView.Coordinator)?.activeNavigation)
+        _ = try await web.evaluateJavaScript("window.mangoRecoverySentinel = true")
+        let oldPID = try await WebContentProcessProbe.terminate(web)
         var restored = false
         for _ in 0..<400 {
-            let newPID = web.value(forKey: "_webProcessIdentifier") as? Int ?? 0
-            if newPID > 0, newPID != oldPID,
+            // Prove the old process exited and a fresh document/navigation responds.
+            // The private current-PID getter can return zero for an idle restored page.
+            let documentReady = (try? await web.evaluateJavaScript("document.readyState === 'complete' && !window.mangoRecoverySentinel && getComputedStyle(document.body).display !== 'none'")) as? Bool == true
+            let oldProcessExited = WebContentProcessProbe.hasExited(oldPID)
+            if oldProcessExited,
+               documentReady,
+               (web.navigationDelegate as? NovelWebView.Coordinator)?.activeNavigation !== oldNavigation,
                (web.navigationDelegate as? NovelWebView.Coordinator)?.chapterLoaded == true,
                scroll.contentSize.height > scroll.bounds.height * 2,
                abs(scroll.contentOffset.y / (scroll.contentSize.height - scroll.bounds.height) - 0.55) < 0.01 {
@@ -137,7 +136,12 @@ final class NovelChapterTransitionTests: XCTestCase {
             }
             try await Task.sleep(for: .milliseconds(25))
         }
-        XCTAssertTrue(restored, "A scrolling chapter must recover its position after the real process is terminated")
+        var recoveryState = ""
+        if !restored {
+            let dom = try? await web.evaluateJavaScript("JSON.stringify({y:scrollY,height:document.documentElement.scrollHeight,viewport:innerHeight,display:getComputedStyle(document.body).display,sentinel:!!window.mangoRecoverySentinel})")
+            recoveryState = "oldPID=\(oldPID) exited=\(WebContentProcessProbe.hasExited(oldPID)) navChanged=\((web.navigationDelegate as? NovelWebView.Coordinator)?.activeNavigation !== oldNavigation) loaded=\((web.navigationDelegate as? NovelWebView.Coordinator)?.chapterLoaded == true) offset=\(scroll.contentOffset.y) size=\(scroll.contentSize) bounds=\(scroll.bounds) dom=\(String(describing: dom))"
+        }
+        XCTAssertTrue(restored, "A scrolling chapter must recover its position after the real process is terminated; \(recoveryState)")
         XCTAssertEqual(try XCTUnwrap(reading.fractions.last), 0.55, accuracy: 0.01)
         XCTAssertFalse(reading.fractions.dropFirst(reportsBeforeTermination).contains { $0 < 0.54 },
                        "Empty-page callbacks during recovery must not publish a false reading position")
@@ -147,12 +151,13 @@ final class NovelChapterTransitionTests: XCTestCase {
 #endif
     }
 
-    private func transitionDocument() async throws -> EPUBDocument {
+    private func transitionDocument(delayedLayout: Bool = false) async throws -> EPUBDocument {
         let paragraphs = (0..<40).map { "<p>Paragraph \($0). The traveler crossed the quiet garden.</p>" }.joined()
+        let layout = delayedLayout ? "<style>body { display: none; }</style><script>setTimeout(function() { document.body.style.display = 'block'; }, 800);</script>" : ""
         let files = [
             "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
             "book.opf": "<package><manifest><item id='a' href='ch0.xhtml' media-type='application/xhtml+xml'/><item id='b' href='ch1.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='a'/><itemref idref='b'/></spine></package>",
-            "ch0.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>Chapter</title></head><body>\(paragraphs)</body></html>",
+            "ch0.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>Chapter</title>\(layout)</head><body>\(paragraphs)</body></html>",
             "ch1.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head><title>Chapter</title></head><body>\(paragraphs)</body></html>"
         ]
         let bytes = ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) })
@@ -249,17 +254,21 @@ final class NovelChapterTransitionTests: XCTestCase {
     }
 
     private func readyWeb(in window: UIWindow, path: String, excluding old: WKWebView? = nil) async throws -> WKWebView {
-        for _ in 0..<200 {
+        // Initial WebContent/GPU startup is slower on a cold hosted simulator. This
+        // readiness budget is separate from the process-recovery assertions below.
+        let deadline = ContinuousClock.now.advanced(by: .seconds(20))
+        while ContinuousClock.now < deadline {
             if let web = findWeb(in: window), web !== old, web.url.map({ EPUBSchemeHandler.path(from: $0) }) == path,
                (try? await web.evaluateJavaScript("!!window.mangoPager && mangoPager.count >= 1")) as? Bool == true {
                 return web
             }
             try await Task.sleep(for: .milliseconds(25))
         }
-        throw XCTUnwrapFailure.missingChapter
+        let web = findWeb(in: window)
+        throw XCTUnwrapFailure.missingChapter("expected=\(path) actual=\(web?.url?.absoluteString ?? "none") loading=\(web?.isLoading.description ?? "none") frame=\(String(describing: web?.frame))")
     }
 
-    private enum XCTUnwrapFailure: Error { case missingChapter }
+    private enum XCTUnwrapFailure: Error { case missingChapter(String) }
 
     private func findWeb(in view: UIView) -> WKWebView? {
         if let web = view as? WKWebView { return web }

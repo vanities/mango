@@ -73,20 +73,13 @@ final class NovelReaderLifetimeTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTAssertEqual(coordinator.pendingRestore, fraction, accuracy: 0.001)
-        let terminate = NSSelectorFromString("_killWebContentProcess")
-        guard web.responds(to: terminate) else {
-            XCTFail("This runtime must support the real process-termination probe")
-            return
-        }
         for _ in 0..<3 {
-            let oldPID = try XCTUnwrap(web.value(forKey: "_webProcessIdentifier") as? Int)
-            XCTAssertGreaterThan(oldPID, 0)
-            web.perform(terminate)
+            let oldPID = try await WebContentProcessProbe.terminate(web)
             var restored = false
             for _ in 0..<400 {
+                let ready = (try? await web.evaluateJavaScript("!!window.mangoPager")) as? Bool == true
                 let newPID = web.value(forKey: "_webProcessIdentifier") as? Int ?? 0
-                if newPID > 0, newPID != oldPID,
-                   (try? await web.evaluateJavaScript("!!window.mangoPager")) as? Bool == true {
+                if WebContentProcessProbe.hasExited(oldPID), newPID > 0, newPID != oldPID, ready {
                     restored = true
                     break
                 }

@@ -117,6 +117,7 @@ struct NovelWebView: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.cancelScrollRestoration()
         coordinator.isDismantled = true
         coordinator.chapterLoaded = false
         coordinator.activeNavigation = nil
@@ -368,6 +369,8 @@ struct NovelWebView: UIViewRepresentable {
         var isDismantled = false
         var activeNavigation: WKNavigation?
         private var restoringScrollPosition = false
+        private var pendingScrollRestore: (navigation: WKNavigation?, fraction: Double)?
+        private var scrollRestoreObservation: NSKeyValueObservation?
         private var isCurrent: Bool { !isDismantled && parent.isCurrentChapter() }
         private var reportedBottom = false
         var lastFindRequest = 0
@@ -457,7 +460,7 @@ struct NovelWebView: UIViewRepresentable {
             guard isCurrent, webView === self.webView else { return }
             Logger.reader.error("[novel:process] chapter content process terminated; restoring the current chapter")
             chapterLoaded = false
-            restoringScrollPosition = false
+            cancelScrollRestoration()
             appliedStyle = nil
             guard let url = EPUBSchemeHandler.url(for: parent.chapterPath) else { return }
             activeNavigation = webView.load(URLRequest(url: url))
@@ -466,7 +469,7 @@ struct NovelWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             guard isCurrent, navigation === activeNavigation else { return }
             chapterLoaded = false
-            restoringScrollPosition = false
+            cancelScrollRestoration()
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error) {
@@ -498,14 +501,39 @@ struct NovelWebView: UIViewRepresentable {
             let fraction = pendingRestore
             guard fraction > 0.001, parent.jumpAnchor == nil else { return }
             restoringScrollPosition = true
+            pendingScrollRestore = (navigation, fraction)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self, weak webView] in
                 guard let self, self.isCurrent, self.chapterLoaded,
                       navigation === self.activeNavigation, let scroll = webView?.scrollView else { return }
-                let reachable = max(0, scroll.contentSize.height - scroll.bounds.height)
-                scroll.setContentOffset(CGPoint(x: 0, y: reachable * fraction), animated: false)
-                self.restoringScrollPosition = false
-                self.scrollViewDidScroll(scroll)
+                self.restorePendingScrollPosition()
+                guard self.pendingScrollRestore != nil else { return }
+                // didFinish can precede native layout, especially after a process restart.
+                // Keep progress suppressed until a real scrollable height arrives.
+                self.scrollRestoreObservation = scroll.observe(\.contentSize, options: [.new]) { [weak self] _, _ in
+                    Task { @MainActor [weak self] in self?.restorePendingScrollPosition() }
+                }
+                self.restorePendingScrollPosition()
             }
+        }
+
+        func cancelScrollRestoration() {
+            scrollRestoreObservation?.invalidate()
+            scrollRestoreObservation = nil
+            pendingScrollRestore = nil
+            restoringScrollPosition = false
+        }
+
+        private func restorePendingScrollPosition() {
+            guard let pending = pendingScrollRestore, isCurrent, chapterLoaded,
+                  pending.navigation === activeNavigation, let scroll = webView?.scrollView else { return }
+            let reachable = scroll.contentSize.height - scroll.bounds.height
+            guard reachable > 0 else { return }
+            scrollRestoreObservation?.invalidate()
+            scrollRestoreObservation = nil
+            pendingScrollRestore = nil
+            scroll.setContentOffset(CGPoint(x: 0, y: reachable * pending.fraction), animated: false)
+            restoringScrollPosition = false
+            scrollViewDidScroll(scroll)
         }
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
