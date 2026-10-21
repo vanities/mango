@@ -16,6 +16,7 @@ final class NovelEngine {
 
     private(set) var isOpening = true
     private(set) var openError: String?
+    private(set) var chapterLoadError: String?
     private(set) var chapters: [EPUBSpineItem] = []
     /// The chapters by the book's own names, from its table of contents (numbered without one).
     private(set) var contents = NovelContents(titles: [])
@@ -107,6 +108,7 @@ final class NovelEngine {
         let sw = Stopwatch()
         isOpening = true
         openError = nil
+        chapterLoadError = nil
         do {
             let document = try await library.openNovel(comic)
             self.document = document
@@ -116,6 +118,7 @@ final class NovelEngine {
             weights = await document.chapterWeights()
             contents = NovelContents(spine: document.spine, toc: await document.tableOfContents())
             library.rememberChapterTitles(contents.titles, for: comic)
+            library.beginReading(comic, pageCount: chapters.count)
 
             // Resume: page holds the chapter, and the fraction rides along in the override.
             if let saved = library.progress(for: comic), saved.isStarted, !saved.finished,
@@ -136,6 +139,9 @@ final class NovelEngine {
     }
 
     func close() {
+        // The end callback captures NovelReaderView's State, which in turn owns this
+        // engine. Break that cycle when the reading session leaves the screen.
+        onReachedEnd = nil
         saveTask?.cancel()
         hideTask?.cancel()
         endSession()
@@ -145,6 +151,22 @@ final class NovelEngine {
     }
 
     // MARK: Navigation
+
+    func chapterLoadFailed(_ message: String) {
+        guard !sessionClosed, !reachedEnd, currentChapter != nil, chapterLoadError == nil else { return }
+        chapterLoadError = message
+        keepControlsAwake()
+        Logger.reader.error("[novel] chapter \(self.chapterIndex + 1) of \(self.comic.title, privacy: .public) failed: \(message, privacy: .public)")
+    }
+
+    func retryChapter() {
+        guard !sessionClosed, chapterLoadError != nil else { return }
+        chapterLoadError = nil
+        pendingJumpFraction = scrollFraction
+        jumpID += 1
+        countChapterWords()
+        keepControlsAwake()
+    }
 
     func nextChapter() {
         pendingTextAnchor = nil
@@ -215,13 +237,14 @@ final class NovelEngine {
 
     func go(to bookmark: Bookmark) {
         guard chapters.indices.contains(bookmark.page) else { return }
+        chapterLoadError = nil
         jumpOrigin = (chapterIndex, scrollFraction)
         jumpID += 1
         pendingTextAnchor = bookmark.anchor
         pendingJumpFraction = bookmark.fraction ?? 0
-        if chapterIndex == bookmark.page {
-            scrollFraction = pendingJumpFraction
-        } else {
+        // Save the landing point immediately; backgrounding can precede the web view's load.
+        scrollFraction = pendingJumpFraction
+        if chapterIndex != bookmark.page {
             chapterIndex = bookmark.page
         }
     }
@@ -320,6 +343,7 @@ final class NovelEngine {
     }
 
     private func onChapterChanged() {
+        chapterLoadError = nil
         countChapterWords()
         if showsControls { keepControlsAwake() }
         scheduleSave()
@@ -343,6 +367,6 @@ final class NovelEngine {
         guard !chapters.isEmpty else { return }
         Logger.reader.debug("[novel] save chapter \(self.chapterIndex + 1) at \(self.scrollFraction, format: .fixed(precision: 3))")
         library.recordNovelProgress(chapter: chapterIndex, chapterCount: chapters.count,
-                                    fraction: scrollFraction, for: comic)
+                                    fraction: scrollFraction, for: comic, fractionInBook: progressFraction)
     }
 }

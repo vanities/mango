@@ -24,6 +24,8 @@ struct NovelWebView: UIViewRepresentable {
     var highlights: [NovelTextAnchor] = []
     var jumpAnchor: NovelTextAnchor?
     var findRequest: Int = 0
+    /// Checked at delivery time: WebKit can queue messages before SwiftUI replaces a chapter.
+    var isCurrentChapter: () -> Bool = { true }
     var onSelection: (NovelTextAnchor) -> Void = { _ in }
     var onScroll: (Double) -> Void
     var onTapMiddle: () -> Void
@@ -34,6 +36,8 @@ struct NovelWebView: UIViewRepresentable {
     var onOpenChapter: (String) -> Void = { _ in }
     /// A link out of the book. Opened in the browser, never in the reader.
     var onOpenExternal: @MainActor (URL) -> Void = { UIApplication.shared.open($0) }
+    /// A main-document read failed. Missing images and styles do not replace readable prose.
+    var onLoadFailure: (String) -> Void = { _ in }
 
     /// Where a link in a chapter leads.
     enum LinkTarget: Equatable {
@@ -103,13 +107,25 @@ struct NovelWebView: UIViewRepresentable {
             context.coordinator.pendingRestore = Self.clamped(restoreFraction)
             context.coordinator.chapterLoaded = false
             guard let url = EPUBSchemeHandler.url(for: chapterPath) else { return }
-            webView.load(URLRequest(url: url))
+            context.coordinator.activeNavigation = webView.load(URLRequest(url: url))
         } else if context.coordinator.chapterLoaded, context.coordinator.appliedStyle != styleKey {
             // Until the chapter has loaded, the web view holds an empty placeholder page:
             // styling it would start a pager there, which finds one page and reports the
             // start of the chapter as the reader's place. didFinish applies the style.
             context.coordinator.applyStyle()
         }
+    }
+
+    static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.cancelScrollRestoration()
+        coordinator.isDismantled = true
+        coordinator.chapterLoaded = false
+        coordinator.activeNavigation = nil
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "mangoNavigation")
+        webView.navigationDelegate = nil
+        webView.scrollView.delegate = nil
+        webView.stopLoading()
+        coordinator.webView = nil
     }
 
     private var styleKey: String { "\(fontScale)-\(dark)-\(fontFamily)-\(lineSpacing)-\(margin)-\(widePageMargin ?? margin)-\(tapToTurn)" }
@@ -350,20 +366,26 @@ struct NovelWebView: UIViewRepresentable {
         var pendingRestore: Double = 0
         /// False while the web view still holds the page before this chapter.
         var chapterLoaded = false
+        var isDismantled = false
+        var activeNavigation: WKNavigation?
+        private var restoringScrollPosition = false
+        private var pendingScrollRestore: (navigation: WKNavigation?, fraction: Double)?
+        private var scrollRestoreObservation: NSKeyValueObservation?
+        private var isCurrent: Bool { !isDismantled && parent.isCurrentChapter() }
         private var reportedBottom = false
         var lastFindRequest = 0
         var lastHighlights: [NovelTextAnchor] = []
 
         func paintHighlights() {
-            guard let data = try? JSONEncoder().encode(parent.highlights), let json = String(data: data, encoding: .utf8) else { return }
+            guard isCurrent, let data = try? JSONEncoder().encode(parent.highlights), let json = String(data: data, encoding: .utf8) else { return }
             webView?.evaluateJavaScript("window.mangoText?.paint(\(json))")
             lastHighlights = parent.highlights
         }
 
         func prepareTextTools() {
-            guard let webView else { return }
+            guard isCurrent, let webView else { return }
             webView.evaluateJavaScript(NovelTextScript.source) { [weak self] _, _ in
-                guard let self else { return }
+                guard let self, self.isCurrent else { return }
                 self.paintHighlights()
                 if let anchor = self.parent.jumpAnchor,
                    let data = try? JSONEncoder().encode(anchor), let json = String(data: data, encoding: .utf8) {
@@ -377,7 +399,7 @@ struct NovelWebView: UIViewRepresentable {
         }
 
         func applyStyle() {
-            guard let webView else { return }
+            guard isCurrent, let webView else { return }
             let escaped = parent.css
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "`", with: "\\`")
@@ -393,7 +415,7 @@ struct NovelWebView: UIViewRepresentable {
             })();
             """
             webView.evaluateJavaScript(js) { [weak self] _, _ in
-                guard let self else { return }
+                guard let self, self.isCurrent else { return }
                 if self.parent.paged {
                     webView.evaluateJavaScript(self.parent.paginationScript(startingAt: self.pendingRestore)) { [weak self] _, _ in self?.prepareTextTools() }
                 } else { self.prepareTextTools() }
@@ -407,6 +429,7 @@ struct NovelWebView: UIViewRepresentable {
         /// book — and a web link loaded the site inside the reader, with no way back.
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
+            guard isCurrent else { decisionHandler(.cancel); return }
             guard navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url else {
                 decisionHandler(.allow)
                 return
@@ -431,42 +454,116 @@ struct NovelWebView: UIViewRepresentable {
             }
         }
 
-        /// Also covers WebKit reloading the chapter itself after its process was killed.
-        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        /// Own the recovery navigation too: WebKit's automatic reload has a fresh token,
+        /// which must not be mistaken for an outstanding callback from an old chapter.
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard isCurrent, webView === self.webView else { return }
+            Logger.reader.error("[novel:process] chapter content process terminated; restoring the current chapter")
             chapterLoaded = false
+            cancelScrollRestoration()
+            appliedStyle = nil
+            guard let url = EPUBSchemeHandler.url(for: parent.chapterPath) else { return }
+            activeNavigation = webView.load(URLRequest(url: url))
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            guard isCurrent, navigation === activeNavigation else { return }
+            chapterLoaded = false
+            cancelScrollRestoration()
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error) {
+            chapterFailed(navigation, error: error)
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
+            chapterFailed(navigation, error: error)
+        }
+
+        private func chapterFailed(_ navigation: WKNavigation?, error: any Error) {
+            guard isCurrent, let navigation, navigation === activeNavigation else { return }
+            let failure = error as NSError
+            guard !(failure.domain == NSURLErrorDomain && failure.code == NSURLErrorCancelled) else { return }
+            if let url = failure.userInfo[NSURLErrorFailingURLErrorKey] as? URL,
+               url.scheme != EPUBSchemeHandler.scheme || EPUBSchemeHandler.path(from: url) != parent.chapterPath { return }
+            chapterLoaded = false
+            parent.onLoadFailure(error.localizedDescription)
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard isCurrent, navigation === activeNavigation,
+                  let url = webView.url, EPUBSchemeHandler.path(from: url) == parent.chapterPath else { return }
             reportedBottom = false
             chapterLoaded = true
             applyStyle()
             if parent.paged { return }
             // Restore after layout settles, or the content height is still zero.
             let fraction = pendingRestore
-            pendingRestore = 0
             guard fraction > 0.001, parent.jumpAnchor == nil else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak webView] in
-                guard let scroll = webView?.scrollView else { return }
-                let reachable = max(0, scroll.contentSize.height - scroll.bounds.height)
-                scroll.setContentOffset(CGPoint(x: 0, y: reachable * fraction), animated: false)
+            restoringScrollPosition = true
+            pendingScrollRestore = (navigation, fraction)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self, weak webView] in
+                guard let self, self.isCurrent, self.chapterLoaded,
+                      navigation === self.activeNavigation, let scroll = webView?.scrollView else { return }
+                self.restorePendingScrollPosition()
+                guard self.pendingScrollRestore != nil else { return }
+                // didFinish can precede native layout, especially after a process restart.
+                // Keep progress suppressed until a real scrollable height arrives.
+                self.scrollRestoreObservation = scroll.observe(\.contentSize, options: [.new]) { [weak self] _, _ in
+                    Task { @MainActor [weak self] in self?.restorePendingScrollPosition() }
+                }
+                self.restorePendingScrollPosition()
             }
         }
 
+        func cancelScrollRestoration() {
+            scrollRestoreObservation?.invalidate()
+            scrollRestoreObservation = nil
+            pendingScrollRestore = nil
+            restoringScrollPosition = false
+        }
+
+        private func restorePendingScrollPosition() {
+            guard let pending = pendingScrollRestore, isCurrent, chapterLoaded,
+                  pending.navigation === activeNavigation, let scroll = webView?.scrollView else { return }
+            let reachable = scroll.contentSize.height - scroll.bounds.height
+            guard reachable > 0 else { return }
+            scrollRestoreObservation?.invalidate()
+            scrollRestoreObservation = nil
+            pendingScrollRestore = nil
+            scroll.setContentOffset(CGPoint(x: 0, y: reachable * pending.fraction), animated: false)
+            restoringScrollPosition = false
+            scrollViewDidScroll(scroll)
+        }
+
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            guard !parent.paged else { return }
-            let reachable = max(1, scrollView.contentSize.height - scrollView.bounds.height)
+            guard isCurrent, chapterLoaded, !restoringScrollPosition, !parent.paged else { return }
+            let reachable = scrollView.contentSize.height - scrollView.bounds.height
+            // WebKit briefly resets the native scroll view to an empty page when its
+            // process dies. That layout callback is not a move to the chapter's start.
+            guard reachable > 0 else { return }
             let fraction = min(1, max(0, scrollView.contentOffset.y / reachable))
-            parent.onScroll(fraction)
-            // A little slack: "close enough to the bottom" is what a reader means by finished.
-            if fraction > 0.995, !reportedBottom {
-                reportedBottom = true
-                parent.onReachedBottom()
+            let navigation = activeNavigation
+            // Process termination can reset the UIScrollView before its termination delegate
+            // arrives. Deliver on the next turn and reject offsets from that dead navigation.
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isCurrent, self.chapterLoaded, !self.restoringScrollPosition,
+                      navigation === self.activeNavigation else { return }
+                self.pendingRestore = fraction
+                self.parent.onScroll(fraction)
+                // A little slack: "close enough to the bottom" is what a reader means by finished.
+                if fraction > 0.995, !self.reportedBottom {
+                    self.reportedBottom = true
+                    self.parent.onReachedBottom()
+                }
             }
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             // Only the book's own pages speak for the reader's place — never a placeholder.
-            guard message.frameInfo.isMainFrame, message.frameInfo.request.url?.scheme == EPUBSchemeHandler.scheme,
+            guard isCurrent, chapterLoaded, message.frameInfo.isMainFrame,
+                  let url = message.frameInfo.request.url, url.scheme == EPUBSchemeHandler.scheme,
+                  EPUBSchemeHandler.path(from: url) == parent.chapterPath,
                   let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
             switch action {
             case "selection":
@@ -489,7 +586,7 @@ struct NovelWebView: UIViewRepresentable {
         }
 
         @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
-            guard let view = recognizer.view else { return }
+            guard isCurrent, let view = recognizer.view else { return }
             let x = recognizer.location(in: view).x
             let width = view.bounds.width
             // Middle half toggles the chrome; the edges are left to the page so links still work.

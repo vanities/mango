@@ -12,6 +12,11 @@ struct ReadingSnapshot: Codable, Equatable {
     var isNovel: Bool
     var updatedAt: Date
 
+    /// Reload only when the widget's visible content changes, rather than for every save.
+    var widgetUpdateKey: [AnyHashable] {
+        [comicID, title, series, positionLabel, Int(fraction * 100), isNovel]
+    }
+
     /// Where a tap on the widget lands.
     var deepLink: URL? {
         var components = URLComponents()

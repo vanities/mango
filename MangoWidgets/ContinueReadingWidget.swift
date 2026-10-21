@@ -20,7 +20,7 @@ struct ContinueProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ContinueEntry>) -> Void) {
-        // The app reloads this whenever you close a book; the hourly refresh is only a safety net.
+        // The app reloads this when saved reading progress changes; hourly refresh is a safety net.
         completion(Timeline(entries: [load()], policy: .after(.now.addingTimeInterval(3600))))
     }
 

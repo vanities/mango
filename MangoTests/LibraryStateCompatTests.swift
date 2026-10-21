@@ -42,6 +42,7 @@ final class LibraryStateCompatTests: XCTestCase {
     func testMissingKeysFallBackToDefaults() throws {
         let state = try decode(#"{"progress":{"x":{"page":3,"pageCount":10}}}"#)
         XCTAssertEqual(state.progress.count, 1)
+        XCTAssertNil(state.progress["x"]?.fractionInBook, "Older libraries don't contain a weighted novel position")
         XCTAssertTrue(state.nasServers.isEmpty)
         XCTAssertTrue(state.overrides.isEmpty)
         XCTAssertTrue(state.seriesDirection.isEmpty)
@@ -52,7 +53,7 @@ final class LibraryStateCompatTests: XCTestCase {
 
     func testRoundTrips() throws {
         var state = LibraryState()
-        state.progress["a"] = ReadingProgress(page: 4, pageCount: 40)
+        state.progress["a"] = ReadingProgress(page: 4, pageCount: 40, fractionInChapter: 0.5, fractionInBook: 0.37)
         state.seriesDirection["berserk"] = .rightToLeft
         state.overrides["a"] = ComicOverride(series: "Berserk", volume: 2)
         state.hiddenComicIDs = ["b"]
@@ -67,6 +68,7 @@ final class LibraryStateCompatTests: XCTestCase {
         let round = try decoder.decode(LibraryState.self, from: encoder.encode(state))
 
         XCTAssertEqual(round.progress["a"]?.page, 4)
+        XCTAssertEqual(round.progress["a"]?.fraction, 0.37)
         XCTAssertEqual(round.seriesDirection["berserk"], .rightToLeft)
         XCTAssertEqual(round.overrides["a"]?.series, "Berserk")
         XCTAssertEqual(round.hiddenComicIDs, ["b"])

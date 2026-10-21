@@ -23,7 +23,9 @@ extension LibraryState {
     }
     mutating func restorePortable(_ old: LibraryState) {
         deletedBookmarks = deletedBookmarks.merging(old.deletedBookmarks)
+        hiddenSeries.formUnion(old.hiddenSeries)
         for (from, to) in portableMatches(old) {
+            if old.hiddenComicIDs.contains(from) { hiddenComicIDs.insert(to) }
             if progress[to] == nil { progress[to] = old.progress[from] }
             if overrides[to] == nil { overrides[to] = old.overrides[from] }
             if customCovers[to] == nil, let book = comics.first(where: { $0.id == to }), coverChoices[book.syncKey] == nil { customCovers[to] = old.customCovers[from] }

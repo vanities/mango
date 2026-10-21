@@ -37,4 +37,17 @@ final class PortableBackupTests: XCTestCase {
         let current = LibraryState(comics: [item(UUID()), item(UUID())])
         XCTAssertTrue(current.portableMatches(old).isEmpty)
     }
+
+    func testRestoreKeepsHiddenTitlesWithNewSourceIDs() {
+        let oldItem = item(UUID()), currentItem = item(UUID())
+        var old = LibraryState(comics: [oldItem]), current = LibraryState(comics: [currentItem])
+        old.hiddenComicIDs.insert(oldItem.id)
+        old.hiddenSeries.insert(SeriesGrouper.key(for: oldItem))
+        current.hiddenComicIDs.insert("already-hidden")
+        current.restorePortable(old)
+        XCTAssertTrue(current.hiddenComicIDs.contains(currentItem.id))
+        XCTAssertTrue(current.hiddenComicIDs.contains("already-hidden"))
+        XCTAssertFalse(current.hiddenComicIDs.contains(oldItem.id), "Restore must rebase source-specific IDs")
+        XCTAssertEqual(current.hiddenSeries, old.hiddenSeries)
+    }
 }

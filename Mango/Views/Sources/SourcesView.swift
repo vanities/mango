@@ -95,8 +95,8 @@ struct SourcesView: View {
                 }
 
                 Section("Tips") {
-                    TipRowView(systemImage: "iphone", title: "Keep comics on this device",
-                               detail: "In the Files app, move comics into On My iPhone › Mango. They stay put and show up here automatically.")
+                    TipRowView(systemImage: DeviceStorage.device == "iPad" ? "ipad" : "iphone", title: "Keep comics on this device",
+                               detail: "In the Files app, move comics into \(DeviceStorage.folder("Mango")). They stay put and show up here automatically.")
                     TipRowView(systemImage: "externaldrive.connected.to.line.below", title: "Read from a NAS",
                                detail: "Add NAS Share… reads pages straight from an SMB share on your network, and downloads any volume you want to keep.")
                     TipRowView(systemImage: "folder", title: "Folder layout that just works",

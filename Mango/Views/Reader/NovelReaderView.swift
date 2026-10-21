@@ -113,9 +113,21 @@ struct NovelReaderView: View {
     }
 
     private func novelPages(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {
-        GeometryReader { geometry in
-            chapterContent(engine: engine, document: document, chapterPath: chapterPath,
-                           widePageMargin: facingPageMargin(in: geometry))
+        Group {
+            if engine.chapterLoadError != nil {
+                ContentUnavailableView {
+                    Label("Couldn't load this chapter", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text("Check that this book’s source is available, then try again.")
+                } actions: {
+                    Button("Retry") { engine.retryChapter() }.buttonStyle(.glassProminent)
+                }
+            } else {
+                GeometryReader { geometry in
+                    chapterContent(engine: engine, document: document, chapterPath: chapterPath,
+                                   widePageMargin: facingPageMargin(in: geometry))
+                }
+            }
         }
         // Content uses the full page width; controls retain the system safe area.
         .ignoresSafeArea(.container, edges: .horizontal)
@@ -133,7 +145,9 @@ struct NovelReaderView: View {
     }
 
     private func chapterContent(engine: NovelEngine, document: EPUBDocument, chapterPath: String, widePageMargin: Double) -> some View {
-        NovelWebView(
+        let jumpID = engine.jumpID
+        let chapterIndex = engine.chapterIndex
+        return NovelWebView(
             document: document,
             chapterPath: chapterPath,
             fontScale: settings.novelFontScale,
@@ -148,6 +162,7 @@ struct NovelReaderView: View {
             highlights: engine.bookmarks.filter { $0.page == engine.chapterIndex }.compactMap(\.anchor),
             jumpAnchor: engine.pendingTextAnchor,
             findRequest: engine.findRequest,
+            isCurrentChapter: { !engine.reachedEnd && engine.chapterLoadError == nil && engine.chapterIndex == chapterIndex && engine.jumpID == jumpID },
             onSelection: { selection = $0 },
             onScroll: { engine.scrollFraction = $0 },
             onTapMiddle: { engine.toggleControls() },
@@ -157,7 +172,8 @@ struct NovelReaderView: View {
                 // Reaching the bottom of the last chapter is the end of the book.
                 if engine.isAtLastChapter { engine.notifyReachedEnd() }
             },
-            onOpenChapter: { engine.openLink(toPath: $0) }
+            onOpenChapter: { engine.openLink(toPath: $0) },
+            onLoadFailure: { engine.chapterLoadFailed($0) }
         )
         .id("\(chapterPath)-\(settings.novelPaged)-\(engine.jumpID)")
 
@@ -173,7 +189,8 @@ struct NovelReaderView: View {
                     Button { selection = nil } label: { Text("Cancel").frame(minHeight: 44) }
                 }.padding().glassEffect(in: .capsule).padding(.bottom, 70) }
             }
-            NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close, alwaysVisible: alwaysVisible)
+            NovelControls(engine: engine, showingChapters: $showingChapters, onClose: close,
+                          alwaysVisible: alwaysVisible || engine.chapterLoadError != nil)
         }
     }
 

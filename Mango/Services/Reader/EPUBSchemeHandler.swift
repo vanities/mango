@@ -47,18 +47,25 @@ final class EPUBSchemeHandler: NSObject, WKURLSchemeHandler {
         let path = Self.path(from: url)
 
         Task { [document, tasks] in
-            let data = await document.data(at: path)
-            // The web view may have moved on; finishing a stopped task crashes WebKit.
-            guard tasks.withLock({ $0.contains(key) }) else { return }
-            guard let data else {
-                urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
+            let data: Data
+            do {
+                data = try await document.resourceData(at: path)
+            } catch {
+                guard tasks.withLock({ $0.contains(key) }) else { return }
+                urlSchemeTask.didFailWithError(error)
                 tasks.withLock { _ = $0.remove(key) }
                 return
             }
+            // The web view may have moved on; finishing a stopped task crashes WebKit.
+            guard tasks.withLock({ $0.contains(key) }) else { return }
             let response = URLResponse(url: url, mimeType: Self.mimeType(for: path),
                                        expectedContentLength: data.count, textEncodingName: "utf-8")
             urlSchemeTask.didReceive(response)
+            // WebKit can stop the task reentrantly during either delivery callback when
+            // a chapter is replaced. Each following callback must still belong to a live task.
+            guard tasks.withLock({ $0.contains(key) }) else { return }
             urlSchemeTask.didReceive(data)
+            guard tasks.withLock({ $0.contains(key) }) else { return }
             urlSchemeTask.didFinish()
             tasks.withLock { _ = $0.remove(key) }
         }

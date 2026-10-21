@@ -359,13 +359,16 @@ final class LibraryModel {
         if covers.store(image, as: coverID) { setCoverID(coverID, for: comic) }
     }
 
-    func recordNovelProgress(chapter: Int, chapterCount: Int, fraction: Double, for comic: Comic) {
+    func recordNovelProgress(chapter: Int, chapterCount: Int, fraction: Double, for comic: Comic,
+                             fractionInBook: Double? = nil) {
         noteHiddenActivity()
         var entry = state.progress[comic.id] ?? ReadingProgress()
-        guard entry.page != chapter || abs(entry.fractionInChapter - fraction) > 0.005 else { return }
+        guard entry.page != chapter || entry.pageCount != chapterCount
+            || abs(entry.fractionInChapter - fraction) > 0.005 || entry.fractionInBook != fractionInBook else { return }
         entry.page = chapter
         entry.pageCount = chapterCount
         entry.fractionInChapter = fraction
+        entry.fractionInBook = fractionInBook
         entry.updatedAt = Date()
         state.setProgress(entry, forCopiesOf: comic)
         state.lastComicID = comic.id
@@ -529,7 +532,11 @@ final class LibraryModel {
         entry.finished = finished
         entry.updatedAt = Date()
         if finished, entry.pageCount > 0 { entry.page = entry.pageCount - 1 }
-        if !finished { entry.page = 0 }
+        if !finished {
+            entry.page = 0
+            entry.fractionInChapter = 0
+            entry.fractionInBook = nil
+        }
         state.setProgress(entry, forCopiesOf: comic)
         save()
     }
@@ -605,6 +612,7 @@ final class LibraryModel {
             lastError = error.localizedDescription
         }
         pushToCloud()
+        publishWidgetSnapshot()
     }
 
     // MARK: Reading activity

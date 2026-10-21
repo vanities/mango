@@ -1,6 +1,7 @@
 import ImageIO
 import UniformTypeIdentifiers
 import XCTest
+import UIKit
 @testable import Mango
 
 @MainActor
@@ -49,5 +50,10 @@ final class ReaderResizeTests: XCTestCase {
         XCTAssertGreaterThan(wide.width, narrow.width, "Opening the display must request a sharper decode")
         engine.updateViewport(CGSize(width: 390, height: 700))
         XCTAssertEqual(engine.currentPage, 4, "Closing the display must return to the page that was open")
+        engine.goToPage(6)
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        XCTAssertEqual(library.progress(for: engine.comic)?.page, 6,
+                       "Leaving before the save debounce fires must preserve the page")
+        XCTAssertEqual(SharedReading.read()?.positionLabel, "Page 7 of 8")
     }
 }

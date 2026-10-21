@@ -294,10 +294,14 @@ final class NovelPaginationTests: XCTestCase {
     }
 
     private func checkIllustratedChapter(images: String, size: CGSize, endsNearBottom: Bool = false) async throws {
+        let paragraphs = (0..<40).map { "<p id='p\($0)'>Paragraph \($0). The traveler crossed the quiet garden and opened the old wooden gate.</p>" }
+        let body = endsNearBottom
+            ? "<div style='break-after:column'>\(images)</div><p id='p39' style='margin-top:0;height:calc(100vh - 133px)'>The last words of the prologue.</p>"
+            : paragraphs.prefix(25).joined() + images + paragraphs.suffix(15).joined()
         let files = [
             "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
             "book.opf": "<package><manifest><item id='ch' href='ch.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='ch'/></spine></package>",
-            "ch.xhtml": "<html><body>Fixture</body></html>"
+            "ch.xhtml": "<html xmlns='http://www.w3.org/1999/xhtml'><head></head><body>\(body)</body></html>"
         ]
         let zip = ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) })
         let document = try await EPUBDocument.open(reader: DataReader(zip), displayName: "Illustrated prologue")
@@ -307,6 +311,7 @@ final class NovelPaginationTests: XCTestCase {
                                 onNextChapter: {}, onPreviousChapter: {}, onReachedBottom: {})
         let messages = Messages()
         let config = NovelWebView.chapterConfiguration()
+        config.setURLSchemeHandler(EPUBSchemeHandler(document: document), forURLScheme: EPUBSchemeHandler.scheme)
         config.userContentController.add(messages, name: "mangoNavigation")
         let web = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: config)
         web.scrollView.contentInsetAdjustmentBehavior = .never
@@ -322,16 +327,9 @@ final class NovelPaginationTests: XCTestCase {
         controller.view.addSubview(web)
         window.makeKeyAndVisible()
         defer { window.isHidden = true; withExtendedLifetime(coordinator) {} }
-        let paragraphs = (0..<40).map { "<p id='p\($0)'>Paragraph \($0). The traveler crossed the quiet garden and opened the old wooden gate.</p>" }
-        let body = endsNearBottom
-            ? "<div style='break-after:column'>\(images)</div><p id='p39' style='margin-top:0;height:calc(100vh - 133px)'>The last words of the prologue.</p>"
-            : paragraphs.prefix(25).joined() + images + paragraphs.suffix(15).joined()
         // Apply the reader style after navigation, exactly as a real EPUB chapter is loaded.
-        web.loadHTMLString("<html><head></head><body>\(body)</body></html>", baseURL: nil)
-        for _ in 0..<100 {
-            if (try? await web.evaluateJavaScript("!!window.mangoPager && [...document.images].every(i => i.complete && i.naturalWidth > 0)")) as? Bool == true { break }
-            try await Task.sleep(for: .milliseconds(50))
-        }
+        coordinator.activeNavigation = web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        try await waitFor("!!window.mangoPager && [...document.images].every(i => i.complete && i.naturalWidth > 0)", in: web)
         var normalPageCount: Int?
         for scale in (endsNearBottom ? [1.0] : [1.0, 1.8, 1.0]) {
             view.fontScale = scale
@@ -363,6 +361,7 @@ final class NovelPaginationTests: XCTestCase {
                 XCTAssertGreaterThan(count, normalPageCount)
             }
             for page in 0..<count {
+                try await waitForPage(page, width: size.width, in: web)
                 let offset = try await number("window.scrollX", web)
                 XCTAssertEqual(offset, Double(page) * size.width, accuracy: 1, "Tap must land on a whole column")
                 if page == count - 1 {
@@ -374,6 +373,7 @@ final class NovelPaginationTests: XCTestCase {
             }
             XCTAssertEqual(messages.actions.filter { $0 == "next" }.count, 1)
             for page in (0..<count).reversed() {
+                try await waitForPage(page, width: size.width, in: web)
                 let offset = try await number("window.scrollX", web)
                 XCTAssertEqual(offset, Double(page) * size.width, accuracy: 1)
                 try await tap(at: size.width * 0.1, web)
@@ -433,7 +433,12 @@ final class NovelPaginationTests: XCTestCase {
             if (try? await web.evaluateJavaScript(condition)) as? Bool == true { return }
             try await Task.sleep(for: .milliseconds(50))
         }
-        XCTFail("Timed out waiting for \(condition)")
+        let state = try? await web.evaluateJavaScript("JSON.stringify({page:window.mangoPager?.page,count:window.mangoPager?.count,x:window.scrollX,width:document.body?.getBoundingClientRect().width,ready:document.readyState})")
+        XCTFail("Timed out waiting for \(condition); state: \(String(describing: state))")
+    }
+
+    private func waitForPage(_ page: Int, width: CGFloat, in web: WKWebView) async throws {
+        try await waitFor("mangoPager.page === \(page) && Math.abs(window.scrollX - \(Double(page) * width)) < 1", in: web)
     }
 
     /// How many pages of `width` the chapter's text actually fills, from where its last line ends.
@@ -484,7 +489,7 @@ final class NovelPaginationTests: XCTestCase {
         coordinator.webView = web
         web.navigationDelegate = coordinator
         defer { withExtendedLifetime(coordinator) {} }
-        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        coordinator.activeNavigation = web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
         try await waitFor("!!window.mangoPager && mangoPager.count > 1", in: web)
         // The visual viewport catches up — and, as in WebKit, nothing announces it.
         _ = try await web.evaluateJavaScript("window.mangoTestViewportLags = false")
@@ -537,7 +542,7 @@ final class NovelPaginationTests: XCTestCase {
         coordinator.webView = web
         web.navigationDelegate = coordinator
         defer { withExtendedLifetime(coordinator) {} }
-        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        coordinator.activeNavigation = web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
         try await waitFor("!!window.mangoPager && mangoPager.count > 1", in: web)
         try await Task.sleep(for: .milliseconds(200))
         let before = try await number("mangoPager.count", web)
@@ -567,7 +572,7 @@ final class NovelPaginationTests: XCTestCase {
         coordinator.webView = web
         web.navigationDelegate = coordinator
         defer { withExtendedLifetime(coordinator) {} }
-        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        coordinator.activeNavigation = web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
         try await waitFor("!!window.mangoPager && mangoPager.count > 3", in: web)
         try await Task.sleep(for: .milliseconds(200))
         _ = try await web.evaluateJavaScript("window.scrollTo(\(phone.width * 3), 0); visualViewport.dispatchEvent(new Event('resize')); true")
@@ -677,5 +682,6 @@ final class NovelPaginationTests: XCTestCase {
         _ = try await web.evaluateJavaScript("document.body.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:\(x), detail:1}))")
         // Let WebKit commit the native scroll between gestures, as it does between real taps.
         try await Task.sleep(for: .milliseconds(50))
+        try await waitFor("Math.abs(window.scrollX - mangoPager.page * mangoPager.width()) < 1", in: web)
     }
 }
