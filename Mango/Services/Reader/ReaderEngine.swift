@@ -192,6 +192,7 @@ final class ReaderEngine {
         do {
             let archive = try await library.openArchive(comic)
             pageCount = archive.pageCount
+            library.beginReading(comic, pageCount: pageCount)
             let loader = PageLoader(archive: archive, capacity: settings.prefetchCount * 2 + 3)
             self.loader = loader
             let startPage = resumePage()
@@ -387,7 +388,11 @@ final class ReaderEngine {
         lifecycleObservers = [
             NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification,
                                                    object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.commitSession() }
+                MainActor.assumeIsolated {
+                    self?.saveTask?.cancel()
+                    self?.persistProgress()
+                    self?.commitSession()
+                }
             },
             NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification,
                                                    object: nil, queue: .main) { [weak self] _ in

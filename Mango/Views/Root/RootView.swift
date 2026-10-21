@@ -1,5 +1,6 @@
 import SwiftUI
 import ShelfKit
+import UIKit
 
 struct RootView: View {
     @Environment(LibraryModel.self) private var library
@@ -37,7 +38,7 @@ struct RootView: View {
                 openRequestedComic()
             }
         }
-        .simultaneousGesture(TapGesture().onEnded { library.noteHiddenActivity() })
+        .gesture(HiddenActivityTapGesture { library.noteHiddenActivity() })
         .onChange(of: library.requestedComic) { _, _ in openRequestedComic() }
         .fullScreenCover(item: $openedComic) { ReaderRouter(comic: $0) }
     }
@@ -46,5 +47,30 @@ struct RootView: View {
         guard scenePhase == .active, let comic = library.requestedComic else { return }
         library.requestedComic = nil
         openedComic = comic
+    }
+}
+
+/// Observe taps without cancelling UIKit controls, including the adaptive tab sidebar.
+/// A SwiftUI TapGesture on the whole TabView prevented its collection cells selecting.
+private struct HiddenActivityTapGesture: UIGestureRecognizerRepresentable {
+    let onActivity: () -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UITapGestureRecognizer {
+        let recognizer = UITapGestureRecognizer()
+        recognizer.cancelsTouchesInView = false
+        recognizer.delegate = context.coordinator
+        return recognizer
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UITapGestureRecognizer, context: Context) {
+        guard recognizer.state == .ended else { return }
+        onActivity()
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool { true }
     }
 }

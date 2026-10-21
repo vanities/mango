@@ -14,18 +14,23 @@ struct ReadingProgress: Codable, Hashable, Sendable {
     /// index is exact, but a novel's position depends on font size and screen, so `page`
     /// holds the chapter and this holds the rest.
     var fractionInChapter: Double
+    /// A novel's length-weighted place, measured by its reader. Older saves derive a page fraction.
+    var fractionInBook: Double?
 
     init(page: Int = 0, pageCount: Int = 0, updatedAt: Date = Date(), finished: Bool = false,
-         fractionInChapter: Double = 0) {
+         fractionInChapter: Double = 0, fractionInBook: Double? = nil) {
         self.page = page
         self.pageCount = pageCount
         self.updatedAt = updatedAt
         self.finished = finished
         self.fractionInChapter = fractionInChapter
+        self.fractionInBook = fractionInBook
     }
 
     /// 0...1 through the book. A one-page book is either unread (0) or done (1).
     var fraction: Double {
+        if finished { return 1 }
+        if let fractionInBook { return min(1, max(0, fractionInBook)) }
         guard pageCount > 1 else { return finished ? 1 : 0 }
         return min(1, max(0, Double(page) / Double(pageCount - 1)))
     }
@@ -58,5 +63,6 @@ struct ReadingProgress: Codable, Hashable, Sendable {
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
         finished = try c.decodeIfPresent(Bool.self, forKey: .finished) ?? false
         fractionInChapter = try c.decodeIfPresent(Double.self, forKey: .fractionInChapter) ?? 0
+        fractionInBook = try c.decodeIfPresent(Double.self, forKey: .fractionInBook)
     }
 }

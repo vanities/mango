@@ -47,6 +47,7 @@ struct LibraryBackupView: View {
         // Never retain a reference to an image absent from the portable bundle/device.
         old.customCovers = old.customCovers.filter { library.covers.exists($0.value) }
         library.mutateState { $0.restorePortable(old) }
+        library.lockHiddenItems()
         await library.scan()
     }
 }

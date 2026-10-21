@@ -38,41 +38,36 @@ extension LibraryModel {
 
     // MARK: Widget
 
-    /// Hands the widget what you're reading. Called when a book closes rather than on every
-    /// page turn: the widget is what you look at when you're *not* in the app.
+    /// Every saved position reaches the widget, including a reader left open in the background.
+    /// Shared data stays current; unchanged visible content doesn't consume a timeline reload.
     func publishWidgetSnapshot() {
-        guard let comic = publicLastRead else {
-            SharedReading.write(nil)
-            SharedReading.writeCover(nil)
-            WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
-            return
+        var snapshot: ReadingSnapshot?
+        var cover: Data?
+        if let comic = publicLastRead {
+            if settings.lockMode != .off {
+                snapshot = ReadingSnapshot(comicID: comic.id, title: "Continue reading", series: "Mango is locked",
+                                           positionLabel: "", fraction: 0, isNovel: comic.isNovel, updatedAt: .now)
+            } else {
+                let progress = state.progress[comic.id]
+                snapshot = ReadingSnapshot(
+                    comicID: comic.id,
+                    title: [comic.numberLabel, comic.subtitle].compactMap { $0 }.joined(separator: " · ").nilIfEmpty ?? comic.title,
+                    series: comic.displaySeries,
+                    positionLabel: progress.map { comic.isNovel ? novelPositionLabel($0, in: comic) : $0.label } ?? "Not started",
+                    fraction: progress?.fraction ?? 0,
+                    isNovel: comic.isNovel,
+                    updatedAt: progress?.updatedAt ?? .now
+                )
+                if let coverID = comic.coverID { cover = try? Data(contentsOf: covers.url(for: coverID)) }
+            }
         }
-        // With the lock on, the Home Screen mustn't say what's being read — the widget still
-        // opens it, after Face ID.
-        if settings.lockMode != .off {
-            SharedReading.write(ReadingSnapshot(comicID: comic.id, title: "Continue reading", series: "Mango is locked",
-                                                positionLabel: "", fraction: 0, isNovel: comic.isNovel, updatedAt: .now))
-            SharedReading.writeCover(nil)
-            WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
-            Logger.ui.info("[widget] published a locked snapshot")
-            return
-        }
-        let progress = state.progress[comic.id]
-        SharedReading.write(ReadingSnapshot(
-            comicID: comic.id,
-            title: [comic.numberLabel, comic.subtitle].compactMap { $0 }.joined(separator: " · ").nilIfEmpty ?? comic.title,
-            series: comic.displaySeries,
-            positionLabel: progress.map { comic.isNovel ? novelPositionLabel($0, in: comic) : $0.label } ?? "Not started",
-            fraction: progress?.fraction ?? 0,
-            isNovel: comic.isNovel,
-            updatedAt: progress?.updatedAt ?? .now
-        ))
-        if let coverID = comic.coverID {
-            SharedReading.writeCover(try? Data(contentsOf: covers.url(for: coverID)))
-        } else {
-            SharedReading.writeCover(nil)
-        }
+        let previous = SharedReading.read()
+        let previousCover = SharedReading.coverURL.flatMap { try? Data(contentsOf: $0) }
+        if previous != snapshot { SharedReading.write(snapshot) }
+        if previousCover != cover { SharedReading.writeCover(cover) }
+        guard previous?.widgetUpdateKey != snapshot?.widgetUpdateKey || previousCover != cover else { return }
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueReading")
-        Logger.ui.info("[widget] published \(comic.title, privacy: .public)")
+        Logger.ui.debug("[widget] refreshed reading snapshot")
     }
+
 }

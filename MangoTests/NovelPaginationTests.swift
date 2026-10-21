@@ -484,7 +484,7 @@ final class NovelPaginationTests: XCTestCase {
         coordinator.webView = web
         web.navigationDelegate = coordinator
         defer { withExtendedLifetime(coordinator) {} }
-        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        coordinator.activeNavigation = web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
         try await waitFor("!!window.mangoPager && mangoPager.count > 1", in: web)
         // The visual viewport catches up — and, as in WebKit, nothing announces it.
         _ = try await web.evaluateJavaScript("window.mangoTestViewportLags = false")
@@ -537,7 +537,7 @@ final class NovelPaginationTests: XCTestCase {
         coordinator.webView = web
         web.navigationDelegate = coordinator
         defer { withExtendedLifetime(coordinator) {} }
-        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        coordinator.activeNavigation = web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
         try await waitFor("!!window.mangoPager && mangoPager.count > 1", in: web)
         try await Task.sleep(for: .milliseconds(200))
         let before = try await number("mangoPager.count", web)
@@ -567,7 +567,7 @@ final class NovelPaginationTests: XCTestCase {
         coordinator.webView = web
         web.navigationDelegate = coordinator
         defer { withExtendedLifetime(coordinator) {} }
-        web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
+        coordinator.activeNavigation = web.load(URLRequest(url: try XCTUnwrap(EPUBSchemeHandler.url(for: "ch.xhtml"))))
         try await waitFor("!!window.mangoPager && mangoPager.count > 3", in: web)
         try await Task.sleep(for: .milliseconds(200))
         _ = try await web.evaluateJavaScript("window.scrollTo(\(phone.width * 3), 0); visualViewport.dispatchEvent(new Event('resize')); true")

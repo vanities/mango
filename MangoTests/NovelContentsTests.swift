@@ -1,5 +1,6 @@
 import XCTest
 import ShelfKit
+import UIKit
 @testable import Mango
 
 /// A light novel's chapters by the book's own names. Mango used to number the documents of the
@@ -239,5 +240,163 @@ final class NovelContentsTests: XCTestCase {
         library.recordNovelProgress(chapter: 4, chapterCount: 5, fraction: 0.5, for: comic)
         let progress = try XCTUnwrap(library.progress(for: comic))
         XCTAssertEqual(library.novelPositionLabel(progress, in: comic), "Chapter 2")
+    }
+
+    @MainActor
+    func testBackgroundPublishesTheCurrentChapterWithoutClosingTheReader() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appending(path: "Jobless Reincarnation v01.epub")
+        let chapters = (1...20).map { "ch\($0)" }
+        let manifest = chapters.map { "<item id='\($0)' href='\($0).xhtml' media-type='application/xhtml+xml'/>" }.joined()
+        let spine = chapters.map { "<itemref idref='\($0)'/>" }.joined()
+        let points = chapters.enumerated().map { index, chapter in
+            "<navPoint id='\(chapter)'><navLabel><text>Chapter \(index + 1)</text></navLabel><content src='\(chapter).xhtml'/></navPoint>"
+        }.joined()
+        var files = [
+            "META-INF/container.xml": "<container><rootfiles><rootfile full-path='content.opf'/></rootfiles></container>",
+            "content.opf": "<package><manifest><item id='ncx' href='toc.ncx' media-type='application/x-dtbncx+xml'/>\(manifest)</manifest><spine toc='ncx'>\(spine)</spine></package>",
+            "toc.ncx": "<ncx><navMap>\(points)</navMap></ncx>",
+        ]
+        for chapter in chapters { files["\(chapter).xhtml"] = "<html><body><p>\(chapter)</p></body></html>" }
+        try ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: true) }).write(to: file)
+        let suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let library = LibraryModel(store: LibraryStore(directory: folder.appending(path: "State")),
+                                   covers: CoverStore(directory: folder.appending(path: "Covers"),
+                                                      customDirectory: folder.appending(path: "Custom")), settings: settings)
+        library.addOpenedFile(file)
+        for _ in 0..<200 where library.requestedComic == nil || library.isScanning {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let comic = try XCTUnwrap(library.requestedComic)
+        let engine = NovelEngine(comic: comic, library: library, settings: settings)
+        await engine.open()
+        defer { engine.close() }
+        XCTAssertNil(engine.openError)
+        XCTAssertNotNil(SharedReading.containerURL, "Exercise the actual widget App Group")
+        engine.goToChapter(14)
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        library.publishWidgetSnapshot()
+        XCTAssertEqual(SharedReading.read()?.positionLabel, "Chapter 15")
+        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+        engine.nextChapter()
+        XCTAssertEqual(engine.chapterLabel, "Chapter 16")
+        // Leave before the one-second debounce fires; do not dismiss the reader.
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        XCTAssertEqual(library.progress(for: comic)?.page, 15)
+        XCTAssertEqual(SharedReading.read()?.positionLabel, "Chapter 16")
+        XCTAssertEqual(try XCTUnwrap(SharedReading.read()).fraction, engine.progressFraction, accuracy: 0.0001,
+                       "The widget and reader must use the same chapter-length-weighted percentage")
+        engine.goToChapter(16)
+        engine.scrollFraction = 0.5
+        try await Task.sleep(for: .milliseconds(1200))
+        XCTAssertEqual(SharedReading.read()?.positionLabel, "Chapter 17", "A normal debounced save also refreshes the widget")
+        XCTAssertEqual(try XCTUnwrap(SharedReading.read()).fraction, engine.progressFraction, accuracy: 0.0001)
+        engine.scrollFraction = 0.75
+        engine.go(to: Bookmark(page: 18, fraction: 0.25))
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        XCTAssertEqual(library.progress(for: comic)?.page, 18)
+        XCTAssertEqual(library.progress(for: comic)?.fractionInChapter, 0.25,
+                       "A bookmark landing is the saved spot even before the new chapter finishes loading")
+        library.setFinished(true, for: comic)
+        XCTAssertEqual(SharedReading.read()?.positionLabel, "Finished")
+        XCTAssertEqual(SharedReading.read()?.fraction, 1)
+        library.setFinished(false, for: comic)
+        XCTAssertEqual(SharedReading.read()?.positionLabel, "Chapter 1")
+        XCTAssertEqual(SharedReading.read()?.fraction, 0, "Restart clears both chapter and fraction")
+        XCTAssertEqual(library.progress(for: comic)?.fractionInChapter, 0)
+        engine.close()
+        try await assertReopeningAndRereadingUseTheCurrentBook(comic, library: library, settings: settings)
+    }
+
+    @MainActor
+    func testChapterRetryPreservesBookmarkPositionAndNavigationClearsFailure() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ChapterRetry-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let files = [
+            "META-INF/container.xml": "<container><rootfiles><rootfile full-path='book.opf'/></rootfiles></container>",
+            "book.opf": "<package><manifest><item id='a' href='a.xhtml' media-type='application/xhtml+xml'/><item id='b' href='b.xhtml' media-type='application/xhtml+xml'/></manifest><spine><itemref idref='a'/><itemref idref='b'/></spine></package>",
+            "a.xhtml": "<html><body>First chapter.</body></html>",
+            "b.xhtml": "<html><body>The second chapter is longer.</body></html>"
+        ]
+        let path = "Retry.epub"
+        try ZipTestBuilder.make(files.map { .init(name: $0.key, data: Data($0.value.utf8), deflate: false) }).write(to: root.appending(path: path))
+        let suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let library = LibraryModel(store: LibraryStore(directory: root.appending(path: "state")),
+                                   covers: CoverStore(directory: root.appending(path: "covers"), customDirectory: root.appending(path: "custom")),
+                                   settings: settings)
+        let source = LibrarySource(id: UUID(), kind: .folder, displayName: "Generated retry fixture", addedAt: .now)
+        let comic = Comic(id: Comic.makeID(sourceID: source.id, relativePath: path), sourceID: source.id,
+                          relativePath: path, kind: .epub, title: "Chapter retry", pageCount: 2, totalBytes: 0, addedAt: .now)
+        library.mutateState { $0.sources.append(source); $0.comics = [comic] }
+        library.roots[source.id] = root
+        for paged in [true, false] {
+            settings.novelPaged = paged
+            let engine = NovelEngine(comic: comic, library: library, settings: settings)
+            await engine.open()
+            XCTAssertNil(engine.openError)
+            engine.go(to: Bookmark(page: 1, fraction: 0.43))
+            let previousJump = engine.jumpID
+            engine.chapterLoadFailed("The source is temporarily unavailable")
+            XCTAssertNotNil(engine.chapterLoadError)
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            XCTAssertEqual(SharedReading.read()?.comicID, comic.id)
+            XCTAssertEqual(SharedReading.read()?.positionLabel, engine.chapterLabel)
+            XCTAssertEqual(try XCTUnwrap(SharedReading.read()).fraction, engine.progressFraction, accuracy: 0.001)
+            NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+            engine.retryChapter()
+            XCTAssertNil(engine.chapterLoadError)
+            XCTAssertGreaterThan(engine.jumpID, previousJump)
+            XCTAssertEqual(engine.chapterIndex, 1)
+            XCTAssertEqual(engine.scrollFraction, 0.43, accuracy: 0.001)
+            XCTAssertEqual(engine.pendingJumpFraction, 0.43, accuracy: 0.001)
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            XCTAssertEqual(library.progress(for: comic)?.page, 1)
+            XCTAssertEqual(library.progress(for: comic)?.fractionInChapter, 0.43)
+            XCTAssertEqual(library.progress(for: comic)?.finished, false)
+            NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
+            engine.chapterLoadFailed("Still unavailable")
+            engine.go(to: Bookmark(page: 1, fraction: 0.7))
+            XCTAssertNil(engine.chapterLoadError, "A new bookmark in the same chapter must replace its failure screen")
+            engine.chapterLoadFailed("Still unavailable")
+            engine.previousChapter()
+            XCTAssertNil(engine.chapterLoadError, "Navigation away from the failure must load the requested chapter")
+            engine.close()
+        }
+    }
+
+    @MainActor
+    private func assertReopeningAndRereadingUseTheCurrentBook(_ comic: Comic, library: LibraryModel, settings: AppSettings) async throws {
+        let other = Comic(id: "other", sourceID: UUID(), relativePath: "Other.epub", kind: .epub,
+                          title: "Other", series: "Other", totalBytes: 1, addedAt: .now)
+        library.mutateState {
+            $0.comics.append(other)
+            $0.progress[other.id] = ReadingProgress(page: 2, pageCount: 10)
+            $0.lastComicID = other.id
+        }
+        let reopened = NovelEngine(comic: comic, library: library, settings: settings)
+        await reopened.open()
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        XCTAssertEqual(library.publicLastRead?.id, comic.id, "Opening a book makes it current even without changing its saved spot")
+        XCTAssertEqual(SharedReading.read()?.comicID, comic.id)
+        reopened.close()
+
+        library.setFinished(true, for: comic)
+        let reread = NovelEngine(comic: comic, library: library, settings: settings)
+        await reread.open()
+        defer { reread.close() }
+        XCTAssertEqual(reread.chapterIndex, 0)
+        reread.scrollFraction = 0.25
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        XCTAssertFalse(try XCTUnwrap(library.progress(for: comic)).finished,
+                       "Reading a completed novel again must become in-progress")
     }
 }

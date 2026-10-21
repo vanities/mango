@@ -50,11 +50,17 @@ actor EPUBDocument {
     /// Raw bytes of one file inside the book. Returns nil for anything the book doesn't contain,
     /// so a chapter referencing a missing image degrades instead of failing the whole page.
     func data(at path: String) async -> Data? {
+        try? await resourceData(at: path)
+    }
+
+    /// WebKit must receive the actual read failure so a lost source can be retried.
+    /// Optional resources still use `data(at:)` when absence is a normal fallback.
+    func resourceData(at path: String) async throws -> Data {
         guard let entry = entries[path] else {
             Logger.archive.debug("[epub] no entry for \(path, privacy: .public)")
-            return nil
+            throw URLError(.fileDoesNotExist)
         }
-        return try? await ZipReader.read(entry, from: reader)
+        return try await ZipReader.read(entry, from: reader)
     }
 
     private var tableOfContentsCache: [EPUBTOCEntry]?

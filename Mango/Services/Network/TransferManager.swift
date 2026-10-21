@@ -35,6 +35,8 @@ final class TransferManager {
         var doneBytes: Int64 = 0
         var state: State = .queued
         var error: String?
+        /// Optional for queues saved by older builds. Persist intent before the worker stops.
+        var cancellationRequested: Bool?
 
         var fraction: Double { totalBytes > 0 ? min(1, Double(doneBytes) / Double(totalBytes)) : 0 }
         var isActive: Bool { state == .queued || state == .running }
@@ -48,20 +50,26 @@ final class TransferManager {
     private(set) var jobs: [Job] = [] { didSet { persist() } }
 
     @ObservationIgnored private let library: LibraryModel
-    @ObservationIgnored private let store = LibraryStore()
+    @ObservationIgnored private let store: LibraryStore
+    @ObservationIgnored private let backgroundSchedulingEnabled: Bool
     @ObservationIgnored private var restoring = false
     @ObservationIgnored private var runner: Task<Void, Never>?
     @ObservationIgnored private let cancelled = OSAllocatedUnfairLock(initialState: Set<UUID>())
     @ObservationIgnored private var attempts: [String: Int] = [:]
     @ObservationIgnored private var observers: [any NSObjectProtocol] = []
+    @ObservationIgnored private var backgroundExecution: TransferBackgroundExecution?
+    @ObservationIgnored private var backgroundPaused = false
+    @ObservationIgnored private var systemInterrupted: Set<UUID> = []
 
-    init(library: LibraryModel) {
+    init(library: LibraryModel, store: LibraryStore = LibraryStore(), registersBackgroundTasks: Bool = true) {
         self.library = library
+        self.store = store
+        self.backgroundSchedulingEnabled = registersBackgroundTasks
         restore()
-        registerBackgroundTask()
+        if registersBackgroundTasks { registerBackgroundTask() }
         observers.append(NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.resumeInterrupted(reason: "foreground") }
+                MainActor.assumeIsolated { self?.resumeInForeground() }
             })
         observers.append(NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
@@ -130,8 +138,13 @@ final class TransferManager {
     }
 
     func cancel(_ jobID: UUID) {
+        guard let job = jobs.first(where: { $0.id == jobID }), job.isActive else { return }
         cancelled.withLock { _ = $0.insert(jobID) }
-        update(jobID) { if $0.isActive { $0.state = .cancelled } }
+        update(jobID) {
+            $0.cancellationRequested = true
+            if $0.state == .queued { $0.state = .cancelled }
+        }
+        updateIdleTimer()
     }
 
     func cancelAll() {
@@ -143,9 +156,10 @@ final class TransferManager {
     }
 
     func retry(_ jobID: UUID) {
-        guard let job = jobs.first(where: { $0.id == jobID }) else { return }
+        guard let job = jobs.first(where: { $0.id == jobID }), !job.isActive else { return }
         attempts[job.comicID] = 0
-        update(jobID) { $0.state = .queued; $0.error = nil; $0.doneBytes = 0 }
+        backgroundPaused = false
+        update(jobID) { $0.state = .queued; $0.error = nil; $0.doneBytes = 0; $0.cancellationRequested = nil }
         runNext()
     }
 
@@ -157,17 +171,35 @@ final class TransferManager {
     }
 
     private func runNext() {
-        guard runner == nil, let next = jobs.first(where: { $0.state == .queued }) else { return }
+        defer { updateIdleTimer() }
+        guard !backgroundPaused, runner == nil else { return }
+        guard let next = jobs.first(where: { $0.state == .queued }) else {
+            finishBackgroundExecution(success: !jobs.contains { $0.state == .failed })
+            return
+        }
+        cancelled.withLock { _ = $0.remove(next.id) }
         update(next.id) { $0.state = .running }
-        updateIdleTimer()
         runner = Task { [weak self] in
             await self?.perform(next)
-            await MainActor.run {
-                self?.runner = nil
-                self?.updateIdleTimer()
-                self?.runNext()
+            self?.finishWorker(next.id)
+            self?.runner = nil
+            self?.runNext()
+        }
+    }
+
+    private func finishWorker(_ jobID: UUID) {
+        let interrupted = systemInterrupted.remove(jobID) != nil
+        update(jobID) {
+            guard $0.state != .done else { $0.cancellationRequested = nil; return }
+            if $0.cancellationRequested == true {
+                $0.state = .cancelled
+                $0.error = nil
+            } else if interrupted {
+                $0.state = .queued
+                $0.error = nil
             }
         }
+        cancelled.withLock { _ = $0.remove(jobID) }
     }
 
     private func update(_ jobID: UUID, _ change: (inout Job) -> Void) {
@@ -178,7 +210,7 @@ final class TransferManager {
     /// A transfer only continues while the app is in the foreground, so don't let the screen
     /// lock halfway through a 300 MB volume.
     private func updateIdleTimer() {
-        UIApplication.shared.isIdleTimerDisabled = isTransferring
+        UIApplication.shared.isIdleTimerDisabled = isTransferring && !backgroundPaused
     }
 
     // MARK: Persistence and resumption
@@ -195,19 +227,37 @@ final class TransferManager {
         // Anything that was mid-flight when we were killed goes back in the queue.
         jobs = saved.map { job in
             var job = job
-            if job.state == .running { job.state = .queued }
+            if job.cancellationRequested == true && job.state != .done {
+                job.state = .cancelled
+                job.error = nil
+            } else if job.state == .running {
+                job.state = .queued
+            }
             return job
         }
         Logger.downloads.info("[transfers] restored \(self.jobs.count) job(s), \(self.jobs.count { $0.isActive }) still to do")
         runNext()
     }
 
+    private func resumeInForeground() {
+        // iOS can deliver this before withdrawing the old background budget. Invalidate
+        // that budget now so its later expiry cannot pause foreground transfers.
+        finishBackgroundExecution(success: false)
+        resumeInterrupted(reason: "foreground")
+    }
+
     private func resumeInterrupted(reason: String) {
-        let failed = jobs.filter { $0.state == .failed }
-        for job in failed where (attempts[job.comicID] ?? 0) < Self.maxAttempts {
-            attempts[job.comicID, default: 0] += 1
+        backgroundPaused = false
+        var requeued = 0
+        for job in jobs where job.state == .failed && job.cancellationRequested != true {
+            let key = job.comicID
+            guard (attempts[key] ?? 0) < Self.maxAttempts else { continue }
+            attempts[key, default: 0] += 1
             update(job.id) { $0.state = .queued; $0.error = nil }
-            Logger.downloads.info("[transfers] retrying \(job.title, privacy: .public) on \(reason, privacy: .public) (attempt \(self.attempts[job.comicID] ?? 0))")
+            requeued += 1
+        }
+        if requeued > 0 {
+            Logger.downloads.info("[transfers] requeued \(requeued) interrupted job(s) on \(reason, privacy: .public)")
         }
         runNext()
     }
@@ -218,33 +268,46 @@ final class TransferManager {
         // the app each time iOS ran a transfer in the background. Earmark hops the same way.
         let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.backgroundTaskIdentifier, using: nil) { task in
             guard let processing = task as? BGProcessingTask else { return task.setTaskCompleted(success: false) }
-            Task { @MainActor in self.runInBackground(processing) }
+            Task { @MainActor in self.runInBackground(.live(processing)) }
         }
         Logger.downloads.info("[transfers] background task registered=\(registered)")
     }
 
     private func scheduleBackgroundProcessing() {
-        guard isTransferring else { return }
+        guard backgroundSchedulingEnabled, isTransferring else { return }
         let request = BGProcessingTaskRequest(identifier: Self.backgroundTaskIdentifier)
         request.requiresNetworkConnectivity = true
         request.requiresExternalPower = false
         try? BGTaskScheduler.shared.submit(request)
     }
 
-    private func runInBackground(_ task: BGProcessingTask) {
-        Logger.downloads.info("[transfers] background processing started")
-        // The system calls this on its own queue too.
-        task.expirationHandler = {
-            Task { @MainActor in
-                Logger.downloads.info("[transfers] background time expiring, stopping")
-                self.cancelAll()
-            }
+    func runInBackground(_ task: TransferBackgroundExecution) {
+        finishBackgroundExecution(success: false)
+        backgroundExecution = task
+        task.setExpirationHandler { [weak self, id = task.id] in
+            Task { @MainActor [weak self] in self?.expireBackgroundExecution(id) }
         }
-        runNext()
-        Task { @MainActor in
-            while isTransferring { try? await Task.sleep(for: .seconds(2)) }
-            task.setTaskCompleted(success: true)
+        resumeInterrupted(reason: "background task")
+    }
+
+    private func expireBackgroundExecution(_ id: UUID) {
+        guard backgroundExecution?.id == id else { return }
+        backgroundPaused = true
+        if let running = jobs.first(where: { $0.state == .running && $0.cancellationRequested != true }) {
+            systemInterrupted.insert(running.id)
+            cancelled.withLock { _ = $0.insert(running.id) }
         }
+        // Pending jobs keep their queued state. A stopped worker joins them after unwinding.
+        finishBackgroundExecution(success: false)
+        scheduleBackgroundProcessing()
+        updateIdleTimer()
+    }
+
+    private func finishBackgroundExecution(success: Bool) {
+        guard let task = backgroundExecution else { return }
+        backgroundExecution = nil
+        task.setExpirationHandler(nil)
+        task.complete(success)
     }
 
     // MARK: Doing the work
@@ -272,7 +335,14 @@ final class TransferManager {
             return
         }
         let sw = Stopwatch()
-        let files = await remoteFiles(of: comic, client: client)
+        let files: [(path: String, size: Int64)]
+        do {
+            files = try await remoteFiles(of: comic, client: client)
+        } catch {
+            Logger.downloads.error("[transfers] couldn't list \(comic.relativePath, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            update(job.id) { $0.state = .failed; $0.error = error.localizedDescription }
+            return
+        }
         update(job.id) { $0.totalBytes = max(1, files.reduce(0) { $0 + $1.size }) }
 
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -293,14 +363,27 @@ final class TransferManager {
             let jobID = job.id
             let cancelled = self.cancelled
             do {
-                try await client.download(file.path, to: partial) { [weak self] bytes, _ in
-                    Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = base + bytes } }
-                    return !cancelled.withLock { $0.contains(jobID) }
+                let source = try await DownloadPartial.currentSource(client: client, path: file.path)
+                if isCancelled(job.id) { finishCancelled(job, comic); return }
+                update(job.id) { $0.totalBytes += source.size - file.size }
+                let candidate = try DownloadPartial.prepare(at: partial, source: source)
+                let prepared = try await candidate.verifyingRetainedBytes(client: client) {
+                    !cancelled.withLock { $0.contains(jobID) }
                 }
+                update(job.id) { $0.doneBytes = base + prepared.retainedBytes }
+                if !prepared.isComplete {
+                    try await client.download(file.path, to: partial) { [weak self] bytes, _ in
+                        Task { @MainActor [weak self] in self?.update(jobID) { $0.doneBytes = base + bytes } }
+                        return !cancelled.withLock { $0.contains(jobID) }
+                    }
+                }
+                if isCancelled(job.id) { finishCancelled(job, comic); return }
+                try await prepared.validate(client: client)
                 if isCancelled(job.id) { finishCancelled(job, comic); return }
                 try? FileManager.default.removeItem(at: destination)
                 try FileManager.default.moveItem(at: partial, to: destination)
-                done += file.size
+                prepared.removeMetadata()
+                done += source.size
                 update(job.id) { $0.doneBytes = done }
             } catch is CancellationError {
                 // The .part file stays: the next attempt resumes from it.
@@ -413,9 +496,12 @@ final class TransferManager {
     // MARK: File lists
 
     /// A `.cbz`, `.pdf` or `.epub` is one file; a folder comic is all the pages in it.
-    private func remoteFiles(of comic: Comic, client: NASClient) async -> [(path: String, size: Int64)] {
+    private func remoteFiles(of comic: Comic, client: NASClient) async throws -> [(path: String, size: Int64)] {
         guard comic.kind == .folder else { return [(comic.relativePath, comic.totalBytes)] }
-        let entries = (try? await client.list(comic.relativePath)) ?? []
+        let entries = try await client.list(comic.relativePath)
+        guard entries.contains(where: { !$0.isDirectory && ImageFileTypes.isPage($0.name) && !ImageFileTypes.isJunk($0.name) }) else {
+            throw ArchiveError.noPages(comic.title)
+        }
         return entries.filter { !$0.isDirectory }.map { ($0.relativePath, $0.size) }
     }
 
