@@ -677,5 +677,6 @@ final class NovelPaginationTests: XCTestCase {
         _ = try await web.evaluateJavaScript("document.body.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:\(x), detail:1}))")
         // Let WebKit commit the native scroll between gestures, as it does between real taps.
         try await Task.sleep(for: .milliseconds(50))
+        try await waitFor("Math.abs(window.scrollX - mangoPager.page * mangoPager.width()) < 1", in: web)
     }
 }
