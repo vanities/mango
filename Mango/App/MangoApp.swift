@@ -6,6 +6,10 @@ import ShelfKit
 struct MangoApp: App {
     @State private var environment = AppEnvironment.shared
 
+    init() {
+        BrokenPipes.ignore()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

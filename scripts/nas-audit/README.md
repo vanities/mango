@@ -70,3 +70,17 @@ Both apps verify the complete retained prefix through bounded reads before resum
 unchanged-source cancellation, service restart and background cases guard that path too.
 Source snapshots do not provide atomic reads of a concurrently edited NAS file. The hidden
 `.versions` fixtures are generated test data and are never registered as library sources.
+
+## Reset connections (SIGPIPE)
+
+Stopping the fixture closes its connections with a FIN, which the client reads as end of file.
+A NAS that drops an idle connection, or iOS reclaiming a suspended app's socket, can instead
+leave a reset one, and the next write to it raises SIGPIPE. `reset_proxy.py` sits in front of
+the fixture and resets its live connections on request:
+
+```sh
+uv run python scripts/nas-audit/reset_proxy.py --root <fixture root>   # 127.0.0.1:1448 -> 1445
+```
+
+Tests write a nonce-tagged `reset` request through `FixtureConnectionReset` and get back how many
+connections were reset. Run it next to `service_control.py` (or `smb_fixture.py`), on loopback only.

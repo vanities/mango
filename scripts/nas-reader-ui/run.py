@@ -60,6 +60,7 @@ for name in ['Mango', 'MangoTests', 'MangoWidgets', 'Shared', 'Config']:
 for name in ['AuditApp.swift', 'FlowTests.swift']:
     (work / name).symlink_to(Path(__file__).with_name(name))
 (work / 'FixtureServiceControl.swift').symlink_to(repo / 'scripts/nas-audit/FixtureServiceControl.swift')
+(work / 'FixtureConnectionReset.swift').symlink_to(repo / 'scripts/nas-audit/FixtureConnectionReset.swift')
 spec = yaml.safe_load((repo / 'project.yml').read_text())
 for target in spec['targets'].values():
     base = target.get('settings', {}).get('base', {})
@@ -73,7 +74,7 @@ for source in spec['targets']['Mango']['sources']:
         source.setdefault('excludes', []).append('App/MangoApp.swift')
 spec['targets']['Mango']['sources'].append({'path': 'AuditApp.swift'})
 spec['targets']['NASReaderFlowTests'] = {
-    'type': 'bundle.ui-testing', 'platform': 'iOS', 'sources': ['FlowTests.swift', 'FixtureServiceControl.swift'],
+    'type': 'bundle.ui-testing', 'platform': 'iOS', 'sources': ['FlowTests.swift', 'FixtureServiceControl.swift', 'FixtureConnectionReset.swift'],
     'dependencies': [{'target': 'Mango'}],
     'settings': {'base': {'PRODUCT_BUNDLE_IDENTIFIER': 'com.vanities.mangoNASReaderFlowTests',
                           'GENERATE_INFOPLIST_FILE': 'YES', 'TEST_TARGET_NAME': 'Mango'}}}

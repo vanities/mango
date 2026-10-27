@@ -14,6 +14,11 @@ It runs the production `NovelReaderView`, engine, EPUB scheme handler and SMB cl
 `Audit Novel v01.epub` only. No original books, normal-app library or stored NAS credentials
 are used. It does not test Sources setup or ordinary Library navigation.
 
+`testNextChapterAfterTheConnectionWasResetKeepsReading` also needs `scripts/nas-audit/reset_proxy.py`
+running with the same `--root`; the app connects through it (`QA_SMB_PORT=1448`), the proxy resets
+the reader's connection, and Next chapter must load. Without `BrokenPipes.ignore()` the app exits
+with SIGPIPE at that tap, as it did on the phone on 2026-10-26.
+
 XCUITest uses the actual Next, Retry and Undo controls, presses Home, and terminates/relaunches
 the QA app. Cases cover paged and scrolling chapter failures, retry before/after service
 recovery, navigating away from a failed chapter, Undo and saved target restoration. Window
