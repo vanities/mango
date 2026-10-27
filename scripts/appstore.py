@@ -26,7 +26,7 @@ spec = importlib.util.spec_from_file_location("tf", ROOT / "testflight.py")
 tf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tf)  # type: ignore[union-attr]
 
-VERSION = "1.2"
+VERSION = "1.2.1"
 LOCALE = "en-US"
 SITE = "https://am2.biz/mango"
 
@@ -61,9 +61,8 @@ Source code: github.com/vanities/mango
 
 Supported formats: CBZ, EPUB, PDF, and folders of JPEG, PNG, WebP, HEIC, GIF or TIFF images. CBR/RAR archives are not supported.""",
     "keywords": "cbz,pdf,ebook,light novel,nas,smb,manhwa,manhua,webtoon,rtl,books,library,folders,ipad",
-    "whatsNew": """Improved light novel chapter transitions, reading-position recovery and widget updates.
-More reliable downloads, cancellation and retries when a NAS connection is interrupted.
-Fixed iPad sidebar navigation and preserved hidden titles when restoring library backups.""",
+    "whatsNew": """Fixed Mango closing when you turned to the next chapter of a book on your NAS after your phone had been locked or in the background.
+The screen no longer dims or locks while you read, even after checking a notification or Control Center.""",
     "copyright": "2026 AM2 LLC",
     "supportUrl": f"{SITE}/support",
     "marketingUrl": SITE,
