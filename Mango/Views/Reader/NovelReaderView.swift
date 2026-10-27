@@ -77,11 +77,8 @@ struct NovelReaderView: View {
         }, content: {
             if let engine { ChapterListView(engine: engine, onFind: { findAfterChaptersDismiss = true }) }
         })
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = settings.keepScreenAwake }
-        .onDisappear {
-            engine?.close()
-            UIApplication.shared.isIdleTimerDisabled = false
-        }
+        .keepsScreenAwake(settings.keepScreenAwake, as: "novel reader")
+        .onDisappear { engine?.close() }
     }
 
     private func novelSurface(engine: NovelEngine, document: EPUBDocument, chapterPath: String) -> some View {

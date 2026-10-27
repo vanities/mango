@@ -72,11 +72,8 @@ struct ReaderView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
             engine?.handleMemoryWarning()
         }
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = settings.keepScreenAwake }
-        .onDisappear {
-            engine?.close()
-            UIApplication.shared.isIdleTimerDisabled = false
-        }
+        .keepsScreenAwake(settings.keepScreenAwake, as: "comic reader")
+        .onDisappear { engine?.close() }
     }
 
     private func readerSurface(engine: ReaderEngine) -> some View {

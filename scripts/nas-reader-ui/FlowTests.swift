@@ -16,6 +16,35 @@ final class NASReaderFlowTests: XCTestCase {
         try await chapterServiceLoss(scrolling: false, skipFailedChapter: true)
     }
 
+    /// The phone's exit on 2026-10-26: the NAS connection was dropped while the phone sat locked,
+    /// and the next chapter's read wrote to it. launchd: "exited due to SIGPIPE", no crash report.
+    func testNextChapterAfterTheConnectionWasResetKeepsReading() async throws {
+        continueAfterFailure = true
+        XCUIDevice.shared.orientation = .portrait
+        app.terminate()
+        let proxy = try FixtureConnectionReset()
+        app.launchArguments = []
+        app.launchEnvironment["QA_SMB_PORT"] = "1448"
+        app.launch()
+        app.buttons["Open generated remote novel"].tap()
+        let chapter1 = app.webViews.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Chapter 1, paragraph 0")).firstMatch
+        let opened = chapter1.waitForExistence(timeout: 15)
+        XCTAssertTrue(opened, app.debugDescription)
+        guard opened else { return }
+        let next = app.buttons["Next chapter"]
+        if !next.isHittable { app.webViews.firstMatch.tap() }
+        XCTAssertTrue(next.isHittable, app.debugDescription)
+        let dropped = try await proxy.resetConnections()
+        XCTAssertGreaterThan(dropped, 0, "The reader's SMB connection must run through the proxy")
+        try await Task.sleep(for: .milliseconds(300))
+        next.tap()
+        let chapter2 = app.webViews.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Chapter 2, paragraph 0")).firstMatch
+        let recovered = chapter2.waitForExistence(timeout: 15)
+        capture("Next chapter after a reset connection")
+        XCTAssertEqual(app.state, .runningForeground, "A reset NAS connection ended the app")
+        XCTAssertTrue(recovered, "The next chapter must load over a fresh connection")
+    }
+
     private func chapterServiceLoss(scrolling: Bool, skipFailedChapter: Bool = false) async throws {
         // Failed checkpoints return normally: XCTest's synchronous failure interruption
         // cannot run an async main-actor teardown while this async test owns that actor.

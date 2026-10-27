@@ -29,3 +29,12 @@ file_length:
 function_parameter_count:
   warning: 7
   error: 10
+custom_rules:
+  # ScreenAwake is the only writer: the flag is app-wide, and a reader and the transfer queue
+  # each writing their own answer let the queue switch an open book's keep-awake off.
+  idle_timer_has_one_owner:
+    name: "Idle timer has one owner"
+    regex: 'isIdleTimerDisabled\s*='
+    excluded: 'Mango/Services/ScreenAwake\.swift'
+    message: "Keep the screen on through ScreenAwake.shared.hold(_:_:) or .keepsScreenAwake(_:as:)."
+    severity: error

@@ -128,6 +128,33 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   app can do is dropped to make them match.
 - UI is native iOS 26 (Liquid Glass). `navigationDestination` must sit outside lazy containers
   or the links silently do nothing.
+- **The process ignores SIGPIPE** (`BrokenPipes.ignore()`, first thing in `MangoApp.init`).
+  libsmb2 writes to its socket with `writev` and no `SO_NOSIGPIPE`, so a write to a connection
+  that was reset ends the app on the spot, with no crash report. On 2026-10-26 the NAS connection
+  dropped while the phone sat locked, and the next chapter's read sent `NASClient`'s echo into
+  it; launchd logged "exited due to SIGPIPE". Ignored, the echo throws and `ensureConnected`
+  reconnects. `BrokenConnectionTests` pins it; `reset_proxy.py` reproduces it end to end
+  (`scripts/nas-reader-ui`, `testNextChapterAfterTheConnectionWasResetKeepsReading`).
+- **`ScreenAwake` is the only writer of `isIdleTimerDisabled`** (a SwiftLint rule enforces it).
+  Readers hold it with `.keepsScreenAwake(_:as:)`, the transfer queue with `hold("transfers", _)`.
+  When each wrote its own answer, the idle queue switched an open book's keep-awake off every
+  time the app became active, and the phone dimmed and locked mid-chapter.
+
+## When the phone says it crashed and there's no crash report
+
+An app killed by a signal like SIGPIPE leaves no `.ips`, and neither does a quiet jetsam. The
+phone's unified log still says how it ended. `idevicecrashreport`, `pymobiledevice3` (`uv tool
+install pymobiledevice3`) and CoreDevice's own `devicectl` all reach the phone over Wi-Fi:
+
+```bash
+pymobiledevice3 syslog collect --udid <UDID> --start-time <unix time> phone.logarchive
+# The archive lacks Info.plist; borrow one from any simulator's `log collect` output.
+/usr/bin/log show --archive phone.logarchive --predicate 'eventMessage CONTAINS "com.vanities.mango"' \
+  | grep "exited due to\|Process exited"
+```
+
+(`/usr/bin/log`: zsh has a `log` builtin.) Mango's own `.info` lines aren't kept on the phone.
+SpringBoard's and runningboardd's lines are.
 
 ## The reader
 

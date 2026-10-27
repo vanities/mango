@@ -10,6 +10,8 @@ struct NASReaderAuditApp: App {
     @State private var showingReader = false
 
     init() {
+        // As MangoApp does at launch.
+        BrokenPipes.ignore()
         let settings = AppSettings()
         settings.novelPaged = !ProcessInfo.processInfo.arguments.contains("--scrolling")
         settings.novelFontScale = 0.8
@@ -18,7 +20,9 @@ struct NASReaderAuditApp: App {
                                    covers: CoverStore(directory: root.appending(path: "covers"), customDirectory: root.appending(path: "custom")),
                                    settings: settings)
         let server = NASServer(id: UUID(uuidString: "C5F4331C-1F76-4C39-BEA3-001607026321")!,
-                               name: "Generated loopback fixtures", host: "127.0.0.1", port: 1445,
+                               name: "Generated loopback fixtures", host: "127.0.0.1",
+                               // 1448 is reset_proxy.py, for the connection-reset journey.
+                               port: Int(ProcessInfo.processInfo.environment["QA_SMB_PORT"] ?? "") ?? 1445,
                                share: "AUDIT", path: "", username: "audit", addedAt: .now)
         let source = LibrarySource(id: UUID(uuidString: "1B2BCE94-728E-41A3-872B-3484B1AE2937")!, kind: .smb,
                                    displayName: "Generated loopback fixtures", addedAt: .now, serverID: server.id)
