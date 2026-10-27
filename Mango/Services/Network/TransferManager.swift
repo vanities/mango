@@ -208,9 +208,10 @@ final class TransferManager {
     }
 
     /// A transfer only continues while the app is in the foreground, so don't let the screen
-    /// lock halfway through a 300 MB volume.
+    /// lock halfway through a 300 MB volume. Through `ScreenAwake`, so an idle queue lets go
+    /// of the screen without switching off an open book's hold on it.
     private func updateIdleTimer() {
-        UIApplication.shared.isIdleTimerDisabled = isTransferring && !backgroundPaused
+        ScreenAwake.shared.hold("transfers", isTransferring && !backgroundPaused)
     }
 
     // MARK: Persistence and resumption

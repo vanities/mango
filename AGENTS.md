@@ -135,6 +135,10 @@ Device builds need a team: copy `Config/Signing.xcconfig.example` to `Config/Sig
   it; launchd logged "exited due to SIGPIPE". Ignored, the echo throws and `ensureConnected`
   reconnects. `BrokenConnectionTests` pins it; `reset_proxy.py` reproduces it end to end
   (`scripts/nas-reader-ui`, `testNextChapterAfterTheConnectionWasResetKeepsReading`).
+- **`ScreenAwake` is the only writer of `isIdleTimerDisabled`** (a SwiftLint rule enforces it).
+  Readers hold it with `.keepsScreenAwake(_:as:)`, the transfer queue with `hold("transfers", _)`.
+  When each wrote its own answer, the idle queue switched an open book's keep-awake off every
+  time the app became active, and the phone dimmed and locked mid-chapter.
 
 ## When the phone says it crashed and there's no crash report
 
