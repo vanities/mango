@@ -72,6 +72,8 @@ final class LibraryModel {
             return
         }
         do {
+            let accessStarted = url.startAccessingSecurityScopedResource()
+            defer { if accessStarted { url.stopAccessingSecurityScopedResource() } }
             let bookmark = try BookmarkStore.makeBookmark(for: url)
             let source = LibrarySource(id: UUID(), kind: .folder, displayName: url.lastPathComponent,
                                        bookmark: bookmark, addedAt: Date())
