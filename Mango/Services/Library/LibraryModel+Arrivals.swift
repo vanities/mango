@@ -42,6 +42,9 @@ extension LibraryModel {
             }
         }
         do {
+            // A file opened in place needs its access started before the bookmark, like a picked folder (#5).
+            let accessStarted = kept.startAccessingSecurityScopedResource()
+            defer { if accessStarted { kept.stopAccessingSecurityScopedResource() } }
             let bookmark = try BookmarkStore.makeBookmark(for: kept)
             let source = LibrarySource(id: UUID(), kind: .file, displayName: kept.lastPathComponent,
                                        bookmark: bookmark, addedAt: Date())

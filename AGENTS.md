@@ -20,7 +20,10 @@ Read [docs/iphone-duo-testing.md](docs/iphone-duo-testing.md) before Duo layout,
 ## Non-negotiables
 
 - **Never copy, move, or rename the user's comics.** Sources are security-scoped bookmarks
-  (`BookmarkStore`) or the app's own Documents folder. The only things Mango writes are cover
+  (`BookmarkStore`) or the app's own Documents folder. Start access on a picked or opened
+  URL before `BookmarkStore.makeBookmark` and stop it after: a bookmark saved without it reads
+  fine until the app is closed, then the folder is unreadable (issue #5, a folder in another
+  app's storage on an iPad; the simulator keeps access either way, so only a device shows it). The only things Mango writes are cover
   thumbnails in Caches (`CoverStore`), covers the user picked in Application Support, and JSON
   in Application Support.
 - **Move into Mango** (a comic in a folder the user picked → Mango's own folder) is the one
