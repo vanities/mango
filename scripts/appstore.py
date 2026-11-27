@@ -26,7 +26,9 @@ spec = importlib.util.spec_from_file_location("tf", ROOT / "testflight.py")
 tf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tf)  # type: ignore[union-attr]
 
-VERSION = "1.2.1"
+VERSION = "1.2.2"
+# Approved versions go out by themselves, as Truffle's do (2026-11-27: "push and make a release", "dont wait on me").
+RELEASE_TYPE = "AFTER_APPROVAL"
 LOCALE = "en-US"
 SITE = "https://am2.biz/mango"
 
@@ -61,8 +63,8 @@ Source code: github.com/vanities/mango
 
 Supported formats: CBZ, EPUB, PDF, and folders of JPEG, PNG, WebP, HEIC, GIF or TIFF images. CBR/RAR archives are not supported.""",
     "keywords": "cbz,pdf,ebook,light novel,nas,smb,manhwa,manhua,webtoon,rtl,books,library,folders,ipad",
-    "whatsNew": """Fixed Mango closing when you turned to the next chapter of a book on your NAS after your phone had been locked or in the background.
-The screen no longer dims or locks while you read, even after checking a notification or Control Center.""",
+    "whatsNew": """Fixed a folder added from Files (On My iPad, or another app's storage) becoming unreadable after Mango was closed and reopened. Thanks to the reader who tracked it down and sent the fix.
+If a folder you added earlier stopped working, remove it and add it again once.""",
     "copyright": "2026 AM2 LLC",
     "supportUrl": f"{SITE}/support",
     "marketingUrl": SITE,
@@ -140,8 +142,8 @@ def editable_version(asc: Store, app_id: str, create: bool) -> dict | None:
             return version
     if not create:
         return None
-    created = asc.post("/v1/appStoreVersions", {"data": {"type": "appStoreVersions", "attributes": {"platform": "IOS", "versionString": VERSION, "releaseType": "MANUAL"}, "relationships": {"app": {"data": {"type": "apps", "id": app_id}}}}})
-    print(f"  ✓ created version {VERSION} (manual release)")
+    created = asc.post("/v1/appStoreVersions", {"data": {"type": "appStoreVersions", "attributes": {"platform": "IOS", "versionString": VERSION, "releaseType": RELEASE_TYPE}, "relationships": {"app": {"data": {"type": "apps", "id": app_id}}}}})
+    print(f"  ✓ created version {VERSION} (release: {RELEASE_TYPE})")
     return created["data"]
 
 
@@ -192,7 +194,7 @@ def cmd_setup(asc: Store, phone: str | None) -> None:
             attrs.pop("whatsNew")  # not editable on an app's first version
             result = asc.patch_ok(f"/v1/appStoreVersionLocalizations/{loc['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": loc["id"], "attributes": attrs}})
         report(f"version {version['attributes']['versionString']} copy (description, keywords, URLs)", result)
-        report(f"version {VERSION}: manual release, copyright", asc.patch_ok(f"/v1/appStoreVersions/{version['id']}", {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"versionString": VERSION, "releaseType": "MANUAL", "copyright": COPY["copyright"]}}}))
+        report(f"version {VERSION}: release {RELEASE_TYPE}, copyright", asc.patch_ok(f"/v1/appStoreVersions/{version['id']}", {"data": {"type": "appStoreVersions", "id": version["id"], "attributes": {"versionString": VERSION, "releaseType": RELEASE_TYPE, "copyright": COPY["copyright"]}}}))
 
         if phone:
             set_review_details(asc, version["id"], phone)
